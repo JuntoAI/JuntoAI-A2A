@@ -4,6 +4,8 @@
 
 This specification covers the greenfield monorepo scaffolding and Google Cloud Platform infrastructure provisioning for the JuntoAI A2A MVP. The infrastructure is managed via Terragrunt (wrapping Terraform) and provisions the core GCP resources needed to host the backend (FastAPI on Cloud Run), frontend (Next.js on Cloud Run), Docker image storage (Artifact Registry), state management (Firestore Native mode), and AI access (Vertex AI). IAM Service Accounts follow least-privilege principles.
 
+The MVP SHALL be deployed into a dedicated GCP project (not shared with other workloads) for blast radius isolation, clean billing visibility, simplified IAM scoping, and teardown simplicity. All project-specific values (project ID, state bucket name, region) are parameterized as Terragrunt input variables so the same configuration can target dev, staging, or production projects without code changes.
+
 ## Glossary
 
 - **Monorepo**: A single Git repository containing the `/infra`, `/backend`, and `/frontend` project directories.
@@ -41,11 +43,12 @@ This specification covers the greenfield monorepo scaffolding and Google Cloud P
 #### Acceptance Criteria
 
 1. THE Root_HCL SHALL configure remote state using the `gcs` backend.
-2. THE Root_HCL SHALL set the GCS bucket name to `juntoai-terraform-state-prod`.
+2. THE Root_HCL SHALL set the GCS bucket name from a configurable `terraform_state_bucket` input variable (e.g., `juntoai-terraform-state-prod`), not a hardcoded string.
 3. THE Root_HCL SHALL set the state file prefix using `path_relative_to_include()` to ensure unique state paths per module.
-4. THE Root_HCL SHALL set the GCP project to `juntoai-project-id`.
-5. THE Root_HCL SHALL set the GCS bucket location to `eu` for EU compliance.
-6. THE Root_HCL SHALL configure the `hashicorp/google` and `hashicorp/google-beta` providers.
+4. THE Root_HCL SHALL set the GCP project from a configurable `gcp_project_id` input variable (e.g., `juntoai-project-id`), not a hardcoded string.
+5. THE Root_HCL SHALL set the GCS bucket location from a configurable `gcp_region` input variable with a default value of `eu` for EU compliance.
+6. THE Root_HCL SHALL configure the `hashicorp/google` and `hashicorp/google-beta` providers, passing the `gcp_project_id` and `gcp_region` variables to the provider blocks.
+7. THE Root_HCL SHALL define all environment-specific values (`gcp_project_id`, `terraform_state_bucket`, `gcp_region`) in a single `env.hcl` or `common.tfvars` file at the `/infra` level, so that switching environments requires changing only one file.
 
 ### Requirement 3: Cloud Run Service Provisioning
 

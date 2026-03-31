@@ -36,12 +36,14 @@ The infrastructure will be provisioned using Terragrunt to maintain DRY (Don't R
 remote\_state {  
   backend \= "gcs"  
   config \= {  
-    bucket  \= "juntoai-terraform-state-prod"  
+    bucket  \= local.env\_vars.terraform\_state\_bucket  
     prefix  \= "${path\_relative\_to\_include()}/terraform.tfstate"  
-    project \= "juntoai-project-id"  
-    location \= "eu" \# EU region for compliance  
+    project \= local.env\_vars.gcp\_project\_id  
+    location \= local.env\_vars.gcp\_region  
   }  
 }
+
+*All environment-specific values (`gcp_project_id`, `terraform_state_bucket`, `gcp_region`) are defined in a single `env.hcl` file at the `/infra` level. Default values: project `juntoai-project-id`, bucket `juntoai-terraform-state-prod`, region `eu`.*
 
 ### **2.2. Core GCP Resources to Provision**
 
@@ -87,22 +89,25 @@ class NegotiationState(BaseModel):
     max_turns: int = 15
     current_speaker: str = "Buyer"
     deal_status: str = "Negotiating"  # Negotiating | Agreed | Failed | Blocked
-    # Agreed   — both agents confirm accepted terms
+    # Agreed   — both agents' proposed_price within agreement_threshold
     # Failed   — max_turns reached with no agreement
     # Blocked  — Regulator issued 3 WARNING statuses
     warning_count: int = 0
     current_offer: float = 0.0
+    agreement_threshold: float = 1000000.0  # loaded from scenario negotiation_params
     history: List[Dict[str, Any]]  # ordered: agent_thought always before agent_message per turn
+    hidden_context: Dict[str, Any] = {}  # injected by Toggle_Injector per agent role
     active_toggles: List[str] = []
 ```
 
 ## **4.3. Token System**
 
-Tokens are deducted **upfront** when the user clicks "Initialize A2A Protocol", before the simulation runs.
+Tokens are deducted **server-side only** when `POST /api/v1/negotiation/start` is called. The backend is the single source of truth for token balance.
 
 * **Cost per simulation:** `max_turns` value from the scenario config (default 15 tokens).  
 * **Daily quota:** 100 tokens per email, stored in Firestore under the `waitlist` collection. Resets at midnight UTC.  
-* **Enforcement:** `POST /api/v1/negotiation/start` checks token balance before initializing. Returns `HTTP 429` with `{"error": "token_limit_reached"}` if insufficient.  
+* **Enforcement:** `POST /api/v1/negotiation/start` checks token balance, deducts tokens atomically (Firestore increment by negative value), then initializes the session. Returns `HTTP 429` with `{"error": "token_limit_reached"}` if insufficient. The response includes `tokens_remaining` so the frontend can sync its display.  
+* **Frontend role:** The frontend displays the token balance optimistically and disables the Initialize button when the displayed balance is insufficient. It does NOT write token deductions to Firestore directly.  
 * **Firestore schema** (per user doc):
 
 ```
@@ -114,58 +119,68 @@ waitlist/{email}
 
 ## **4.4. Scenario JSON Schema**
 
-All scenarios are JSON files loaded at runtime from the `SCENARIOS_DIR` directory. Adding a new scenario requires only dropping a new file — no code changes.
+All scenarios are JSON files (named `*.scenario.json`) loaded at runtime from the `SCENARIOS_DIR` directory. Adding a new scenario requires only dropping a new file — no code changes.
+
+**Canonical Schema** (authoritative definition in `a2a-scenario-config-engine` spec):
 
 ```json
 {
   "id": "talent_war",
-  "title": "The Talent War",
+  "name": "The Talent War",
   "description": "A senior DevOps candidate negotiates salary and remote work with a corporate recruiter.",
   "agents": [
     {
-      "id": "recruiter",
+      "role": "Recruiter",
       "name": "Sarah",
-      "role": "Buyer",
-      "llm": "gemini-2.5-flash",
-      "persona": "Corporate recruiter. Max budget €130k. Target €110k. Wants 5 days in-office.",
-      "output_schema": ["inner_thought", "public_message", "proposed_offer"]
+      "persona_prompt": "You are a corporate recruiter at a Fortune 500 company. You must fill a Senior DevOps position. Your maximum approved budget is €130,000. Your target offer is €110,000. You want the candidate in-office 5 days per week.",
+      "goals": ["Hire candidate at or below €130k", "Secure 5-day in-office commitment"],
+      "budget": { "min": 0, "max": 130000, "target": 110000 },
+      "tone": "professional",
+      "output_fields": ["inner_thought", "public_message", "proposed_offer"],
+      "model_id": "gemini-2.5-flash"
     },
     {
-      "id": "candidate",
+      "role": "Candidate",
       "name": "Alex",
-      "role": "Seller",
-      "llm": "claude-3-5-sonnet",
-      "persona": "Senior DevOps candidate. Minimum €120k. Demands minimum 3 days remote.",
-      "output_schema": ["inner_thought", "public_message", "proposed_offer"]
+      "persona_prompt": "You are a senior DevOps engineer with 8 years of experience. Your minimum acceptable salary is €120,000. You demand a minimum of 3 days remote work per week.",
+      "goals": ["Secure salary >= €120k", "Secure minimum 3 days remote work"],
+      "budget": { "min": 120000, "max": 200000, "target": 135000 },
+      "tone": "confident",
+      "output_fields": ["inner_thought", "public_message", "proposed_offer"],
+      "model_id": "claude-3-5-sonnet-v2"
     },
     {
-      "id": "regulator",
-      "name": "HR Compliance Bot",
       "role": "Regulator",
-      "llm": "claude-sonnet-4",
-      "persona": "Flags unauthorized stock option promises or biased language. 3 warnings = blocked.",
-      "output_schema": ["status", "reasoning"]
+      "name": "HR Compliance Bot",
+      "persona_prompt": "You are an HR compliance monitor. Flag any unauthorized stock option promises or biased language. Issue WARNING status for violations. 3 warnings = BLOCKED.",
+      "goals": ["Ensure hiring compliance", "Flag unauthorized promises"],
+      "budget": { "min": 0, "max": 0, "target": 0 },
+      "tone": "neutral",
+      "output_fields": ["status", "reasoning"],
+      "model_id": "claude-sonnet-4"
     }
   ],
   "toggles": [
     {
       "id": "competing_offer",
       "label": "Give Alex a hidden €125k competing offer from Google",
-      "target_agent": "candidate",
-      "context_injection": "You have a competing offer of €125,000 from Google. Use this as leverage."
+      "target_agent_role": "Candidate",
+      "hidden_context_payload": {
+        "competing_offer": "You have a competing offer of €125,000 from Google. Use this as leverage."
+      }
     },
     {
       "id": "deadline_pressure",
       "label": "Make Sarah desperate — deadline in 24 hours",
-      "target_agent": "recruiter",
-      "context_injection": "You must close this hire within 24 hours or lose headcount approval. Be flexible."
+      "target_agent_role": "Recruiter",
+      "hidden_context_payload": {
+        "deadline": "You must close this hire within 24 hours or lose headcount approval. Be flexible."
+      }
     }
   ],
-  "termination": {
+  "negotiation_params": {
     "max_turns": 15,
-    "agreement_condition": "Both agents confirm accepted terms in the same turn.",
-    "failure_condition": "max_turns reached with no agreement.",
-    "blocked_condition": "Regulator issues 3 WARNING statuses."
+    "agreement_threshold": 5000
   },
   "outcome_receipt": {
     "equivalent_human_time": "~3 weeks",
@@ -173,6 +188,15 @@ All scenarios are JSON files loaded at runtime from the `SCENARIOS_DIR` director
   }
 }
 ```
+
+**Key field mappings:**
+- `persona_prompt` replaces the old `persona` field — full system prompt text, not a summary.
+- `goals` is a structured array enabling the UI to display agent motivations on Agent Cards.
+- `budget` is a structured object with `min`, `max`, `target` enabling config-driven agreement detection.
+- `model_id` replaces the old `llm` field — maps to the Vertex AI Model Router.
+- `target_agent_role` replaces the old `target_agent` field — references the agent's `role`, not `id`.
+- `hidden_context_payload` replaces the old `context_injection` string — structured object for richer context injection.
+- `negotiation_params.agreement_threshold` replaces the old hardcoded termination conditions — the Orchestrator uses this value to determine when proposed prices are close enough for agreement.
 
 The `llm` field maps to the model routing table in the backend config. The `context_injection` string is appended to the target agent's system prompt when the toggle is active.
 

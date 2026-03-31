@@ -68,11 +68,11 @@ This specification covers the real-time simulation UI for the JuntoAI A2A MVP, c
 
 1. THE Control_Panel SHALL render the Initialize_Button with the label "Initialize A2A Protocol".
 2. WHEN no scenario is selected, THE Initialize_Button SHALL be disabled.
-3. WHEN the user clicks the Initialize_Button, THE Control_Panel SHALL send a `POST /api/v1/negotiation/start` request with the selected `scenario_id` and the current `active_toggles` array in the request body.
-4. WHEN the `POST /api/v1/negotiation/start` request succeeds and returns a `session_id`, THE Control_Panel SHALL navigate the user to the Glass_Box page at `/arena/session/{session_id}`.
-5. WHEN the Initialize_Button is clicked, THE Token_System SHALL deduct the simulation token cost from the user's Token_Balance before sending the start request.
-6. IF the user's Token_Balance is insufficient for the simulation cost, THEN THE Control_Panel SHALL disable the Initialize_Button and display a message indicating insufficient tokens and the daily reset time.
-7. IF the `POST /api/v1/negotiation/start` request fails, THEN THE Control_Panel SHALL display an error message and refund the deducted tokens to the client-side Token_Balance.
+3. WHEN the user clicks the Initialize_Button, THE Control_Panel SHALL send a `POST /api/v1/negotiation/start` request with the authenticated `email`, the selected `scenario_id`, and the current `active_toggles` array in the request body. The backend is the single source of truth for token deduction — the frontend SHALL NOT deduct tokens before the API call.
+4. WHEN the `POST /api/v1/negotiation/start` request succeeds and returns a `session_id` and updated `tokens_remaining`, THE Control_Panel SHALL update the client-side Token_Balance to the `tokens_remaining` value from the response and navigate the user to the Glass_Box page at `/arena/session/{session_id}`.
+5. IF the user's client-side Token_Balance appears insufficient for the simulation cost, THEN THE Control_Panel SHALL disable the Initialize_Button and display a message indicating insufficient tokens and the daily reset time. This is an optimistic UI check only; the backend enforces the actual limit.
+6. IF the `POST /api/v1/negotiation/start` request returns HTTP 429 (token limit reached), THEN THE Control_Panel SHALL display a message indicating insufficient tokens and the daily reset time, and sync the client-side Token_Balance to `0`.
+7. IF the `POST /api/v1/negotiation/start` request fails with any other error, THEN THE Control_Panel SHALL display an error message from the response body. No token refund is needed because no client-side deduction occurred.
 8. WHILE the start request is in progress, THE Initialize_Button SHALL display a loading state and prevent duplicate submissions.
 
 ### Requirement 5: SSE Stream Client
@@ -152,7 +152,7 @@ This specification covers the real-time simulation UI for the JuntoAI A2A MVP, c
 1. WHEN a `negotiation_complete` event is received with `deal_status` of `"Agreed"`, THE Outcome_Receipt SHALL display the final negotiated terms from the `final_summary` object.
 2. WHEN a `negotiation_complete` event is received with `deal_status` of `"Blocked"`, THE Outcome_Receipt SHALL display the reason the deal was blocked, sourced from the `final_summary`.
 3. WHEN a `negotiation_complete` event is received with `deal_status` of `"Failed"`, THE Outcome_Receipt SHALL display a failure summary indicating the negotiation reached the maximum turn limit without agreement.
-4. THE Outcome_Receipt SHALL display ROI_Metrics including: elapsed simulation time (computed from session start to completion), an "Equivalent Human Time" estimate, and a "Value Created" summary line.
+4. THE Outcome_Receipt SHALL display ROI_Metrics in two distinct visual groups: (a) measured metrics — elapsed simulation time computed client-side from session start to the `negotiation_complete` event timestamp; and (b) scenario-estimated metrics — "Equivalent Human Time" and "Value Created" values sourced from the scenario JSON's `outcome_receipt` config. The scenario-estimated metrics SHALL be visually labeled with a subtitle such as "Industry Estimate" or rendered with a distinct style (e.g., lighter text, italic, or an info tooltip) to make it clear to investors that these are reference benchmarks, not computed values.
 5. THE Outcome_Receipt SHALL render a "Run Another Scenario" button that navigates the user back to the Control_Panel at `/arena`.
 6. THE Outcome_Receipt SHALL render a "Reset with Different Variables" button that navigates the user back to the Control_Panel with the same scenario pre-selected.
 7. THE Outcome_Receipt SHALL visually replace or overlay the Glass_Box content with a fade or slide transition.

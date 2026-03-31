@@ -7,15 +7,15 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 ## Glossary
 
 - **Orchestrator**: The LangGraph-based state machine module that drives the turn-based negotiation loop across all agent nodes.
-- **NegotiationState**: The TypedDict (LangGraph-compatible) state object containing `session_id`, `turn_count`, `max_turns`, `current_speaker`, `deal_status`, `current_offer`, `history`, and `hidden_context`.
-- **BuyerNode**: A LangGraph node representing the Buyer agent (Titan Corp CEO) that reads the shared NegotiationState, invokes its assigned LLM, and returns an updated state with `inner_thought`, `public_message`, and `proposed_price`.
-- **SellerNode**: A LangGraph node representing the Seller agent (Innovate Tech Founder) that reads the shared NegotiationState, invokes its assigned LLM, and returns an updated state with `inner_thought`, `public_message`, `proposed_price`, and `retention_clause_demanded`.
-- **RegulatorNode**: A LangGraph node representing the Regulator agent (EU Compliance Bot) that reads the shared NegotiationState, invokes its assigned LLM, and returns an updated state with `status` (CLEAR, WARNING, or BLOCKED) and `reasoning`.
+- **NegotiationState**: The TypedDict (LangGraph-compatible) state object containing `session_id`, `scenario_id`, `turn_count`, `max_turns`, `current_speaker`, `deal_status`, `current_offer`, `history`, `hidden_context`, and `agreement_threshold`. This is the LangGraph runtime representation. A separate Pydantic `NegotiationStateModel` (defined in the `a2a-backend-core-sse` spec) is used for API serialization and Firestore persistence. Explicit conversion functions (`to_pydantic()` / `from_pydantic()`) bridge the two representations.
+- **BuyerNode**: A LangGraph node representing the first negotiating agent (e.g., Buyer/Recruiter). It reads its persona, goals, and budget from the `scenario_config` field of the NegotiationState, invokes its assigned LLM via the Model_Router, and returns an updated state with `inner_thought`, `public_message`, and `proposed_price`. Agent identity is fully config-driven — no hardcoded personas.
+- **SellerNode**: A LangGraph node representing the second negotiating agent (e.g., Seller/Candidate). It reads its persona, goals, and budget from the `scenario_config` field of the NegotiationState, invokes its assigned LLM via the Model_Router, and returns an updated state with `inner_thought`, `public_message`, `proposed_price`, and optional scenario-specific fields.
+- **RegulatorNode**: A LangGraph node representing the compliance agent. It reads its persona and monitoring criteria from the `scenario_config` field of the NegotiationState, invokes its assigned LLM via the Model_Router, and returns an updated state with `status` (CLEAR, WARNING, or BLOCKED) and `reasoning`.
 - **StateGraph**: The LangGraph `StateGraph` class used to define nodes and conditional routing edges for the negotiation loop.
 - **Vertex_AI_Client**: The module that wraps the Google Vertex AI SDK to invoke LLM models from the Model Garden, handling authentication via GCP IAM.
 - **Model_Router**: The configuration-driven component within the Orchestrator that maps each agent role to a specific Vertex AI model endpoint.
 - **Hidden_Context**: An optional dictionary injected into an agent's system prompt before the simulation starts, representing information asymmetry toggles from the investor UI.
-- **Turn**: A single cycle in which the current speaker agent generates a response and the Orchestrator updates the NegotiationState.
+- **Turn**: One complete negotiation round consisting of a Buyer node execution, a Regulator check, a Seller node execution, and a second Regulator check (4 node executions total). The `turn_count` increments by 1 after this full cycle completes. The `turn_number` emitted in SSE events equals the current `turn_count` value at the time the node executes, so all 4 node executions within the same cycle share the same `turn_number`.
 - **Warning_Count**: An integer field tracked by the RegulatorNode representing the cumulative number of WARNING statuses issued; three warnings trigger a BLOCKED status.
 
 ## Requirements
@@ -39,14 +39,19 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 
 1. THE NegotiationState SHALL be defined as a Python `TypedDict` compatible with LangGraph's `StateGraph` state specification.
 2. THE NegotiationState SHALL contain a `session_id` field of type `str`.
-3. THE NegotiationState SHALL contain a `turn_count` field of type `int` with a default value of `0`.
-4. THE NegotiationState SHALL contain a `max_turns` field of type `int` with a default value of `15`.
-5. THE NegotiationState SHALL contain a `current_speaker` field of type `str` with a default value of `"Buyer"`.
-6. THE NegotiationState SHALL contain a `deal_status` field of type `str` with a default value of `"Negotiating"`, constrained to the values `"Negotiating"`, `"Agreed"`, `"Blocked"`, or `"Failed"`.
-7. THE NegotiationState SHALL contain a `current_offer` field of type `float` with a default value of `0.0`.
-8. THE NegotiationState SHALL contain a `history` field of type `list[dict[str, Any]]` with a default value of an empty list.
-9. THE NegotiationState SHALL contain a `hidden_context` field of type `dict[str, Any]` with a default value of an empty dict, representing information asymmetry injected per agent.
-10. THE NegotiationState SHALL contain a `warning_count` field of type `int` with a default value of `0`, tracking cumulative regulator warnings.
+3. THE NegotiationState SHALL contain a `scenario_id` field of type `str`, referencing the Arena_Scenario that initialized this negotiation.
+4. THE NegotiationState SHALL contain a `turn_count` field of type `int` with a default value of `0`.
+5. THE NegotiationState SHALL contain a `max_turns` field of type `int` with a default value of `15`.
+6. THE NegotiationState SHALL contain a `current_speaker` field of type `str` with a default value of `"Buyer"`.
+7. THE NegotiationState SHALL contain a `deal_status` field of type `str` with a default value of `"Negotiating"`, constrained to the values `"Negotiating"`, `"Agreed"`, `"Blocked"`, or `"Failed"`.
+8. THE NegotiationState SHALL contain a `current_offer` field of type `float` with a default value of `0.0`.
+9. THE NegotiationState SHALL contain a `history` field of type `list[dict[str, Any]]` with a default value of an empty list.
+10. THE NegotiationState SHALL contain a `hidden_context` field of type `dict[str, Any]` with a default value of an empty dict, representing information asymmetry injected per agent.
+11. THE NegotiationState SHALL contain a `warning_count` field of type `int` with a default value of `0`, tracking cumulative regulator warnings.
+12. THE NegotiationState SHALL contain an `agreement_threshold` field of type `float` with a default value of `1000000.0`, loaded from the active Arena_Scenario's `negotiation_params.agreement_threshold` at initialization.
+13. THE NegotiationState SHALL contain a `scenario_config` field of type `dict[str, Any]` with a default value of an empty dict, holding the full loaded Arena_Scenario for agent nodes to read personas, goals, and output fields dynamically.
+14. THE Orchestrator SHALL provide a `negotiation_state_to_pydantic(state: NegotiationState) -> NegotiationStateModel` conversion function that maps the TypedDict to the Pydantic model defined in the `a2a-backend-core-sse` spec.
+15. THE Orchestrator SHALL provide a `pydantic_to_negotiation_state(model: NegotiationStateModel) -> NegotiationState` conversion function that maps the Pydantic model back to the TypedDict.
 
 ### Requirement 3: BuyerNode Implementation
 
@@ -55,14 +60,15 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 #### Acceptance Criteria
 
 1. THE BuyerNode SHALL be a callable function registered as a node in the StateGraph.
-2. WHEN the BuyerNode is invoked, THE BuyerNode SHALL read the current NegotiationState including `history`, `current_offer`, and `hidden_context`.
-3. WHEN the BuyerNode is invoked, THE BuyerNode SHALL construct a prompt containing the Buyer persona system prompt (Titan Corp CEO, max budget €50M, target price €35M) and the shared negotiation history.
+2. WHEN the BuyerNode is invoked, THE BuyerNode SHALL read the current NegotiationState including `history`, `current_offer`, `hidden_context`, and `scenario_config`.
+3. WHEN the BuyerNode is invoked, THE BuyerNode SHALL look up the first agent in `scenario_config.agents` whose `role` matches the Buyer/first-negotiator role, and construct a prompt using that agent's `persona_prompt`, `goals`, and `budget` fields from the scenario config. THE BuyerNode SHALL NOT use hardcoded persona text.
 4. WHEN `hidden_context` contains a key matching the Buyer agent role, THE BuyerNode SHALL inject the corresponding hidden context into the system prompt.
-5. WHEN the BuyerNode receives a response from the LLM, THE BuyerNode SHALL parse the response into `inner_thought` (str), `public_message` (str), and `proposed_price` (float) fields.
-6. WHEN the BuyerNode completes its turn, THE BuyerNode SHALL append a new entry to the `history` list containing `agent_name`, `inner_thought`, `public_message`, `proposed_price`, and `turn_number`.
+5. WHEN the BuyerNode receives a response from the LLM, THE BuyerNode SHALL parse the response into the fields defined by the agent's `output_fields` in the scenario config (typically `inner_thought`, `public_message`, and `proposed_price`).
+6. WHEN the BuyerNode completes its turn, THE BuyerNode SHALL append a new entry to the `history` list containing `agent_name`, the parsed output fields, and `turn_number`.
 7. WHEN the BuyerNode completes its turn, THE BuyerNode SHALL update `current_offer` to the `proposed_price` value from the LLM response.
 8. WHEN the BuyerNode completes its turn, THE BuyerNode SHALL set `current_speaker` to `"Regulator"` in the returned state.
 9. IF the LLM response cannot be parsed into the required output schema, THEN THE BuyerNode SHALL retry the LLM call once with an explicit formatting instruction appended to the prompt.
+10. THE BuyerNode SHALL resolve its LLM client by passing the agent's `model_id` from the scenario config to the Model_Router, not by using a hardcoded model identifier.
 
 ### Requirement 4: SellerNode Implementation
 
@@ -71,14 +77,15 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 #### Acceptance Criteria
 
 1. THE SellerNode SHALL be a callable function registered as a node in the StateGraph.
-2. WHEN the SellerNode is invoked, THE SellerNode SHALL read the current NegotiationState including `history`, `current_offer`, and `hidden_context`.
-3. WHEN the SellerNode is invoked, THE SellerNode SHALL construct a prompt containing the Seller persona system prompt (Innovate Tech Founder, floor budget €40M, 2-year retention clause required) and the shared negotiation history.
+2. WHEN the SellerNode is invoked, THE SellerNode SHALL read the current NegotiationState including `history`, `current_offer`, `hidden_context`, and `scenario_config`.
+3. WHEN the SellerNode is invoked, THE SellerNode SHALL look up the second agent in `scenario_config.agents` whose `role` matches the Seller/second-negotiator role, and construct a prompt using that agent's `persona_prompt`, `goals`, and `budget` fields from the scenario config. THE SellerNode SHALL NOT use hardcoded persona text.
 4. WHEN `hidden_context` contains a key matching the Seller agent role, THE SellerNode SHALL inject the corresponding hidden context into the system prompt.
-5. WHEN the SellerNode receives a response from the LLM, THE SellerNode SHALL parse the response into `inner_thought` (str), `public_message` (str), `proposed_price` (float), and `retention_clause_demanded` (bool) fields.
-6. WHEN the SellerNode completes its turn, THE SellerNode SHALL append a new entry to the `history` list containing `agent_name`, `inner_thought`, `public_message`, `proposed_price`, `retention_clause_demanded`, and `turn_number`.
+5. WHEN the SellerNode receives a response from the LLM, THE SellerNode SHALL parse the response into the fields defined by the agent's `output_fields` in the scenario config (typically `inner_thought`, `public_message`, `proposed_price`, and optional scenario-specific fields like `retention_clause_demanded`).
+6. WHEN the SellerNode completes its turn, THE SellerNode SHALL append a new entry to the `history` list containing `agent_name`, the parsed output fields, and `turn_number`.
 7. WHEN the SellerNode completes its turn, THE SellerNode SHALL update `current_offer` to the `proposed_price` value from the LLM response.
 8. WHEN the SellerNode completes its turn, THE SellerNode SHALL set `current_speaker` to `"Regulator"` in the returned state.
 9. IF the LLM response cannot be parsed into the required output schema, THEN THE SellerNode SHALL retry the LLM call once with an explicit formatting instruction appended to the prompt.
+10. THE SellerNode SHALL resolve its LLM client by passing the agent's `model_id` from the scenario config to the Model_Router, not by using a hardcoded model identifier.
 
 ### Requirement 5: RegulatorNode Implementation
 
@@ -87,8 +94,8 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 #### Acceptance Criteria
 
 1. THE RegulatorNode SHALL be a callable function registered as a node in the StateGraph.
-2. WHEN the RegulatorNode is invoked, THE RegulatorNode SHALL read the current NegotiationState including `history`, `current_offer`, `warning_count`, and `hidden_context`.
-3. WHEN the RegulatorNode is invoked, THE RegulatorNode SHALL construct a prompt containing the Regulator persona system prompt (EU Compliance Bot, monitor for data privacy and monopoly risks) and the shared negotiation history.
+2. WHEN the RegulatorNode is invoked, THE RegulatorNode SHALL read the current NegotiationState including `history`, `current_offer`, `warning_count`, `hidden_context`, and `scenario_config`.
+3. WHEN the RegulatorNode is invoked, THE RegulatorNode SHALL look up the agent in `scenario_config.agents` whose `role` matches the Regulator role, and construct a prompt using that agent's `persona_prompt` and `goals` fields from the scenario config. THE RegulatorNode SHALL NOT use hardcoded persona text.
 4. WHEN `hidden_context` contains a key matching the Regulator agent role, THE RegulatorNode SHALL inject the corresponding hidden context into the system prompt.
 5. WHEN the RegulatorNode receives a response from the LLM, THE RegulatorNode SHALL parse the response into `status` (one of `"CLEAR"`, `"WARNING"`, `"BLOCKED"`) and `reasoning` (str) fields.
 6. WHEN the RegulatorNode returns a `status` of `"WARNING"`, THE RegulatorNode SHALL increment the `warning_count` field by 1.
@@ -96,6 +103,7 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 8. WHEN the RegulatorNode returns a `status` of `"BLOCKED"`, THE RegulatorNode SHALL set `deal_status` to `"Blocked"`.
 9. WHEN the RegulatorNode completes its turn, THE RegulatorNode SHALL append a new entry to the `history` list containing `agent_name`, `status`, `reasoning`, and `turn_number`.
 10. IF the LLM response cannot be parsed into the required output schema, THEN THE RegulatorNode SHALL retry the LLM call once with an explicit formatting instruction appended to the prompt.
+11. THE RegulatorNode SHALL resolve its LLM client by passing the agent's `model_id` from the scenario config to the Model_Router, not by using a hardcoded model identifier.
 
 ### Requirement 6: LangGraph Routing Logic
 
@@ -112,7 +120,7 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 7. THE Orchestrator SHALL implement routing from the `regulator` node as a conditional edge that inspects `current_speaker` to determine the next node.
 8. WHEN `deal_status` is `"Agreed"`, `"Blocked"`, or `"Failed"`, THE Orchestrator SHALL route to the `END` node, terminating the graph execution.
 9. WHEN `turn_count` equals `max_turns` and `deal_status` is `"Negotiating"`, THE Orchestrator SHALL set `deal_status` to `"Failed"` and route to the `END` node.
-10. THE Orchestrator SHALL increment `turn_count` by 1 after each complete Buyer-Regulator-Seller-Regulator cycle.
+10. THE Orchestrator SHALL increment `turn_count` by 1 after each complete Buyer-Regulator-Seller-Regulator cycle (4 node executions). All SSE events emitted during a single cycle SHALL carry the same `turn_number` value equal to the `turn_count` at cycle start, so the UI's Turn Counter advances once per full negotiation round, not per node execution.
 
 ### Requirement 7: Vertex AI Model Router
 
@@ -120,14 +128,15 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 
 #### Acceptance Criteria
 
-1. THE Model_Router SHALL maintain a mapping of agent role names to Vertex AI model identifiers.
-2. THE Model_Router SHALL map the `"Buyer"` role to the `gemini-2.5-flash` model endpoint via the Vertex AI SDK.
-3. THE Model_Router SHALL map the `"Seller"` role to the `claude-3-5-sonnet-v2` model endpoint via the Vertex AI SDK.
-4. THE Model_Router SHALL map the `"Regulator"` role to the `claude-sonnet-4` model endpoint via the Vertex AI SDK, with a fallback to `gemini-2.5-pro`.
-5. THE Model_Router SHALL accept the agent role name as input and return an initialized LLM client configured for the corresponding model.
-6. THE Model_Router SHALL authenticate all Vertex AI API calls using GCP IAM credentials from the runtime environment, requiring no separate API keys.
-7. WHEN a model endpoint is unavailable, THE Model_Router SHALL attempt the fallback model for that role before raising an error.
-8. THE Model_Router SHALL pass the `GOOGLE_CLOUD_PROJECT` and `VERTEX_AI_LOCATION` configuration values to each LLM client instance.
+1. THE Model_Router SHALL accept an agent's `model_id` string (from the scenario config's Agent_Definition) and return an initialized LLM client configured for the corresponding Vertex AI model endpoint.
+2. THE Model_Router SHALL support at minimum the following model identifiers: `gemini-2.5-flash`, `claude-3-5-sonnet-v2`, `claude-sonnet-4`, and `gemini-2.5-pro`.
+3. THE Model_Router SHALL accept an optional `fallback_model_id` parameter. When the primary model endpoint is unavailable or times out, THE Model_Router SHALL attempt the fallback model before raising an error.
+4. THE Model_Router SHALL authenticate all Vertex AI API calls using GCP IAM credentials from the runtime environment, requiring no separate API keys.
+5. THE Model_Router SHALL pass the `GOOGLE_CLOUD_PROJECT` and `VERTEX_AI_LOCATION` configuration values to each LLM client instance.
+6. THE Model_Router SHALL NOT maintain a hardcoded mapping of agent role names to model identifiers. Model assignment is defined in the scenario JSON and passed to the Model_Router at runtime by each agent node.
+7. WHEN a `model_id` is not recognized or the corresponding Vertex AI endpoint is unavailable and no fallback succeeds, THE Model_Router SHALL raise a `ModelNotAvailableError` with the `model_id` and a descriptive message.
+8. THE Model_Router SHALL configure a per-request timeout of 60 seconds (configurable via `VERTEX_AI_REQUEST_TIMEOUT_SECONDS` environment variable) on all LLM invocations. IF a request exceeds the timeout, THE Model_Router SHALL cancel the request and attempt the fallback model if one is configured, or raise a `ModelTimeoutError` with the `model_id` and elapsed time.
+9. THE Model_Router SHALL log a warning when any LLM request exceeds 30 seconds, including the `model_id`, agent role, and elapsed time, to aid in identifying slow model endpoints before they hit the hard timeout.
 
 ### Requirement 8: Agent Output Parsing and Validation
 
@@ -135,14 +144,13 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 
 #### Acceptance Criteria
 
-1. THE Orchestrator SHALL define a `BuyerOutput` Pydantic model containing `inner_thought` (str), `public_message` (str), and `proposed_price` (float) fields.
-2. THE Orchestrator SHALL define a `SellerOutput` Pydantic model containing `inner_thought` (str), `public_message` (str), `proposed_price` (float), and `retention_clause_demanded` (bool) fields.
+1. THE Orchestrator SHALL define a `BaseAgentOutput` Pydantic model containing `inner_thought` (str) and `public_message` (str) fields as the minimum required output for all negotiating agents.
+2. THE Orchestrator SHALL define a `NegotiatingAgentOutput` Pydantic model extending `BaseAgentOutput` with `proposed_price` (float) and an optional `extra_fields` (dict) for scenario-specific fields (e.g., `retention_clause_demanded`).
 3. THE Orchestrator SHALL define a `RegulatorOutput` Pydantic model containing `status` (str, constrained to `"CLEAR"`, `"WARNING"`, or `"BLOCKED"`) and `reasoning` (str) fields.
-4. WHEN an LLM response is received, THE Orchestrator SHALL parse the response text as JSON and validate it against the corresponding Pydantic model.
+4. WHEN an LLM response is received, THE Orchestrator SHALL parse the response text as JSON and validate it against the corresponding Pydantic model. Any fields defined in the agent's `output_fields` (from the scenario config) that are not in the base model SHALL be captured in the `extra_fields` dict.
 5. IF the LLM response JSON is invalid or missing required fields, THEN THE Orchestrator SHALL raise a `AgentOutputParseError` with the agent name and raw response text.
-6. FOR ALL valid BuyerOutput instances, serializing to JSON then deserializing back SHALL produce an equivalent BuyerOutput object (round-trip property).
-7. FOR ALL valid SellerOutput instances, serializing to JSON then deserializing back SHALL produce an equivalent SellerOutput object (round-trip property).
-8. FOR ALL valid RegulatorOutput instances, serializing to JSON then deserializing back SHALL produce an equivalent RegulatorOutput object (round-trip property).
+6. FOR ALL valid NegotiatingAgentOutput instances, serializing to JSON then deserializing back SHALL produce an equivalent object (round-trip property).
+7. FOR ALL valid RegulatorOutput instances, serializing to JSON then deserializing back SHALL produce an equivalent RegulatorOutput object (round-trip property).
 
 ### Requirement 9: Negotiation Termination Conditions
 
@@ -150,11 +158,12 @@ This specification covers the LangGraph-based AI orchestration layer and Vertex 
 
 #### Acceptance Criteria
 
-1. WHEN both the Buyer's `proposed_price` and the Seller's `proposed_price` are within €1M of each other and the Seller's `retention_clause_demanded` is satisfied, THE Orchestrator SHALL set `deal_status` to `"Agreed"`.
+1. WHEN both the Buyer's `proposed_price` and the Seller's `proposed_price` are within the `agreement_threshold` value loaded from the active Arena_Scenario's `negotiation_params.agreement_threshold` field, AND any scenario-specific acceptance conditions are met (e.g., `retention_clause_demanded` satisfied), THE Orchestrator SHALL set `deal_status` to `"Agreed"`. THE Orchestrator SHALL NOT use a hardcoded threshold value; the threshold MUST come from the scenario configuration.
 2. WHEN `turn_count` reaches `max_turns` and `deal_status` remains `"Negotiating"`, THE Orchestrator SHALL set `deal_status` to `"Failed"`.
 3. WHEN the RegulatorNode sets `deal_status` to `"Blocked"`, THE Orchestrator SHALL terminate the negotiation loop.
 4. WHEN `deal_status` transitions from `"Negotiating"` to a terminal state, THE Orchestrator SHALL record the final `deal_status`, `current_offer`, `turn_count`, and `warning_count` in the NegotiationState.
 5. THE Orchestrator SHALL verify that `deal_status` is one of `"Negotiating"`, `"Agreed"`, `"Blocked"`, or `"Failed"` at every state transition.
+6. THE Orchestrator SHALL read the `agreement_threshold` and `max_turns` values from the loaded Arena_Scenario's `negotiation_params` at graph initialization time and inject them into the NegotiationState, so that termination conditions are fully config-driven per scenario.
 
 ### Requirement 10: Graph Compilation and Execution Entry Point
 

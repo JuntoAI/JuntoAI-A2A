@@ -10,7 +10,7 @@ This specification covers the foundational Python FastAPI backend and the Server
 - **Health_Endpoint**: The `GET /api/v1/health` API route used for liveness and readiness probes.
 - **Firestore_Client**: The application-level client module that wraps the Google Cloud Firestore SDK to read and write negotiation session documents.
 - **Session_Document**: A Firestore document keyed by `session_id` that stores the full `NegotiationState` for a single negotiation run.
-- **NegotiationState**: A Pydantic model representing the complete state of a negotiation session, including `session_id`, `turn_count`, `max_turns`, `current_speaker`, `deal_status`, `current_offer`, and `history`.
+- **NegotiationState**: A Pydantic model (`NegotiationStateModel`) representing the complete state of a negotiation session, used for API serialization and Firestore persistence. This is the serialization counterpart to the LangGraph `TypedDict` NegotiationState defined in the `a2a-langgraph-orchestration` spec. Fields include `session_id`, `scenario_id`, `turn_count`, `max_turns`, `current_speaker`, `deal_status`, `current_offer`, `history`, `warning_count`, `hidden_context`, and `agreement_threshold`.
 - **SSE_Stream_Endpoint**: The `GET /api/v1/negotiation/stream/{session_id}` API route that opens a Server-Sent Events connection and yields real-time JSON event chunks.
 - **SSE_Event**: A single Server-Sent Events message yielded by the SSE_Stream_Endpoint, formatted as `data: <JSON>\n\n` per the SSE specification.
 - **StreamingResponse**: The FastAPI/Starlette response class used to send a stream of SSE_Events to the client over a long-lived HTTP connection.
@@ -27,9 +27,12 @@ This specification covers the foundational Python FastAPI backend and the Server
 #### Acceptance Criteria
 
 1. THE Backend SHALL expose a FastAPI application instance configured with the title "JuntoAI A2A API" and a versioned API prefix of `/api/v1`.
-2. THE Backend SHALL enable CORS middleware allowing configurable origins, so that the Next.js frontend can communicate with the API.
-3. THE Backend SHALL use Pydantic V2 `BaseModel` classes for all request and response schema validation.
-4. WHEN the Backend starts, THE Backend SHALL log the application version and environment name to standard output.
+2. THE Backend SHALL enable CORS middleware allowing configurable origins sourced from a `CORS_ALLOWED_ORIGINS` environment variable (comma-separated list of URLs). In production, this SHALL be set to the Cloud Run Frontend service URL. For local development, the default SHALL include `http://localhost:3000`.
+3. THE Backend CORS middleware SHALL allow the HTTP methods `GET`, `POST`, and `OPTIONS`.
+4. THE Backend CORS middleware SHALL allow the headers `Content-Type`, `Authorization`, and `Cache-Control`.
+5. THE Backend CORS middleware SHALL set `allow_credentials` to `true` to support SSE connections from the frontend origin.
+6. THE Backend SHALL use Pydantic V2 `BaseModel` classes for all request and response schema validation.
+7. WHEN the Backend starts, THE Backend SHALL log the application version, environment name, and configured CORS origins to standard output.
 
 ### Requirement 2: Health Check Endpoint
 
@@ -49,13 +52,18 @@ This specification covers the foundational Python FastAPI backend and the Server
 #### Acceptance Criteria
 
 1. THE NegotiationState Pydantic_Model SHALL contain a `session_id` field of type `str`.
-2. THE NegotiationState Pydantic_Model SHALL contain a `turn_count` field of type `int` with a default value of `0`.
-3. THE NegotiationState Pydantic_Model SHALL contain a `max_turns` field of type `int` with a default value of `15`.
-4. THE NegotiationState Pydantic_Model SHALL contain a `current_speaker` field of type `str` with a default value of `"Buyer"`.
-5. THE NegotiationState Pydantic_Model SHALL contain a `deal_status` field of type `str` with a default value of `"Negotiating"`, constrained to the values `"Negotiating"`, `"Agreed"`, `"Blocked"`, or `"Failed"`.
-6. THE NegotiationState Pydantic_Model SHALL contain a `current_offer` field of type `float` with a default value of `0.0`.
-7. THE NegotiationState Pydantic_Model SHALL contain a `history` field of type `List[Dict[str, Any]]` with a default value of an empty list.
-8. FOR ALL valid NegotiationState instances, serializing to JSON then deserializing back SHALL produce an equivalent NegotiationState object (round-trip property).
+2. THE NegotiationState Pydantic_Model SHALL contain a `scenario_id` field of type `str`, referencing the Arena_Scenario that initialized this negotiation.
+3. THE NegotiationState Pydantic_Model SHALL contain a `turn_count` field of type `int` with a default value of `0`.
+4. THE NegotiationState Pydantic_Model SHALL contain a `max_turns` field of type `int` with a default value of `15`.
+5. THE NegotiationState Pydantic_Model SHALL contain a `current_speaker` field of type `str` with a default value of `"Buyer"`.
+6. THE NegotiationState Pydantic_Model SHALL contain a `deal_status` field of type `str` with a default value of `"Negotiating"`, constrained to the values `"Negotiating"`, `"Agreed"`, `"Blocked"`, or `"Failed"`.
+7. THE NegotiationState Pydantic_Model SHALL contain a `current_offer` field of type `float` with a default value of `0.0`.
+8. THE NegotiationState Pydantic_Model SHALL contain a `history` field of type `List[Dict[str, Any]]` with a default value of an empty list.
+9. THE NegotiationState Pydantic_Model SHALL contain a `warning_count` field of type `int` with a default value of `0`.
+10. THE NegotiationState Pydantic_Model SHALL contain a `hidden_context` field of type `Dict[str, Any]` with a default value of an empty dict.
+11. THE NegotiationState Pydantic_Model SHALL contain an `agreement_threshold` field of type `float` with a default value of `1000000.0`.
+12. THE NegotiationState Pydantic_Model SHALL contain an `active_toggles` field of type `List[str]` with a default value of an empty list.
+13. FOR ALL valid NegotiationState instances, serializing to JSON then deserializing back SHALL produce an equivalent NegotiationState object (round-trip property).
 
 ### Requirement 4: Firestore Client for Session Management
 
@@ -99,3 +107,15 @@ This specification covers the foundational Python FastAPI backend and the Server
 3. THE Backend SHALL define a `NegotiationCompleteEvent` Pydantic_Model containing `event_type` (literal `"negotiation_complete"`), `session_id` (str), `deal_status` (str), and `final_summary` (dict) fields.
 4. THE Backend SHALL define a `StreamErrorEvent` Pydantic_Model containing `event_type` (literal `"error"`) and `message` (str) fields.
 5. FOR ALL SSE event Pydantic_Models, serializing to JSON then deserializing back SHALL produce an equivalent event object (round-trip property).
+
+### Requirement 7: SSE Connection Rate Limiting and Abuse Prevention
+
+**User Story:** As a security engineer, I want rate limiting on SSE connections, so that malicious users cannot open excessive connections and burn through the Vertex AI API budget.
+
+#### Acceptance Criteria
+
+1. THE Backend SHALL enforce a maximum of 3 concurrent SSE connections per authenticated email address.
+2. IF a client attempts to open a 4th concurrent SSE connection for the same email, THEN THE Backend SHALL return an HTTP 429 response with a JSON error body indicating the concurrent connection limit has been reached.
+3. THE SSE_Stream_Endpoint SHALL validate that the requesting email matches the email that initiated the session via `POST /api/v1/negotiation/start`, preventing unauthorized users from connecting to another user's session stream.
+4. THE SSE_Stream_Endpoint SHALL enforce a maximum connection duration equal to `max_turns * 30 seconds` (estimated worst-case LLM response time per turn), after which the connection SHALL be closed with a `negotiation_complete` event indicating a timeout.
+5. THE Backend SHALL track active SSE connections in memory (per-process) and decrement the count when a connection is closed or dropped.

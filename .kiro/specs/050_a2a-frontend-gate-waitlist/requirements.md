@@ -101,10 +101,10 @@ This specification covers the Next.js 14 frontend foundation, the high-conversio
 #### Acceptance Criteria
 
 1. THE Frontend SHALL display the current Token_Balance in a visible location on all Protected_Routes, formatted as "Tokens: X / 100".
-2. WHEN a simulation action is triggered that costs tokens, THE Token_System SHALL deduct the specified token cost from the Token_Balance in both the client-side state and the Firestore Waitlist_Document.
-3. IF the Token_Balance is less than the required token cost for an action, THEN THE Token_System SHALL prevent the action and display a message indicating insufficient tokens and the reset time.
-4. THE Token_System SHALL ensure that the Token_Balance never falls below `0`.
-5. WHEN a token deduction is persisted to Firestore, THE Token_System SHALL use an atomic Firestore operation (increment by negative value) to prevent race conditions from concurrent sessions.
+2. WHEN the backend `POST /api/v1/negotiation/start` response returns a `tokens_remaining` value, THE Token_System SHALL update the client-side Token_Balance to match the backend value. The backend is the single source of truth for all token deductions.
+3. IF the client-side Token_Balance is less than the expected token cost for an action, THEN THE Token_System SHALL disable the action and display a message indicating insufficient tokens and the reset time. This is an optimistic UI check; the backend enforces the actual limit via HTTP 429.
+4. THE Token_System SHALL ensure that the client-side Token_Balance never displays below `0`.
+5. THE Token_System SHALL NOT perform direct client-side Firestore writes to deduct tokens. All token deductions SHALL be performed by the backend API using an atomic Firestore operation (increment by negative value) to prevent race conditions from concurrent sessions.
 
 ### Requirement 8: Firestore Client-Side Integration
 
@@ -116,4 +116,19 @@ This specification covers the Next.js 14 frontend foundation, the high-conversio
 2. THE Frontend SHALL export a singleton Firestore instance from a shared module (e.g., `lib/firebase.ts`) for use across components.
 3. THE Frontend SHALL use the `firebase/firestore` modular SDK (tree-shakeable imports) for all Firestore operations.
 4. IF any required Firebase environment variable is missing at build time, THEN THE Frontend SHALL throw a descriptive error during initialization indicating which variable is absent.
+
+### Requirement 9: Firestore Security Rules
+
+**User Story:** As a security engineer, I want Firestore security rules that prevent unauthorized data access, so that users cannot manipulate token balances, read other users' data, or write arbitrary documents using the publicly exposed Firebase config.
+
+#### Acceptance Criteria
+
+1. THE project SHALL include a `firestore.rules` file at the repository root (or in `/infra`) defining Firestore Security Rules.
+2. THE Firestore Security Rules SHALL allow a client to create a new document in the `waitlist` collection only if the document ID matches the `email` field in the document data and the `token_balance` field equals `100`.
+3. THE Firestore Security Rules SHALL allow a client to read a document in the `waitlist` collection only if the document ID matches the email provided in the request (users can only read their own waitlist entry).
+4. THE Firestore Security Rules SHALL deny all client-side writes that attempt to set `token_balance` to a value greater than `100` or less than `0`.
+5. THE Firestore Security Rules SHALL deny all client-side delete operations on the `waitlist` collection.
+6. THE Firestore Security Rules SHALL deny all client-side read and write access to the `negotiation_sessions` collection. Only the backend service account (server-side SDK) SHALL access negotiation session data.
+7. THE Firestore Security Rules SHALL deny all access to any collection not explicitly listed in the rules (default deny).
+8. THE Firestore Security Rules SHALL be deployed as part of the CI/CD pipeline or Terragrunt infrastructure provisioning.
 
