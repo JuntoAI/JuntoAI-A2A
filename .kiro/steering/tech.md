@@ -39,6 +39,13 @@ Monorepo with three top-level directories: `/backend`, `/frontend`, `/infra`.
 - IAM Service Accounts (Backend_SA, Frontend_SA) with least-privilege roles
 - Cloud Build (CI/CD)
 
+## Python Environment
+- **Virtual env**: Always use `python -m venv .venv` at the monorepo root
+- **Activation**: `source .venv/bin/activate`
+- **Install deps**: `pip install -r requirements.txt` (or per-directory requirements files)
+- **Infra tests**: `pip install pytest python-hcl2 hypothesis` inside the venv
+- When running any Python command (pytest, pip, etc.), ensure the venv is active first
+
 ## Key Conventions
 - All backend API routes prefixed with `/api/v1`
 - Scenario configs are JSON files loaded at runtime from a `SCENARIOS_DIR` directory
