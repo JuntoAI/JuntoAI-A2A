@@ -13,12 +13,12 @@ The objective is to build a standalone, fully functional V1 MVP demonstrating th
 **Core Technology Stack:**
 
 * **Frontend:** Next.js 14+ (App Router), React, Tailwind CSS, Lucide React.  
-* **Frontend Hosting:** Firebase App Hosting (or GCP Cloud Run).  
+* **Frontend Hosting:** GCP Cloud Run (Containerized, Serverless).  
 * **Backend API:** Python 3.11+, FastAPI (using Server-Sent Events/SSE for streaming).  
 * **Backend Compute:** GCP Cloud Run (Containerized, Serverless).  
-* **AI Orchestration:** Google Agent Development Kit (ADK) or LangGraph.  
+* **AI Orchestration:** LangGraph state machine.  
 * **LLM Provider:** Google Vertex AI (Model Garden).  
-* **State & Database:** GCP Firestore (NoSQL) or Vertex AI Agent Engine Memory Bank.  
+* **State & Database:** GCP Firestore (Native mode) — sessions, waitlist, token state.  
 * **IaC:** HashiCorp Terraform \+ Terragrunt.
 
 ## **2\. Infrastructure as Code (Terragrunt on GCP)**
@@ -45,7 +45,7 @@ remote\_state {
 
 ### **2.2. Core GCP Resources to Provision**
 
-1. **Cloud Run Services:** One for the Python FastAPI backend, one for the Next.js frontend (if not using Firebase App Hosting).  
+1. **Cloud Run Services:** One for the Python FastAPI backend, one for the Next.js frontend.  
 2. **Artifact Registry:** Repositories for Docker images.  
 3. **Firestore:** Native mode database for state management.  
 4. **Vertex AI API Enablers:** Enabling the Vertex AI API for the project.  
@@ -55,9 +55,9 @@ remote\_state {
 
 To prove protocol agnosticism and "LLM Heterogeneity" to investors, the orchestration layer will route to different foundational models hosted natively within **Vertex AI Model Garden**.
 
-* **Agent 1 (The Buyer):** Powered by **Google Gemini 3.1 Flash** (Fast, logical, cost-effective).  
-* **Agent 2 (The Seller):** Powered by **Anthropic Claude 3.5/3.7 Sonnet** via Vertex AI (Empathetic, nuanced negotiation).  
-* **Agent 3 (The Regulator):** Powered by **Anthropic Claude 4 Opus** or **Gemini 3.1 Pro** via Vertex AI (Deep reasoning, legal analysis, massive context window).
+* **Agent 1 (The Buyer):** Powered by **Google Gemini 2.5 Flash** (Fast, logical, cost-effective).  
+* **Agent 2 (The Seller):** Powered by **Anthropic Claude 3.5 Sonnet** via Vertex AI (Empathetic, nuanced negotiation).  
+* **Agent 3 (The Regulator):** Powered by **Anthropic Claude Sonnet 4** via Vertex AI, with **Gemini 2.5 Pro** as fallback (Deep reasoning, legal analysis, massive context window).
 
 *Note: All API calls go through Vertex AI SDKs, requiring only GCP IAM authentication, eliminating the need for separate Anthropic API keys.*
 
@@ -79,23 +79,117 @@ The backend orchestrates a turn-based, autonomous negotiation. Agents read the "
 
 ### **4.2. Negotiation State (FastAPI / Pydantic)**
 
-class NegotiationState(BaseModel):  
-    session\_id: str  
-    turn\_count: int \= 0  
-    max\_turns: int \= 15  
-    current\_speaker: str \= "Buyer"  
-    deal\_status: str \= "Negotiating" \# Negotiating, Agreed, Blocked, Failed  
-    current\_offer: float \= 0.0  
-    history: List\[Dict\[str, Any\]\] \# Array of public messages and private thoughts
+```python
+class NegotiationState(BaseModel):
+    session_id: str
+    scenario_id: str
+    turn_count: int = 0
+    max_turns: int = 15
+    current_speaker: str = "Buyer"
+    deal_status: str = "Negotiating"  # Negotiating | Agreed | Failed | Blocked
+    # Agreed   — both agents confirm accepted terms
+    # Failed   — max_turns reached with no agreement
+    # Blocked  — Regulator issued 3 WARNING statuses
+    warning_count: int = 0
+    current_offer: float = 0.0
+    history: List[Dict[str, Any]]  # ordered: agent_thought always before agent_message per turn
+    active_toggles: List[str] = []
+```
+
+## **4.3. Token System**
+
+Tokens are deducted **upfront** when the user clicks "Initialize A2A Protocol", before the simulation runs.
+
+* **Cost per simulation:** `max_turns` value from the scenario config (default 15 tokens).  
+* **Daily quota:** 100 tokens per email, stored in Firestore under the `waitlist` collection. Resets at midnight UTC.  
+* **Enforcement:** `POST /api/v1/negotiation/start` checks token balance before initializing. Returns `HTTP 429` with `{"error": "token_limit_reached"}` if insufficient.  
+* **Firestore schema** (per user doc):
+
+```
+waitlist/{email}
+  tokens_remaining: int      # decremented on simulation start
+  tokens_reset_at: timestamp # midnight UTC of current day
+  joined_at: timestamp
+```
+
+## **4.4. Scenario JSON Schema**
+
+All scenarios are JSON files loaded at runtime from the `SCENARIOS_DIR` directory. Adding a new scenario requires only dropping a new file — no code changes.
+
+```json
+{
+  "id": "talent_war",
+  "title": "The Talent War",
+  "description": "A senior DevOps candidate negotiates salary and remote work with a corporate recruiter.",
+  "agents": [
+    {
+      "id": "recruiter",
+      "name": "Sarah",
+      "role": "Buyer",
+      "llm": "gemini-2.5-flash",
+      "persona": "Corporate recruiter. Max budget €130k. Target €110k. Wants 5 days in-office.",
+      "output_schema": ["inner_thought", "public_message", "proposed_offer"]
+    },
+    {
+      "id": "candidate",
+      "name": "Alex",
+      "role": "Seller",
+      "llm": "claude-3-5-sonnet",
+      "persona": "Senior DevOps candidate. Minimum €120k. Demands minimum 3 days remote.",
+      "output_schema": ["inner_thought", "public_message", "proposed_offer"]
+    },
+    {
+      "id": "regulator",
+      "name": "HR Compliance Bot",
+      "role": "Regulator",
+      "llm": "claude-sonnet-4",
+      "persona": "Flags unauthorized stock option promises or biased language. 3 warnings = blocked.",
+      "output_schema": ["status", "reasoning"]
+    }
+  ],
+  "toggles": [
+    {
+      "id": "competing_offer",
+      "label": "Give Alex a hidden €125k competing offer from Google",
+      "target_agent": "candidate",
+      "context_injection": "You have a competing offer of €125,000 from Google. Use this as leverage."
+    },
+    {
+      "id": "deadline_pressure",
+      "label": "Make Sarah desperate — deadline in 24 hours",
+      "target_agent": "recruiter",
+      "context_injection": "You must close this hire within 24 hours or lose headcount approval. Be flexible."
+    }
+  ],
+  "termination": {
+    "max_turns": 15,
+    "agreement_condition": "Both agents confirm accepted terms in the same turn.",
+    "failure_condition": "max_turns reached with no agreement.",
+    "blocked_condition": "Regulator issues 3 WARNING statuses."
+  },
+  "outcome_receipt": {
+    "equivalent_human_time": "~3 weeks",
+    "process_label": "Talent Acquisition"
+  }
+}
+```
+
+The `llm` field maps to the model routing table in the backend config. The `context_injection` string is appended to the target agent's system prompt when the toggle is active.
 
 ## **5\. API Endpoints (FastAPI)**
 
-1. POST /api/v1/negotiation/start  
-   * **Payload:** Investor UI settings (e.g., { "information\_asymmetry": true, "regulator\_strictness": "high" }).  
-   * **Action:** Initializes the Graph/ADK state, persists to Firestore, returns session\_id.  
-2. GET /api/v1/negotiation/stream/{session\_id}  
+1. POST /api/v1/waitlist/join  
+   * **Payload:** `{ "email": "user@example.com" }`  
+   * **Action:** Creates or retrieves user doc in Firestore. Returns `{ "tokens_remaining": 100 }`.  
+2. POST /api/v1/negotiation/start  
+   * **Payload:** `{ "email": "...", "scenario_id": "talent_war", "active_toggles": ["competing_offer"] }`  
+   * **Action:** Validates token balance, deducts tokens, initializes LangGraph state, persists to Firestore, returns `session_id`. Returns `HTTP 429` if token balance insufficient.  
+3. GET /api/v1/negotiation/stream/{session\_id}  
    * **Action:** Opens a Server-Sent Events (SSE) stream.  
-   * **Yields:** Real-time JSON chunks as the LLMs generate their "inner\_thought" and "public\_message".
+   * **Event ordering (enforced):** `agent_thought` events always precede `agent_message` events for the same turn, proving sequential reasoning in the UI.  
+   * **Yields:** `data: {"event_type": "agent_thought"|"agent_message"|"negotiation_complete"|"error", ...}\n\n`  
+4. GET /api/v1/scenarios  
+   * **Action:** Returns list of available scenario configs loaded from `SCENARIOS_DIR`. Enables the frontend dropdown with zero hardcoding.
 
 ## **6\. Frontend UI Architecture ("The Glass Box")**
 
@@ -123,10 +217,10 @@ Triggers when deal\_status changes from "Negotiating".
 
 ## **7\. Immediate Execution Steps for Engineering / AI Assistant**
 
-1. **Repo Setup:** Initialize a monorepo containing /frontend, /backend, and /infrastructure (for Terragrunt).  
+1. **Repo Setup:** Initialize a monorepo containing /frontend, /backend, and /infra (for Terragrunt).  
 2. **IaC Provisioning:** Write terragrunt.hcl files for GCP Cloud Run, Artifact Registry, and Firestore. Apply the infrastructure to a sandbox GCP project.  
-3. **Backend Core:** Scaffold the FastAPI application. Implement the LangGraph/ADK state machine defining the three agent nodes and routing edges.  
-4. **Vertex AI Integration:** Connect the backend to the Vertex AI SDK, configuring the specific models (Gemini Flash, Claude Sonnet, Claude Opus) for each agent role.  
+3. **Backend Core:** Scaffold the FastAPI application. Implement the LangGraph state machine defining the three agent nodes and routing edges.  
+4. **Vertex AI Integration:** Connect the backend to the Vertex AI SDK, configuring the specific models (Gemini 2.5 Flash → Buyer, Claude 3.5 Sonnet → Seller, Claude Sonnet 4 → Regulator) for each agent role.  
 5. **Streaming API:** Implement the SSE endpoint in FastAPI to yield agent steps as they happen.  
 6. **Frontend Build:** Scaffold Next.js. Build the 3-pane "Glass Box" UI and connect it to the backend SSE stream.  
 7. **Containerize & Deploy:** Create Dockerfiles for frontend/backend, push to Artifact Registry, and deploy to Cloud Run.

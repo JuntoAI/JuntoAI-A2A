@@ -48,9 +48,9 @@ A dramatic, high-contrast, split-screen interface.
 When the AI loop terminates (Deal Agreed, Failed, or Blocked), the Glass Box fades out to a summary dashboard:
 
 * **Final Terms:** (e.g., "Hired at €125,000 \+ 3 Days Remote").  
-* **JuntoAI ROI Metrics:**  
-  * "Time Elapsed: 42 seconds"  
-  * "Equivalent Human Time: \~3 weeks"  
+* **JuntoAI ROI Metrics** (static values defined per scenario in the scenario JSON config):  
+  * "Time Elapsed: 42 seconds" (measured from simulation start)  
+  * "Equivalent Human Time: \~3 weeks" (scenario-defined)  
   * "Value Created: Frictionless Execution"  
 * **CTA:** "Run Another Scenario" or "Reset with Different Variables."
 
