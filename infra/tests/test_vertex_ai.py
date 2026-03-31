@@ -39,5 +39,5 @@ class TestVertexAiTerragrunt:
         path = os.path.join(vertex_ai_dir, "terragrunt.hcl")
         with open(path) as f:
             content = f.read()
-        assert "find_in_parent_folders()" in content
+        assert 'find_in_parent_folders("root.hcl")' in content
         assert 'include "root"' in content

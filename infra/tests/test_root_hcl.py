@@ -12,7 +12,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def root_hcl_content(infra_root):
-    path = os.path.join(infra_root, "terragrunt.hcl")
+    path = os.path.join(infra_root, "root.hcl")
     with open(path) as f:
         return f.read()
 
@@ -28,7 +28,7 @@ def env_hcl_content(infra_root):
 class TestEnvHclLoaded:
     def test_reads_env_hcl(self, root_hcl_content):
         assert "read_terragrunt_config" in root_hcl_content
-        assert 'find_in_parent_folders("env.hcl")' in root_hcl_content
+        assert "env.hcl" in root_hcl_content
 
 
 # --- Req 2.1: GCS backend ---

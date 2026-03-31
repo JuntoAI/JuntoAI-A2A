@@ -93,7 +93,7 @@ class TestCloudRunTerragrunt:
         path = os.path.join(cloud_run_dir, "terragrunt.hcl")
         with open(path) as f:
             content = f.read()
-        assert "find_in_parent_folders()" in content
+        assert 'find_in_parent_folders("root.hcl")' in content
         assert 'include "root"' in content
 
     def test_depends_on_iam(self, cloud_run_dir):

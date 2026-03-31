@@ -19,7 +19,7 @@ class TestInfraRootFiles:
     """Req 1.5: Root terragrunt.hcl exists."""
 
     def test_root_terragrunt_hcl_exists(self, infra_root):
-        assert os.path.isfile(os.path.join(infra_root, "terragrunt.hcl"))
+        assert os.path.isfile(os.path.join(infra_root, "root.hcl"))
 
     def test_env_hcl_exists(self, infra_root):
         assert os.path.isfile(os.path.join(infra_root, "env.hcl"))
