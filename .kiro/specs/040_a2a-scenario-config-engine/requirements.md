@@ -30,12 +30,15 @@ This specification covers the Config-Driven Scenario Engine for the JuntoAI A2A 
 1. THE Scenario_Engine SHALL define a Scenario_Schema that requires a top-level `id` field of type string, uniquely identifying the scenario.
 2. THE Scenario_Schema SHALL require a top-level `name` field of type string containing the human-readable scenario title.
 3. THE Scenario_Schema SHALL require a top-level `description` field of type string summarizing the scenario premise.
-4. THE Scenario_Schema SHALL require an `agents` field containing an array of exactly 3 Agent_Definition objects.
-5. THE Scenario_Schema SHALL require each Agent_Definition to contain `role` (string), `name` (string), `persona_prompt` (string), `goals` (array of strings), `budget` (object with `min`, `max`, and `target` numeric fields), `tone` (string), `output_fields` (array of strings), and `model_id` (string) fields.
+4. THE Scenario_Schema SHALL require an `agents` field containing an array of at least 2 Agent_Definition objects, with no upper bound on the number of agents.
+5. THE Scenario_Schema SHALL require each Agent_Definition to contain `role` (string), `name` (string), `type` (string, constrained to `"negotiator"`, `"regulator"`, or `"observer"`), `persona_prompt` (string), `goals` (array of strings), `budget` (object with `min`, `max`, and `target` numeric fields), `tone` (string), `output_fields` (array of strings), and `model_id` (string) fields.
 6. THE Scenario_Schema SHALL require a `toggles` field containing an array of at least 1 Toggle_Definition object.
 7. THE Scenario_Schema SHALL require each Toggle_Definition to contain `id` (string), `label` (string), `target_agent_role` (string), and `hidden_context_payload` (object) fields.
-8. THE Scenario_Schema SHALL require a `negotiation_params` field containing `max_turns` (integer) and `agreement_threshold` (number) fields.
+8. THE Scenario_Schema SHALL require a `negotiation_params` field containing `max_turns` (integer), `agreement_threshold` (number), and `turn_order` (array of strings) fields.
 9. THE Scenario_Schema SHALL require the `target_agent_role` in each Toggle_Definition to match the `role` field of one of the Agent_Definitions in the same scenario.
+10. THE Scenario_Schema SHALL require that every entry in the `negotiation_params.turn_order` array matches the `role` field of one of the Agent_Definitions in the same scenario.
+11. THE Scenario_Schema SHALL require that at least 1 Agent_Definition in the `agents` array has a `type` value of `"negotiator"`.
+12. THE Scenario_Schema SHALL require a top-level `outcome_receipt` field containing an object with `equivalent_human_time` (string) and `process_label` (string) fields.
 
 ### Requirement 2: JSON Scenario Parser
 
@@ -94,9 +97,9 @@ This specification covers the Config-Driven Scenario Engine for the JuntoAI A2A 
 #### Acceptance Criteria
 
 1. THE Scenario_Engine SHALL include a Scenario_File named `talent-war.scenario.json` that conforms to the Scenario_Schema.
-2. THE `talent-war.scenario.json` SHALL define Agent 1 with role `"Recruiter"`, name `"Sarah"`, persona as a Corporate Recruiter, max budget `130000`, target `110000`, and a goal to secure the candidate in-office 5 days per week.
-3. THE `talent-war.scenario.json` SHALL define Agent 2 with role `"Candidate"`, name `"Alex"`, persona as a Senior DevOps Candidate, min budget `120000`, and a goal demanding minimum 3 days remote work.
-4. THE `talent-war.scenario.json` SHALL define Agent 3 with role `"Regulator"`, name `"HR Compliance Bot"`, persona as an HR compliance monitor that flags unauthorized stock options or biased language.
+2. THE `talent-war.scenario.json` SHALL define Agent 1 with role `"Recruiter"`, name `"Sarah"`, type `"negotiator"`, persona as a Corporate Recruiter, max budget `130000`, target `110000`, and a goal to secure the candidate in-office 5 days per week.
+3. THE `talent-war.scenario.json` SHALL define Agent 2 with role `"Candidate"`, name `"Alex"`, type `"negotiator"`, persona as a Senior DevOps Candidate, min budget `120000`, and a goal demanding minimum 3 days remote work.
+4. THE `talent-war.scenario.json` SHALL define Agent 3 with role `"Regulator"`, name `"HR Compliance Bot"`, type `"regulator"`, persona as an HR compliance monitor that flags unauthorized stock options or biased language.
 5. THE `talent-war.scenario.json` SHALL define Toggle 1 with id `"competing_offer"`, label `"Give Alex a hidden €125k competing offer from Google"`, targeting the `"Candidate"` role, with a `hidden_context_payload` containing the competing offer details.
 6. THE `talent-war.scenario.json` SHALL define Toggle 2 with id `"deadline_pressure"`, label `"Make Sarah desperate - deadline in 24 hours"`, targeting the `"Recruiter"` role, with a `hidden_context_payload` containing the deadline pressure context.
 
@@ -107,9 +110,9 @@ This specification covers the Config-Driven Scenario Engine for the JuntoAI A2A 
 #### Acceptance Criteria
 
 1. THE Scenario_Engine SHALL include a Scenario_File named `ma-buyout.scenario.json` that conforms to the Scenario_Schema.
-2. THE `ma-buyout.scenario.json` SHALL define Agent 1 with role `"Buyer"`, name `"Titan Corp CEO"`, persona as an aggressive corporate acquirer, max budget `50000000`, target `35000000`.
-3. THE `ma-buyout.scenario.json` SHALL define Agent 2 with role `"Seller"`, name `"Innovate Tech Founder"`, persona as a defensive founder, min budget `40000000`, and a goal demanding 2-year team retention.
-4. THE `ma-buyout.scenario.json` SHALL define Agent 3 with role `"Regulator"`, name `"EU Regulator Bot"`, persona as an EU compliance monitor that blocks deals involving total data monopoly.
+2. THE `ma-buyout.scenario.json` SHALL define Agent 1 with role `"Buyer"`, name `"Titan Corp CEO"`, type `"negotiator"`, persona as an aggressive corporate acquirer, max budget `50000000`, target `35000000`.
+3. THE `ma-buyout.scenario.json` SHALL define Agent 2 with role `"Seller"`, name `"Innovate Tech Founder"`, type `"negotiator"`, persona as a defensive founder, min budget `40000000`, and a goal demanding 2-year team retention.
+4. THE `ma-buyout.scenario.json` SHALL define Agent 3 with role `"Regulator"`, name `"EU Regulator Bot"`, type `"regulator"`, persona as an EU compliance monitor that blocks deals involving total data monopoly.
 5. THE `ma-buyout.scenario.json` SHALL define Toggle 1 with id `"hidden_debt"`, label `"Give Titan Corp secret knowledge of Innovate Tech's €5M hidden debt"`, targeting the `"Buyer"` role, with a `hidden_context_payload` containing the hidden debt intelligence.
 6. THE `ma-buyout.scenario.json` SHALL define Toggle 2 with id `"max_strictness"`, label `"Set EU Regulator to Maximum Strictness"`, targeting the `"Regulator"` role, with a `hidden_context_payload` containing the maximum strictness directive.
 
@@ -120,9 +123,9 @@ This specification covers the Config-Driven Scenario Engine for the JuntoAI A2A 
 #### Acceptance Criteria
 
 1. THE Scenario_Engine SHALL include a Scenario_File named `b2b-sales.scenario.json` that conforms to the Scenario_Schema.
-2. THE `b2b-sales.scenario.json` SHALL define Agent 1 with role `"Seller"`, name `"SaaS Account Executive"`, persona as a CRM software sales representative, list price `100000` per year, target `80000`.
-3. THE `b2b-sales.scenario.json` SHALL define Agent 2 with role `"Buyer"`, name `"Target CTO"`, persona as a technology executive needing the software, budget capped at `70000`.
-4. THE `b2b-sales.scenario.json` SHALL define Agent 3 with role `"Regulator"`, name `"Procurement Bot"`, persona as a procurement compliance monitor ensuring SLA guarantees and data compliance.
+2. THE `b2b-sales.scenario.json` SHALL define Agent 1 with role `"Seller"`, name `"SaaS Account Executive"`, type `"negotiator"`, persona as a CRM software sales representative, list price `100000` per year, target `80000`.
+3. THE `b2b-sales.scenario.json` SHALL define Agent 2 with role `"Buyer"`, name `"Target CTO"`, type `"negotiator"`, persona as a technology executive needing the software, budget capped at `70000`.
+4. THE `b2b-sales.scenario.json` SHALL define Agent 3 with role `"Regulator"`, name `"Procurement Bot"`, type `"regulator"`, persona as a procurement compliance monitor ensuring SLA guarantees and data compliance.
 5. THE `b2b-sales.scenario.json` SHALL define Toggle 1 with id `"q4_pressure"`, label `"It is Q4 - AE is desperate to hit quota"`, targeting the `"Seller"` role, with a `hidden_context_payload` containing the Q4 quota pressure context.
 6. THE `b2b-sales.scenario.json` SHALL define Toggle 2 with id `"budget_freeze"`, label `"CTO has budget freeze"`, targeting the `"Buyer"` role, with a `hidden_context_payload` containing the budget freeze constraint.
 

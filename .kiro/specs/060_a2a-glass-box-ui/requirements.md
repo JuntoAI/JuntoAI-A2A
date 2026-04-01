@@ -112,10 +112,10 @@ This specification covers the real-time simulation UI for the JuntoAI A2A MVP, c
 1. THE Chat_Panel SHALL occupy the center column of the Glass_Box layout.
 2. THE Chat_Panel SHALL render each public message as a chat bubble with the `agent_name` displayed as the sender label.
 3. WHEN an `agent_message` event is received, THE Chat_Panel SHALL append a new chat bubble containing the `public_message` text.
-4. THE Chat_Panel SHALL visually distinguish messages from different agents using distinct colors or alignment (e.g., left-aligned for one agent, right-aligned for another).
+4. THE Chat_Panel SHALL assign each agent a unique color from an Agent_Color_Palette based on the agent's index in the scenario's `agents` array. All messages SHALL be left-aligned with the agent's name displayed in the agent's assigned color as a label above the bubble. The Chat_Panel SHALL NOT use left/right alignment to distinguish agents, as this pattern breaks with more than 2 agents.
 5. THE Chat_Panel SHALL auto-scroll to the latest message as new messages arrive.
 6. WHEN an `agent_message` event contains a `proposed_price` field, THE Chat_Panel SHALL display the proposed price as a highlighted value within or below the chat bubble.
-7. WHEN an `agent_message` event contains a `status` field (from the Regulator), THE Chat_Panel SHALL render the status as a distinct system-style message with appropriate color coding (green for CLEAR, yellow for WARNING, red for BLOCKED).
+7. WHEN an `agent_message` event contains a `status` field (from any agent with `type` `"regulator"`), THE Chat_Panel SHALL render the status as a distinct system-style message with appropriate color coding (green for CLEAR, yellow for WARNING, red for BLOCKED). If the scenario has multiple regulators, each regulator's status message SHALL include the regulator's `agent_name` to distinguish which regulator issued the status.
 
 ### Requirement 8: Metrics Dashboard — Live Indicators
 
@@ -125,7 +125,7 @@ This specification covers the real-time simulation UI for the JuntoAI A2A MVP, c
 
 1. THE Metrics_Dashboard SHALL be positioned at the top of the Glass_Box layout, spanning the full width.
 2. THE Metrics_Dashboard SHALL display the Current_Offer value, updating dynamically when an `agent_message` event contains a `proposed_price` field.
-3. THE Metrics_Dashboard SHALL display the Regulator_Traffic_Light as a colored circle or icon: green when the latest regulator status is `"CLEAR"`, yellow when `"WARNING"`, and red when `"BLOCKED"`.
+3. THE Metrics_Dashboard SHALL dynamically render one Regulator_Traffic_Light for each agent with `type` `"regulator"` defined in the active scenario's `agents` array. Each traffic light SHALL be labeled with the regulator agent's `name` and display as a colored circle or icon: green when the regulator's latest status is `"CLEAR"`, yellow when `"WARNING"`, and red when `"BLOCKED"`. If the scenario defines zero regulator agents, THE Metrics_Dashboard SHALL not render any traffic light indicators.
 4. THE Metrics_Dashboard SHALL display the Turn_Counter formatted as "Turn: X / Y" where X is the current `turn_number` and Y is the `max_turns` from the session state.
 5. THE Metrics_Dashboard SHALL display the Token_Balance_Display formatted as "Tokens: X / 100" reflecting the authenticated user's current Token_Balance.
 6. WHEN the Current_Offer value changes, THE Metrics_Dashboard SHALL apply a brief visual transition or animation to draw attention to the updated value.

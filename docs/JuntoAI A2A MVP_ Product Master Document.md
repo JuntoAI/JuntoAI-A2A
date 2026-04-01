@@ -6,6 +6,10 @@
 
 **Core Objective:** Visually prove that JuntoAI is a universal, protocol-level execution layer for professional negotiations, not a hardcoded chatbot.
 
+## **⚠️ N-Agent Architecture Note (Engineering)**
+
+**The MVP is implemented for N agents from day one.** While the 3 MVP scenarios below each use 3 agents (2 negotiators + 1 regulator), the entire backend orchestrator, scenario JSON schema, and frontend UI are built to support any number of agents per scenario (2, 5, 10+). Agent count, roles, types, turn order, and termination rules are all read from the scenario JSON config at runtime — nothing is hardcoded to 3 agents. A future scenario with 7 agents and 3 regulators works by dropping a new JSON file, zero code changes. See specs 030, 040, and 060 for the N-agent architecture details.
+
 ## **1\. Product Vision & Core Philosophy**
 
 We are building a **Config-Driven Scenario Engine**. The application must not be hardcoded to just HR or just M\&A. Instead, the UI and Backend must act as a "blank stage."

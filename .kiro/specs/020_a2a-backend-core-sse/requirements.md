@@ -63,7 +63,10 @@ This specification covers the foundational Python FastAPI backend and the Server
 10. THE NegotiationState Pydantic_Model SHALL contain a `hidden_context` field of type `Dict[str, Any]` with a default value of an empty dict.
 11. THE NegotiationState Pydantic_Model SHALL contain an `agreement_threshold` field of type `float` with a default value of `1000000.0`.
 12. THE NegotiationState Pydantic_Model SHALL contain an `active_toggles` field of type `List[str]` with a default value of an empty list.
-13. FOR ALL valid NegotiationState instances, serializing to JSON then deserializing back SHALL produce an equivalent NegotiationState object (round-trip property).
+13. THE NegotiationState Pydantic_Model SHALL contain a `turn_order` field of type `List[str]` with a default value of an empty list, holding the ordered sequence of agent roles to execute per turn cycle (loaded from the scenario config's `negotiation_params.turn_order`).
+14. THE NegotiationState Pydantic_Model SHALL contain a `turn_order_index` field of type `int` with a default value of `0`, tracking the current position within the `turn_order` array.
+15. THE NegotiationState Pydantic_Model SHALL contain an `agent_states` field of type `Dict[str, Dict[str, Any]]` with a default value of an empty dict, tracking per-agent runtime state keyed by agent role (e.g., `last_proposed_price` for negotiators, `warning_count` and `last_status` for regulators).
+16. FOR ALL valid NegotiationState instances, serializing to JSON then deserializing back SHALL produce an equivalent NegotiationState object (round-trip property).
 
 ### Requirement 4: Firestore Client for Session Management
 
