@@ -1,0 +1,55 @@
+"""Converters between LangGraph NegotiationState TypedDict and Pydantic model."""
+
+from app.models.negotiation import NegotiationStateModel
+from app.orchestrator.state import NegotiationState
+
+
+def to_pydantic(state: NegotiationState) -> NegotiationStateModel:
+    """Convert a LangGraph NegotiationState TypedDict to a Pydantic model.
+
+    The Pydantic ``NegotiationStateModel`` does **not** have a
+    ``scenario_config`` field, so it is intentionally dropped here.
+    """
+    return NegotiationStateModel(
+        session_id=state["session_id"],
+        scenario_id=state["scenario_id"],
+        turn_count=state["turn_count"],
+        max_turns=state["max_turns"],
+        current_speaker=state["current_speaker"],
+        deal_status=state["deal_status"],
+        current_offer=state["current_offer"],
+        history=state["history"],
+        hidden_context=state["hidden_context"],
+        warning_count=state["warning_count"],
+        agreement_threshold=state["agreement_threshold"],
+        turn_order=state["turn_order"],
+        turn_order_index=state["turn_order_index"],
+        agent_states=state["agent_states"],
+        active_toggles=state["active_toggles"],
+    )
+
+
+def from_pydantic(model: NegotiationStateModel) -> NegotiationState:
+    """Convert a Pydantic NegotiationStateModel back to a LangGraph TypedDict.
+
+    ``scenario_config`` is set to an empty dict because the Pydantic model
+    does not carry it.
+    """
+    return NegotiationState(
+        session_id=model.session_id,
+        scenario_id=model.scenario_id,
+        turn_count=model.turn_count,
+        max_turns=model.max_turns,
+        current_speaker=model.current_speaker,
+        deal_status=model.deal_status,
+        current_offer=model.current_offer,
+        history=model.history,
+        hidden_context=model.hidden_context,
+        warning_count=model.warning_count,
+        agreement_threshold=model.agreement_threshold,
+        scenario_config={},
+        turn_order=model.turn_order,
+        turn_order_index=model.turn_order_index,
+        agent_states=model.agent_states,
+        active_toggles=model.active_toggles,
+    )
