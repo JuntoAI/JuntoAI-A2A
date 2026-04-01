@@ -1,11 +1,11 @@
-"""Verify cloud-build/ Terragrunt module (Req 7.1–7.4, 8.1–8.4, 10.1–10.6)."""
+"""Verify cloud-build/ Terragrunt module — path-filtered triggers."""
 
 import os
 import pytest
 
 
 class TestCloudBuildModuleStructure:
-    """Req 10.1: Module directory exists with required files."""
+    """Module directory exists with required files."""
 
     def test_main_tf_exists(self, cloud_build_dir):
         assert os.path.isfile(os.path.join(cloud_build_dir, "main.tf"))
@@ -21,7 +21,7 @@ class TestCloudBuildModuleStructure:
 
 
 class TestCloudBuildServiceAccount:
-    """Req 8.1–8.3: Cloud Build SA with correct roles."""
+    """Cloud Build SA with correct roles."""
 
     @pytest.fixture(autouse=True)
     def _load(self, cloud_build_dir, hcl_parser):
@@ -68,50 +68,113 @@ class TestCloudBuildServiceAccount:
         assert iam_count == 4, f"Expected exactly 4 IAM bindings, got {iam_count}"
 
 
-class TestCloudBuildTrigger:
-    """Req 7.1–7.4, 10.1–10.4: Trigger configuration."""
+class TestCloudBuildTriggers:
+    """Three path-filtered triggers: backend, frontend, fullstack."""
 
     @pytest.fixture(autouse=True)
     def _load(self, cloud_build_dir, hcl_parser):
         self.main = hcl_parser(os.path.join(cloud_build_dir, "main.tf"))
         self.resources = self.main["resource"]
 
-    def _find_trigger(self):
+    def _find_trigger(self, name):
         for r in self.resources:
-            if "google_cloudbuild_trigger" in r and "main" in r["google_cloudbuild_trigger"]:
-                return r["google_cloudbuild_trigger"]["main"]
+            if "google_cloudbuild_trigger" in r and name in r["google_cloudbuild_trigger"]:
+                return r["google_cloudbuild_trigger"][name]
         return None
 
-    def test_trigger_exists(self):
-        trigger = self._find_trigger()
-        assert trigger is not None, "Cloud Build trigger must be declared"
+    # --- Backend trigger ---
+    def test_backend_trigger_exists(self):
+        assert self._find_trigger("backend") is not None
 
-    def test_trigger_name(self):
-        trigger = self._find_trigger()
-        assert trigger["name"] == "juntoai-cicd-main"
+    def test_backend_trigger_name(self):
+        trigger = self._find_trigger("backend")
+        assert trigger["name"] == "juntoai-cicd-backend"
 
-    def test_trigger_filename(self):
-        trigger = self._find_trigger()
+    def test_backend_trigger_filename(self):
+        trigger = self._find_trigger("backend")
+        assert trigger["filename"] == "cloudbuild-backend.yaml"
+
+    def test_backend_trigger_included_files(self):
+        trigger = self._find_trigger("backend")
+        assert trigger["included_files"] == ["backend/**"]
+
+    def test_backend_trigger_has_github_config(self):
+        trigger = self._find_trigger("backend")
+        assert "github" in trigger
+
+    # --- Frontend trigger ---
+    def test_frontend_trigger_exists(self):
+        assert self._find_trigger("frontend") is not None
+
+    def test_frontend_trigger_name(self):
+        trigger = self._find_trigger("frontend")
+        assert trigger["name"] == "juntoai-cicd-frontend"
+
+    def test_frontend_trigger_filename(self):
+        trigger = self._find_trigger("frontend")
+        assert trigger["filename"] == "cloudbuild-frontend.yaml"
+
+    def test_frontend_trigger_included_files(self):
+        trigger = self._find_trigger("frontend")
+        assert trigger["included_files"] == ["frontend/**"]
+
+    def test_frontend_trigger_has_github_config(self):
+        trigger = self._find_trigger("frontend")
+        assert "github" in trigger
+
+    # --- Fullstack trigger ---
+    def test_fullstack_trigger_exists(self):
+        assert self._find_trigger("fullstack") is not None
+
+    def test_fullstack_trigger_name(self):
+        trigger = self._find_trigger("fullstack")
+        assert trigger["name"] == "juntoai-cicd-fullstack"
+
+    def test_fullstack_trigger_filename(self):
+        trigger = self._find_trigger("fullstack")
         assert trigger["filename"] == "cloudbuild.yaml"
 
-    def test_trigger_has_substitutions(self):
-        trigger = self._find_trigger()
-        subs = trigger["substitutions"]
-        required_keys = [
-            "_REGION", "_PROJECT_ID", "_REPO_NAME",
-            "_BACKEND_SERVICE", "_FRONTEND_SERVICE",
-            "_BACKEND_SA_EMAIL", "_FRONTEND_SA_EMAIL",
-        ]
-        for key in required_keys:
-            assert key in subs, f"Substitution {key} missing from trigger"
+    def test_fullstack_trigger_included_files(self):
+        trigger = self._find_trigger("fullstack")
+        included = trigger["included_files"]
+        assert "cloudbuild.yaml" in included
+        assert "infra/**" in included
 
-    def test_trigger_has_github_config(self):
-        trigger = self._find_trigger()
-        assert "github" in trigger, "Trigger must have github config"
+    def test_fullstack_trigger_has_github_config(self):
+        trigger = self._find_trigger("fullstack")
+        assert "github" in trigger
+
+    # --- Substitutions ---
+    def test_backend_trigger_substitutions(self):
+        trigger = self._find_trigger("backend")
+        subs = trigger["substitutions"]
+        for key in ["_REGION", "_PROJECT_ID", "_REPO_NAME", "_BACKEND_SERVICE", "_BACKEND_SA_EMAIL"]:
+            assert key in subs, f"Substitution {key} missing from backend trigger"
+
+    def test_frontend_trigger_substitutions(self):
+        trigger = self._find_trigger("frontend")
+        subs = trigger["substitutions"]
+        for key in ["_REGION", "_PROJECT_ID", "_REPO_NAME", "_FRONTEND_SERVICE", "_FRONTEND_SA_EMAIL"]:
+            assert key in subs, f"Substitution {key} missing from frontend trigger"
+
+    def test_fullstack_trigger_substitutions(self):
+        trigger = self._find_trigger("fullstack")
+        subs = trigger["substitutions"]
+        for key in ["_REGION", "_PROJECT_ID", "_REPO_NAME", "_BACKEND_SERVICE",
+                     "_FRONTEND_SERVICE", "_BACKEND_SA_EMAIL", "_FRONTEND_SA_EMAIL"]:
+            assert key in subs, f"Substitution {key} missing from fullstack trigger"
+
+    # --- Exactly 3 triggers ---
+    def test_exactly_three_triggers(self):
+        count = 0
+        for r in self.resources:
+            if "google_cloudbuild_trigger" in r:
+                count += len(r["google_cloudbuild_trigger"])
+        assert count == 3, f"Expected 3 triggers, got {count}"
 
 
 class TestCloudBuildVariables:
-    """Req 8.4, 10.6: Variables with defaults and validation."""
+    """Variables with defaults and validation."""
 
     @pytest.fixture(autouse=True)
     def _load(self, cloud_build_dir, hcl_parser):
@@ -140,27 +203,39 @@ class TestCloudBuildVariables:
 
 
 class TestCloudBuildOutputs:
-    """Req 10.5: Required outputs."""
+    """Required outputs for all three triggers."""
 
     @pytest.fixture(autouse=True)
     def _load(self, cloud_build_dir, hcl_parser):
         self.outputs = hcl_parser(os.path.join(cloud_build_dir, "outputs.tf"))
 
-    def test_trigger_id_output(self):
-        names = [list(o.keys())[0] for o in self.outputs["output"]]
-        assert "trigger_id" in names
+    def _output_names(self):
+        return [list(o.keys())[0] for o in self.outputs["output"]]
 
-    def test_trigger_name_output(self):
-        names = [list(o.keys())[0] for o in self.outputs["output"]]
-        assert "trigger_name" in names
+    def test_backend_trigger_id_output(self):
+        assert "backend_trigger_id" in self._output_names()
+
+    def test_frontend_trigger_id_output(self):
+        assert "frontend_trigger_id" in self._output_names()
+
+    def test_fullstack_trigger_id_output(self):
+        assert "fullstack_trigger_id" in self._output_names()
+
+    def test_backend_trigger_name_output(self):
+        assert "backend_trigger_name" in self._output_names()
+
+    def test_frontend_trigger_name_output(self):
+        assert "frontend_trigger_name" in self._output_names()
+
+    def test_fullstack_trigger_name_output(self):
+        assert "fullstack_trigger_name" in self._output_names()
 
     def test_cloudbuild_sa_email_output(self):
-        names = [list(o.keys())[0] for o in self.outputs["output"]]
-        assert "cloudbuild_sa_email" in names
+        assert "cloudbuild_sa_email" in self._output_names()
 
 
 class TestCloudBuildTerragrunt:
-    """Req 10.1: Terragrunt config with root include and dependencies."""
+    """Terragrunt config with root include and dependencies."""
 
     def test_includes_root(self, cloud_build_dir):
         path = os.path.join(cloud_build_dir, "terragrunt.hcl")

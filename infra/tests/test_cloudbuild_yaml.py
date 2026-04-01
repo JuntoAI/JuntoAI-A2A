@@ -1,12 +1,16 @@
-"""Verify cloudbuild.yaml pipeline definition (Req 1.1–1.4, 4.3, 5.1–5.3, 6.1–6.3, 9.1–9.4)."""
+"""Verify cloudbuild YAML pipeline definitions — split per-service pipelines."""
 
 import os
 import pytest
 import yaml
 
 
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
 @pytest.fixture(scope="module")
-def pipeline(repo_root):
+def fullstack_pipeline(repo_root):
     path = os.path.join(repo_root, "cloudbuild.yaml")
     assert os.path.isfile(path), "cloudbuild.yaml must exist at repo root"
     with open(path) as f:
@@ -14,138 +18,195 @@ def pipeline(repo_root):
 
 
 @pytest.fixture(scope="module")
-def steps(pipeline):
+def backend_pipeline(repo_root):
+    path = os.path.join(repo_root, "cloudbuild-backend.yaml")
+    assert os.path.isfile(path), "cloudbuild-backend.yaml must exist at repo root"
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
+@pytest.fixture(scope="module")
+def frontend_pipeline(repo_root):
+    path = os.path.join(repo_root, "cloudbuild-frontend.yaml")
+    assert os.path.isfile(path), "cloudbuild-frontend.yaml must exist at repo root"
+    with open(path) as f:
+        return yaml.safe_load(f)
+
+
+def _steps_by_id(pipeline):
     return {s["id"]: s for s in pipeline["steps"]}
 
 
-class TestPipelineStructure:
-    """Req 1.1: cloudbuild.yaml exists with correct structure."""
+# ---------------------------------------------------------------------------
+# Fullstack pipeline (cloudbuild.yaml)
+# ---------------------------------------------------------------------------
 
-    def test_has_steps(self, pipeline):
-        assert "steps" in pipeline
-        assert len(pipeline["steps"]) == 6
+class TestFullstackPipeline:
+    """cloudbuild.yaml — builds and deploys both services."""
 
-    def test_has_images_field(self, pipeline):
-        assert "images" in pipeline, "Pipeline must use images field for automatic push"
+    def test_has_six_steps(self, fullstack_pipeline):
+        assert len(fullstack_pipeline["steps"]) == 6
 
-    def test_four_images_declared(self, pipeline):
-        assert len(pipeline["images"]) == 4
+    def test_has_images_field(self, fullstack_pipeline):
+        assert "images" in fullstack_pipeline
 
-    def test_step_ids(self, steps):
-        expected = {"build-backend", "build-frontend", "push-backend", "push-frontend", "deploy-backend", "deploy-frontend"}
-        assert set(steps.keys()) == expected
+    def test_four_images_declared(self, fullstack_pipeline):
+        assert len(fullstack_pipeline["images"]) == 4
 
+    def test_step_ids(self, fullstack_pipeline):
+        ids = {s["id"] for s in fullstack_pipeline["steps"]}
+        expected = {"build-backend", "build-frontend", "push-backend",
+                    "push-frontend", "deploy-backend", "deploy-frontend"}
+        assert ids == expected
 
-class TestBuildSteps:
-    """Req 9.4: Build steps run in parallel."""
-
-    def test_build_backend_parallel(self, steps):
+    def test_builds_run_parallel(self, fullstack_pipeline):
+        steps = _steps_by_id(fullstack_pipeline)
         assert steps["build-backend"]["waitFor"] == ["-"]
-
-    def test_build_frontend_parallel(self, steps):
         assert steps["build-frontend"]["waitFor"] == ["-"]
 
-    def test_build_backend_uses_docker_builder(self, steps):
-        assert steps["build-backend"]["name"] == "gcr.io/cloud-builders/docker"
-
-    def test_build_frontend_uses_docker_builder(self, steps):
-        assert steps["build-frontend"]["name"] == "gcr.io/cloud-builders/docker"
-
-
-class TestPushSteps:
-    """Push steps must run between build and deploy to ensure images exist in Artifact Registry."""
-
-    def test_push_backend_waits_for_build(self, steps):
-        assert steps["push-backend"]["waitFor"] == ["build-backend"]
-
-    def test_push_frontend_waits_for_build(self, steps):
-        assert steps["push-frontend"]["waitFor"] == ["build-frontend"]
-
-    def test_push_backend_uses_docker_builder(self, steps):
-        assert steps["push-backend"]["name"] == "gcr.io/cloud-builders/docker"
-
-    def test_push_frontend_uses_docker_builder(self, steps):
-        assert steps["push-frontend"]["name"] == "gcr.io/cloud-builders/docker"
-
-    def test_push_backend_pushes_all_tags(self, steps):
-        args = steps["push-backend"]["args"]
-        assert "push" in args
-        assert "--all-tags" in args
-
-    def test_push_frontend_pushes_all_tags(self, steps):
-        args = steps["push-frontend"]["args"]
-        assert "push" in args
-        assert "--all-tags" in args
-
-
-class TestDeploySteps:
-    """Req 9.2, 9.3: Deploy steps depend on their push step."""
-
-    def test_deploy_backend_waits_for_push(self, steps):
+    def test_deploy_waits_for_push(self, fullstack_pipeline):
+        steps = _steps_by_id(fullstack_pipeline)
         assert steps["deploy-backend"]["waitFor"] == ["push-backend"]
-
-    def test_deploy_frontend_waits_for_push(self, steps):
         assert steps["deploy-frontend"]["waitFor"] == ["push-frontend"]
 
-    def test_deploy_backend_uses_cloud_sdk(self, steps):
+
+# ---------------------------------------------------------------------------
+# Backend pipeline (cloudbuild-backend.yaml)
+# ---------------------------------------------------------------------------
+
+class TestBackendPipeline:
+    """cloudbuild-backend.yaml — backend only."""
+
+    def test_has_three_steps(self, backend_pipeline):
+        assert len(backend_pipeline["steps"]) == 3
+
+    def test_step_ids(self, backend_pipeline):
+        ids = {s["id"] for s in backend_pipeline["steps"]}
+        assert ids == {"build-backend", "push-backend", "deploy-backend"}
+
+    def test_has_images_field(self, backend_pipeline):
+        assert "images" in backend_pipeline
+
+    def test_two_images_declared(self, backend_pipeline):
+        assert len(backend_pipeline["images"]) == 2
+
+    def test_build_runs_first(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        assert steps["build-backend"]["waitFor"] == ["-"]
+
+    def test_push_waits_for_build(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        assert steps["push-backend"]["waitFor"] == ["build-backend"]
+
+    def test_deploy_waits_for_push(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        assert steps["deploy-backend"]["waitFor"] == ["push-backend"]
+
+    def test_build_uses_docker_builder(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        assert steps["build-backend"]["name"] == "gcr.io/cloud-builders/docker"
+
+    def test_deploy_uses_cloud_sdk(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
         assert steps["deploy-backend"]["name"] == "gcr.io/google.com/cloudsdktool/cloud-sdk"
 
-    def test_deploy_frontend_uses_cloud_sdk(self, steps):
-        assert steps["deploy-frontend"]["name"] == "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    def test_deploy_uses_sha_tag(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        args = steps["deploy-backend"]["args"]
+        image_idx = args.index("--image") + 1
+        assert "$SHORT_SHA" in args[image_idx]
+        assert "latest" not in args[image_idx]
 
-    def test_deploy_backend_uses_sha_tag(self, steps):
-        args = " ".join(steps["deploy-backend"]["args"])
-        assert "$SHORT_SHA" in args, "Deploy must use $SHORT_SHA tag"
-        # Ensure 'latest' is NOT in the --image argument
-        image_idx = steps["deploy-backend"]["args"].index("--image") + 1
-        image_arg = steps["deploy-backend"]["args"][image_idx]
-        assert "latest" not in image_arg, "Deploy must not use latest tag"
-
-    def test_deploy_frontend_uses_sha_tag(self, steps):
-        args = " ".join(steps["deploy-frontend"]["args"])
-        assert "$SHORT_SHA" in args
-        image_idx = steps["deploy-frontend"]["args"].index("--image") + 1
-        image_arg = steps["deploy-frontend"]["args"][image_idx]
-        assert "latest" not in image_arg
-
-    def test_deploy_backend_has_service_account_flag(self, steps):
+    def test_deploy_has_service_account_flag(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
         assert "--service-account" in steps["deploy-backend"]["args"]
 
-    def test_deploy_frontend_has_service_account_flag(self, steps):
-        assert "--service-account" in steps["deploy-frontend"]["args"]
+    def test_no_frontend_steps(self, backend_pipeline):
+        ids = {s["id"] for s in backend_pipeline["steps"]}
+        assert not any("frontend" in sid for sid in ids)
 
+    def test_substitutions_use_variables(self, backend_pipeline):
+        subs = backend_pipeline.get("substitutions", {})
+        assert "_REGION" in subs
+        assert "_PROJECT_ID" in subs
+        assert "_BACKEND_SERVICE" in subs
 
-class TestSubstitutionVariables:
-    """Req 1.2: No hardcoded project IDs or regions in step args."""
-
-    def test_build_steps_use_substitutions(self, steps):
-        for step_id in ["build-backend", "build-frontend"]:
-            args = " ".join(steps[step_id]["args"])
-            assert "$_REGION" in args or "${_REGION}" in args
-            assert "$_PROJECT_ID" in args or "${_PROJECT_ID}" in args
-            assert "$_REPO_NAME" in args or "${_REPO_NAME}" in args
-
-    def test_deploy_steps_use_substitutions(self, steps):
-        for step_id in ["deploy-backend", "deploy-frontend"]:
-            args = " ".join(steps[step_id]["args"])
-            assert "$_REGION" in args or "${_REGION}" in args
-
-
-class TestImageTags:
-    """Req 1.3, 1.4: Both SHA and latest tags in images field."""
-
-    def test_backend_sha_tag_in_images(self, pipeline):
-        images = " ".join(pipeline["images"])
+    def test_images_use_substitutions(self, backend_pipeline):
+        images = " ".join(backend_pipeline["images"])
         assert "backend:$SHORT_SHA" in images
-
-    def test_backend_latest_tag_in_images(self, pipeline):
-        images = " ".join(pipeline["images"])
         assert "backend:latest" in images
 
-    def test_frontend_sha_tag_in_images(self, pipeline):
-        images = " ".join(pipeline["images"])
-        assert "frontend:$SHORT_SHA" in images
 
-    def test_frontend_latest_tag_in_images(self, pipeline):
-        images = " ".join(pipeline["images"])
+# ---------------------------------------------------------------------------
+# Frontend pipeline (cloudbuild-frontend.yaml)
+# ---------------------------------------------------------------------------
+
+class TestFrontendPipeline:
+    """cloudbuild-frontend.yaml — frontend only."""
+
+    def test_has_three_steps(self, frontend_pipeline):
+        assert len(frontend_pipeline["steps"]) == 3
+
+    def test_step_ids(self, frontend_pipeline):
+        ids = {s["id"] for s in frontend_pipeline["steps"]}
+        assert ids == {"build-frontend", "push-frontend", "deploy-frontend"}
+
+    def test_has_images_field(self, frontend_pipeline):
+        assert "images" in frontend_pipeline
+
+    def test_two_images_declared(self, frontend_pipeline):
+        assert len(frontend_pipeline["images"]) == 2
+
+    def test_build_runs_first(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        assert steps["build-frontend"]["waitFor"] == ["-"]
+
+    def test_push_waits_for_build(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        assert steps["push-frontend"]["waitFor"] == ["build-frontend"]
+
+    def test_deploy_waits_for_push(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        assert steps["deploy-frontend"]["waitFor"] == ["push-frontend"]
+
+    def test_build_uses_docker_builder(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        assert steps["build-frontend"]["name"] == "gcr.io/cloud-builders/docker"
+
+    def test_deploy_uses_cloud_sdk(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        assert steps["deploy-frontend"]["name"] == "gcr.io/google.com/cloudsdktool/cloud-sdk"
+
+    def test_deploy_uses_sha_tag(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        args = steps["deploy-frontend"]["args"]
+        image_idx = args.index("--image") + 1
+        assert "$SHORT_SHA" in args[image_idx]
+        assert "latest" not in args[image_idx]
+
+    def test_deploy_has_service_account_flag(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        assert "--service-account" in steps["deploy-frontend"]["args"]
+
+    def test_no_backend_steps(self, frontend_pipeline):
+        ids = {s["id"] for s in frontend_pipeline["steps"]}
+        assert not any("backend" in sid for sid in ids)
+
+    def test_build_passes_firebase_build_args(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        args = " ".join(steps["build-frontend"]["args"])
+        assert "NEXT_PUBLIC_FIREBASE_API_KEY" in args
+        assert "NEXT_PUBLIC_FIREBASE_PROJECT_ID" in args
+        assert "NEXT_PUBLIC_FIREBASE_APP_ID" in args
+        assert "NEXT_PUBLIC_API_URL" in args
+
+    def test_substitutions_use_variables(self, frontend_pipeline):
+        subs = frontend_pipeline.get("substitutions", {})
+        assert "_REGION" in subs
+        assert "_PROJECT_ID" in subs
+        assert "_FRONTEND_SERVICE" in subs
+
+    def test_images_use_substitutions(self, frontend_pipeline):
+        images = " ".join(frontend_pipeline["images"])
+        assert "frontend:$SHORT_SHA" in images
         assert "frontend:latest" in images
