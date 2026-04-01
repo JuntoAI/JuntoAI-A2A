@@ -6,7 +6,7 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
 
 ## Tasks
 
-- [ ] 1. Create `cloudbuild.yaml` pipeline definition at repo root (Phase A)
+- [x] 1. Create `cloudbuild.yaml` pipeline definition at repo root (Phase A)
   - [x] 1.1 Create `cloudbuild.yaml` with 4 build steps (build-backend, build-frontend, deploy-backend, deploy-frontend)
     - Use substitution variables (`_REGION`, `_PROJECT_ID`, `_REPO_NAME`, `_BACKEND_SERVICE`, `_FRONTEND_SERVICE`, `_BACKEND_SA_EMAIL`, `_FRONTEND_SA_EMAIL`) — no hardcoded literals
     - Build steps use `gcr.io/cloud-builders/docker`, deploy steps use `gcr.io/google.com/cloudsdktool/cloud-sdk`
@@ -16,7 +16,7 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
     - Declare all 4 image URIs in the `images` field for automatic push
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.3, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 2. Create Terragrunt `cloud-build/` module (Phase A)
+- [x] 2. Create Terragrunt `cloud-build/` module (Phase A)
   - [x] 2.1 Create `infra/modules/cloud-build/variables.tf`
     - Define inputs: `gcp_project_id`, `gcp_region`, `repository_id` (default `"juntoai-docker"`), `backend_service_name` (default `"juntoai-backend"`), `frontend_service_name` (default `"juntoai-frontend"`), `backend_sa_email`, `frontend_sa_email`, `trigger_enabled` (default `false`), `github_owner`, `github_repo`, `allowed_roles` (default: 3 approved roles with validation block)
     - Add allowlist validation block on `allowed_roles` that rejects any role not in the approved set
@@ -41,7 +41,7 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
 - [x] 3. Checkpoint — Phase A infrastructure review
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Write static analysis tests for `cloud-build/` module and `cloudbuild.yaml` (Phase A)
+- [x] 4. Write static analysis tests for `cloud-build/` module and `cloudbuild.yaml` (Phase A)
   - [x] 4.1 Add `cloud_build_dir` fixture to `infra/tests/conftest.py`
     - Add path fixture for `cloud-build/` module, following existing pattern
     - _Requirements: 10.1_
@@ -64,38 +64,38 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
     - Verify deploy steps use `$SHORT_SHA` tag in `--image` argument
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.3, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 5. Write property-based tests (Phase A)
-  - [ ]* 5.1 Write property test for dual image tagging
+- [x] 5. Write property-based tests (Phase A)
+  - [x] 5.1 Write property test for dual image tagging
     - **Property 1: Dual image tagging (SHA + latest)**
     - Generate random service names and SHA strings, build image URI lists, verify both SHA and latest tags present for each service
     - **Validates: Requirements 1.3, 1.4, 2.2, 2.3, 3.2, 3.3, 4.1, 4.2**
 
-  - [ ]* 5.2 Write property test for substitution variable parameterization
+  - [x] 5.2 Write property test for substitution variable parameterization
     - **Property 2: Substitution variable parameterization**
     - Generate random pipeline configs, verify no hardcoded environment values leak through
     - **Validates: Requirements 1.2, 5.2, 6.2**
 
-  - [ ]* 5.3 Write property test for SHA deploy tag enforcement
+  - [x] 5.3 Write property test for SHA deploy tag enforcement
     - **Property 3: Deploy steps use SHA tag**
     - Generate random deploy commands, verify image argument always uses SHA tag, never `latest`
     - **Validates: Requirements 5.1, 6.1**
 
-  - [ ]* 5.4 Write property test for Cloud Build SA role allowlist
+  - [x] 5.4 Write property test for Cloud Build SA role allowlist
     - **Property 4: Cloud Build SA role allowlist**
     - Generate random role strings, verify validation accepts approved roles and rejects all others
     - **Validates: Requirements 8.1, 8.2, 8.3, 8.4**
 
-  - [ ]* 5.5 Write property test for pipeline step dependency ordering
+  - [x] 5.5 Write property test for pipeline step dependency ordering
     - **Property 5: Pipeline step dependency ordering**
     - Generate random step graphs with waitFor directives, verify builds parallel and deploys depend on their build step
     - **Validates: Requirements 9.1, 9.2, 9.3, 9.4**
 
-  - [ ]* 5.6 Write property test for trigger substitutions completeness
+  - [x] 5.6 Write property test for trigger substitutions completeness
     - **Property 6: Trigger substitutions completeness**
     - Generate random sets of required variables, verify trigger substitutions map is a superset
     - **Validates: Requirements 7.3, 10.4**
 
-  - [ ]* 5.7 Write property test for trigger disabled-by-default
+  - [x] 5.7 Write property test for trigger disabled-by-default
     - **Property 7: Trigger disabled-by-default**
     - Generate random boolean for trigger_enabled, verify disabled field is the inverse
     - **Validates: Requirements 7.4, 10.6**
@@ -103,26 +103,26 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
 - [x] 6. Checkpoint — Phase A complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Create Backend Dockerfile (Phase B — after spec 020)
-  - [ ] 7.1 Create `backend/Dockerfile`
+- [x] 7. Create Backend Dockerfile (Phase B — after spec 020)
+  - [x] 7.1 Create `backend/Dockerfile`
     - Multi-stage or single-stage build for FastAPI + uvicorn
     - Expose port 8080 (Cloud Run default)
     - Health check endpoint `GET /api/v1/health` must return HTTP 200
     - _Requirements: 2.1, 2.4_
 
-- [ ] 8. Create Frontend Dockerfile (Phase B — after spec 050)
-  - [ ] 8.1 Create `frontend/Dockerfile`
+- [x] 8. Create Frontend Dockerfile (Phase B — after spec 050)
+  - [x] 8.1 Create `frontend/Dockerfile`
     - Multi-stage build for Next.js production
     - Serve on Cloud Run's `PORT` env var (default 3000)
     - Must serve the application and respond to health checks
     - _Requirements: 3.1, 3.4_
 
-- [ ] 9. Enable Cloud Build trigger (Phase B)
-  - [ ] 9.1 Set `trigger_enabled = true` in `infra/modules/cloud-build/terragrunt.hcl` inputs
+- [x] 9. Enable Cloud Build trigger (Phase B)
+  - [x] 9.1 Set `trigger_enabled = true` in `infra/modules/cloud-build/terragrunt.hcl` inputs
     - Flip the trigger from disabled to enabled after Dockerfiles are validated
     - _Requirements: 7.4, 10.6_
 
-- [ ] 10. Final checkpoint — Phase B complete
+- [x] 10. Final checkpoint — Phase B complete
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

@@ -23,7 +23,7 @@ class TestPipelineStructure:
 
     def test_has_steps(self, pipeline):
         assert "steps" in pipeline
-        assert len(pipeline["steps"]) == 4
+        assert len(pipeline["steps"]) == 6
 
     def test_has_images_field(self, pipeline):
         assert "images" in pipeline, "Pipeline must use images field for automatic push"
@@ -32,7 +32,7 @@ class TestPipelineStructure:
         assert len(pipeline["images"]) == 4
 
     def test_step_ids(self, steps):
-        expected = {"build-backend", "build-frontend", "deploy-backend", "deploy-frontend"}
+        expected = {"build-backend", "build-frontend", "push-backend", "push-frontend", "deploy-backend", "deploy-frontend"}
         assert set(steps.keys()) == expected
 
 
@@ -52,14 +52,40 @@ class TestBuildSteps:
         assert steps["build-frontend"]["name"] == "gcr.io/cloud-builders/docker"
 
 
+class TestPushSteps:
+    """Push steps must run between build and deploy to ensure images exist in Artifact Registry."""
+
+    def test_push_backend_waits_for_build(self, steps):
+        assert steps["push-backend"]["waitFor"] == ["build-backend"]
+
+    def test_push_frontend_waits_for_build(self, steps):
+        assert steps["push-frontend"]["waitFor"] == ["build-frontend"]
+
+    def test_push_backend_uses_docker_builder(self, steps):
+        assert steps["push-backend"]["name"] == "gcr.io/cloud-builders/docker"
+
+    def test_push_frontend_uses_docker_builder(self, steps):
+        assert steps["push-frontend"]["name"] == "gcr.io/cloud-builders/docker"
+
+    def test_push_backend_pushes_all_tags(self, steps):
+        args = steps["push-backend"]["args"]
+        assert "push" in args
+        assert "--all-tags" in args
+
+    def test_push_frontend_pushes_all_tags(self, steps):
+        args = steps["push-frontend"]["args"]
+        assert "push" in args
+        assert "--all-tags" in args
+
+
 class TestDeploySteps:
-    """Req 9.2, 9.3: Deploy steps depend on their build step."""
+    """Req 9.2, 9.3: Deploy steps depend on their push step."""
 
-    def test_deploy_backend_waits_for_build(self, steps):
-        assert steps["deploy-backend"]["waitFor"] == ["build-backend"]
+    def test_deploy_backend_waits_for_push(self, steps):
+        assert steps["deploy-backend"]["waitFor"] == ["push-backend"]
 
-    def test_deploy_frontend_waits_for_build(self, steps):
-        assert steps["deploy-frontend"]["waitFor"] == ["build-frontend"]
+    def test_deploy_frontend_waits_for_push(self, steps):
+        assert steps["deploy-frontend"]["waitFor"] == ["push-frontend"]
 
     def test_deploy_backend_uses_cloud_sdk(self, steps):
         assert steps["deploy-backend"]["name"] == "gcr.io/google.com/cloudsdktool/cloud-sdk"

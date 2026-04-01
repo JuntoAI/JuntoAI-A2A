@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+__tests__
+.hypothesis
+.pytest_cache
+.vscode
+*.md
+vitest.config.ts
+.eslintrc.json
+.gitignore

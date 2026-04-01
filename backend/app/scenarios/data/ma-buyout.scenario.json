@@ -1,0 +1,96 @@
+{
+  "id": "ma_buyout",
+  "name": "The M&A Buyout",
+  "description": "A corporate acquisition negotiation between an aggressive buyer CEO looking to acquire a promising tech startup and a defensive founder determined to protect their team and company legacy. An EU regulatory bot monitors for antitrust and data monopoly concerns.",
+  "agents": [
+    {
+      "role": "Buyer",
+      "name": "Titan Corp CEO",
+      "type": "negotiator",
+      "persona_prompt": "You are the CEO of Titan Corp, a Fortune 100 technology conglomerate. You are aggressive, data-driven, and accustomed to getting deals done on your terms. You see Innovate Tech as a strategic acquisition that will strengthen your AI division. You are willing to pay a premium but will exploit any weakness in the seller's position.",
+      "goals": [
+        "Acquire Innovate Tech at or below the target price of €35,000,000",
+        "Minimize post-acquisition obligations such as team retention guarantees",
+        "Secure full intellectual property rights with no encumbrances"
+      ],
+      "budget": {
+        "min": 20000000,
+        "max": 50000000,
+        "target": 35000000
+      },
+      "tone": "aggressive",
+      "output_fields": ["offer", "reasoning", "counter_terms"],
+      "model_id": "gemini-2.5-flash"
+    },
+    {
+      "role": "Seller",
+      "name": "Innovate Tech Founder",
+      "type": "negotiator",
+      "persona_prompt": "You are the founder and CEO of Innovate Tech, a cutting-edge AI startup with 50 employees. You built this company from scratch and care deeply about your team's future. You are open to acquisition but only at a fair valuation that reflects your technology's potential. You are defensive about your team and will not accept a deal that doesn't protect them.",
+      "goals": [
+        "Sell Innovate Tech for at least €55,000,000, with a minimum acceptable of €40,000,000",
+        "Demand a 2-year team retention clause guaranteeing no layoffs",
+        "Retain advisory role post-acquisition for at least 12 months"
+      ],
+      "budget": {
+        "min": 40000000,
+        "max": 80000000,
+        "target": 55000000
+      },
+      "tone": "defensive",
+      "output_fields": ["offer", "reasoning", "counter_terms"],
+      "model_id": "claude-3-5-sonnet"
+    },
+    {
+      "role": "Regulator",
+      "name": "EU Regulator Bot",
+      "type": "regulator",
+      "persona_prompt": "You are the EU Regulatory Compliance Bot, monitoring this acquisition for antitrust violations and data protection concerns under EU competition law and GDPR. You will block any deal that creates a total data monopoly in the AI training data market. You assess market concentration, data portability, and consumer impact.",
+      "goals": [
+        "Assess the acquisition for EU antitrust compliance",
+        "Block deals that would create a total data monopoly",
+        "Ensure GDPR compliance in any data transfer arrangements",
+        "Evaluate market concentration impact on consumers"
+      ],
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
+      "tone": "authoritative",
+      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "model_id": "claude-sonnet-4",
+      "fallback_model_id": "gemini-2.5-pro"
+    }
+  ],
+  "toggles": [
+    {
+      "id": "hidden_debt",
+      "label": "Give Titan Corp secret knowledge of Innovate Tech's €5M hidden debt",
+      "target_agent_role": "Buyer",
+      "hidden_context_payload": {
+        "hidden_debt_intelligence": true,
+        "debt_amount": 5000000,
+        "debt_details": "Your due diligence team has uncovered that Innovate Tech has €5M in hidden debt from a failed product line that is not disclosed in their financials. Use this knowledge strategically to negotiate a lower price, but be careful about revealing your source."
+      }
+    },
+    {
+      "id": "max_strictness",
+      "label": "Set EU Regulator to Maximum Strictness",
+      "target_agent_role": "Regulator",
+      "hidden_context_payload": {
+        "strictness_level": "maximum",
+        "strictness_directive": "Apply the strictest interpretation of EU competition law. Any deal that gives the buyer more than 40% market share in any AI sub-segment must be blocked. Require mandatory data sharing remedies for any approved deal. Demand structural separation of data assets."
+      }
+    }
+  ],
+  "negotiation_params": {
+    "max_turns": 12,
+    "agreement_threshold": 1000000,
+    "turn_order": ["Buyer", "Regulator", "Seller", "Regulator"]
+  },
+  "outcome_receipt": {
+    "equivalent_human_time": "~6 months",
+    "process_label": "M&A Acquisition"
+  }
+}

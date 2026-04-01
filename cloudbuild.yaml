@@ -15,6 +15,14 @@ steps:
     name: gcr.io/cloud-builders/docker
     args:
       - build
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_PROJECT_ID}
+      - --build-arg
+      - NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
+      - --build-arg
+      - NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app
       - -t
       - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
       - -t
@@ -22,7 +30,24 @@ steps:
       - ./frontend
     waitFor: ["-"]
 
-  # --- Deploy (sequential after respective build) ---
+  # --- Push (after respective build) ---
+  - id: push-backend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend
+    waitFor: ["build-backend"]
+
+  - id: push-frontend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend
+    waitFor: ["build-frontend"]
+
+  # --- Deploy (sequential after respective push) ---
   - id: deploy-backend
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -37,7 +62,7 @@ steps:
       - --service-account
       - ${_BACKEND_SA_EMAIL}
       - --quiet
-    waitFor: ["build-backend"]
+    waitFor: ["push-backend"]
 
   - id: deploy-frontend
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -53,13 +78,16 @@ steps:
       - --service-account
       - ${_FRONTEND_SA_EMAIL}
       - --quiet
-    waitFor: ["build-frontend"]
+    waitFor: ["push-frontend"]
 
 images:
   - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
   - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
   - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
   - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY
 
 substitutions:
   _REGION: europe-west1
@@ -69,3 +97,5 @@ substitutions:
   _FRONTEND_SERVICE: juntoai-frontend
   _BACKEND_SA_EMAIL: backend-sa@juntoai-a2a-mvp.iam.gserviceaccount.com
   _FRONTEND_SA_EMAIL: frontend-sa@juntoai-a2a-mvp.iam.gserviceaccount.com
+  _FIREBASE_API_KEY: ""
+  _FIREBASE_APP_ID: ""

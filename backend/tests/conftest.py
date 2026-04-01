@@ -77,3 +77,61 @@ async def test_client(mock_db, mock_tracker):
     ) as client:
         yield client
     app.dependency_overrides.clear()
+
+
+import json
+
+from app.scenarios.models import ArenaScenario
+
+
+# ---------------------------------------------------------------------------
+# Scenario Engine — shared fixtures
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def valid_scenario_dict():
+    """Return a minimal valid ArenaScenario dict."""
+    return {
+        "id": "test-scenario",
+        "name": "Test Scenario",
+        "description": "A test scenario",
+        "agents": [
+            {
+                "role": "Buyer", "name": "Alice", "type": "negotiator",
+                "persona_prompt": "You are a buyer.", "goals": ["Buy low"],
+                "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
+                "tone": "assertive", "output_fields": ["offer"],
+                "model_id": "gemini-2.5-flash",
+            },
+            {
+                "role": "Seller", "name": "Bob", "type": "negotiator",
+                "persona_prompt": "You are a seller.", "goals": ["Sell high"],
+                "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
+                "tone": "firm", "output_fields": ["offer"],
+                "model_id": "gemini-2.5-flash",
+            },
+        ],
+        "toggles": [{
+            "id": "toggle_1", "label": "Secret info",
+            "target_agent_role": "Buyer",
+            "hidden_context_payload": {"secret": "value"},
+        }],
+        "negotiation_params": {
+            "max_turns": 10, "agreement_threshold": 1000.0,
+            "turn_order": ["Buyer", "Seller"],
+        },
+        "outcome_receipt": {
+            "equivalent_human_time": "~2 weeks",
+            "process_label": "Acquisition",
+        },
+    }
+
+
+@pytest.fixture()
+def valid_scenario_dir(tmp_path, valid_scenario_dict):
+    """Create a temp directory with valid scenario JSON files."""
+    for i, sid in enumerate(["alpha", "beta"]):
+        data = {**valid_scenario_dict, "id": sid, "name": f"Scenario {sid}"}
+        path = tmp_path / f"{sid}.scenario.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+    return tmp_path

@@ -30,6 +30,12 @@ resource "google_project_iam_member" "cloudbuild_sa_user" {
   member  = "serviceAccount:${google_service_account.cloudbuild.email}"
 }
 
+resource "google_project_iam_member" "cloudbuild_log_writer" {
+  project = var.gcp_project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.cloudbuild.email}"
+}
+
 # -----------------------------------------------------------------------------
 # Cloud Build Trigger
 # -----------------------------------------------------------------------------
@@ -57,6 +63,8 @@ resource "google_cloudbuild_trigger" "main" {
     _FRONTEND_SERVICE  = var.frontend_service_name
     _BACKEND_SA_EMAIL  = var.backend_sa_email
     _FRONTEND_SA_EMAIL = var.frontend_sa_email
+    _FIREBASE_API_KEY  = var.firebase_api_key
+    _FIREBASE_APP_ID   = var.firebase_app_id
   }
 
   service_account = google_service_account.cloudbuild.id
