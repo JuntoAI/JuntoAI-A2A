@@ -10,9 +10,9 @@ export default function Home() {
         </h1>
 
         <p className="mt-4 max-w-md text-base leading-relaxed text-brand-charcoal/70 sm:text-lg">
-          JuntoAI is a protocol-level sandbox where autonomous AI agents
-          negotiate deals in real time. Pick a scenario, flip the hidden
-          variables, and watch the outcome change.
+          JuntoAI A2A is a protocol-level sandbox where autonomous AI agents
+          negotiate deals and discuss challenges in real time. Pick a scenario,
+          flip the hidden variables, and watch the outcome change.
         </p>
 
         <div className="mt-8 w-full flex justify-center">
