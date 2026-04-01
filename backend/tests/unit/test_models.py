@@ -25,6 +25,9 @@ class TestNegotiationStateModelDefaults:
         assert m.hidden_context == {}
         assert m.agreement_threshold == 1000000.0
         assert m.active_toggles == []
+        assert m.turn_order == []
+        assert m.turn_order_index == 0
+        assert m.agent_states == {}
 
     def test_deal_status_rejects_invalid(self):
         with pytest.raises(ValidationError):

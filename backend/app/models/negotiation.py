@@ -29,3 +29,6 @@ class NegotiationStateModel(BaseModel):
     hidden_context: dict[str, Any] = Field(default_factory=dict)
     agreement_threshold: float = Field(default=1000000.0, gt=0.0)
     active_toggles: list[str] = Field(default_factory=list)
+    turn_order: list[str] = Field(default_factory=list)
+    turn_order_index: int = Field(default=0, ge=0)
+    agent_states: dict[str, dict[str, Any]] = Field(default_factory=dict)

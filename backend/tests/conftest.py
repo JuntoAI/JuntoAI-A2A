@@ -30,6 +30,9 @@ def sample_state_factory():
             "hidden_context": {},
             "agreement_threshold": 1000000.0,
             "active_toggles": [],
+            "turn_order": [],
+            "turn_order_index": 0,
+            "agent_states": {},
         }
         defaults.update(overrides)
         return NegotiationStateModel(**defaults)

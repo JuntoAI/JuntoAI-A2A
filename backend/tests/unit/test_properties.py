@@ -47,6 +47,9 @@ st_negotiation_state = st.builds(
     hidden_context=st.just({}),
     agreement_threshold=st_float_gt0,
     active_toggles=st_active_toggles,
+    turn_order=st.lists(st.text(min_size=1, max_size=20), max_size=5),
+    turn_order_index=st_int_ge0,
+    agent_states=st.just({}),
 )
 
 st_agent_thought = st.builds(
