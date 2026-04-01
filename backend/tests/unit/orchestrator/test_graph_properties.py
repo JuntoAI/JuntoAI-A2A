@@ -31,7 +31,7 @@ st_role = st.text(min_size=1, max_size=15, alphabet=st.characters(categories=("L
 st_price = st.floats(min_value=0.01, max_value=1e9, allow_nan=False, allow_infinity=False)
 st_threshold = st.floats(min_value=0.01, max_value=1e8, allow_nan=False, allow_infinity=False)
 st_terminal_status = st.sampled_from(["Agreed", "Blocked", "Failed"])
-st_model_id = st.sampled_from(["gemini-2.5-flash", "gemini-2.5-pro", "claude-3-5-sonnet-v2", "claude-sonnet-4"])
+st_model_id = st.sampled_from(["gemini-2.5-flash", "gemini-2.5-pro", "claude-3-5-sonnet-v2", "claude-sonnet-4-6"])
 
 
 def _negotiator_agent_state(role: str, price: float) -> dict[str, Any]:

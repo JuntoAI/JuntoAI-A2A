@@ -23,7 +23,7 @@ st_role = st.text(min_size=1, max_size=20, alphabet=st.characters(categories=("L
 st_price = st.floats(min_value=0.0, max_value=1e9, allow_nan=False, allow_infinity=False)
 st_deal_status = st.sampled_from(["Negotiating", "Agreed", "Blocked", "Failed"])
 st_agent_type = st.sampled_from(["negotiator", "regulator", "observer"])
-st_model_id = st.sampled_from(["gemini-2.5-flash", "gemini-2.5-pro", "claude-3-5-sonnet-v2", "claude-sonnet-4"])
+st_model_id = st.sampled_from(["gemini-2.5-flash", "gemini-2.5-pro", "claude-3-5-sonnet-v2", "claude-sonnet-4-6"])
 
 st_history_entry = st.fixed_dictionaries({
     "role": st_role,

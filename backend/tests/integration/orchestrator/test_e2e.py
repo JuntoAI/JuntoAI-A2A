@@ -210,7 +210,7 @@ class TestFourAgentE2E:
                 _agent_def(
                     "Regulator", "RegBot",
                     agent_type="regulator",
-                    model_id="claude-sonnet-4",
+                    model_id="claude-sonnet-4-6",
                 ),
                 _agent_def(
                     "Analyst", "WatchBot",

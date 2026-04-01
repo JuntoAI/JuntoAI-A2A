@@ -144,7 +144,7 @@ class TestFromPydantic:
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator",
                        "model_id": "gemini-2.5-flash", "last_proposed_price": 100.0, "warning_count": 0},
             "Seller": {"role": "Seller", "name": "Bob", "agent_type": "negotiator",
-                        "model_id": "claude-sonnet-4", "last_proposed_price": 200.0, "warning_count": 0},
+                        "model_id": "claude-sonnet-4-6", "last_proposed_price": 200.0, "warning_count": 0},
         }
         model = NegotiationStateModel(
             session_id="s", scenario_id="sc",

@@ -84,7 +84,7 @@ class TestCreateInitialState3Agent:
         agents = [
             _make_agent("Buyer", "Alice"),
             _make_agent("Seller", "Bob"),
-            _make_agent("Regulator", "Carol", agent_type="regulator", model_id="claude-sonnet-4"),
+            _make_agent("Regulator", "Carol", agent_type="regulator", model_id="claude-sonnet-4-6"),
         ]
         config = _make_config(agents)
         state = create_initial_state("sess-4", config)

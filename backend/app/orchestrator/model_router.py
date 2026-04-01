@@ -93,7 +93,7 @@ def get_model(
         GCP project.  Defaults to ``GOOGLE_CLOUD_PROJECT`` env var.
     location:
         Vertex AI region.  Defaults to ``VERTEX_AI_LOCATION`` env var
-        (or ``us-central1``).
+        (or ``europe-west1``).
 
     Returns
     -------
@@ -106,7 +106,7 @@ def get_model(
         If neither the primary nor the fallback model can be created.
     """
     resolved_project = project or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
-    resolved_location = location or os.environ.get("VERTEX_AI_LOCATION", "us-central1")
+    resolved_location = location or os.environ.get("VERTEX_AI_LOCATION", "europe-west1")
     timeout = float(os.environ.get("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", "60"))
 
     # Log a note about slow-request warning threshold (actual monitoring

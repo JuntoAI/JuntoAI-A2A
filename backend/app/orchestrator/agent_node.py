@@ -70,7 +70,10 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
         agent_name: str = agent_config.get("name", agent_role)
 
         # 2. Get LLM via model router
-        model = model_router.get_model(agent_config["model_id"])
+        model = model_router.get_model(
+            agent_config["model_id"],
+            fallback_model_id=agent_config.get("fallback_model_id"),
+        )
 
         # 3. Build prompt
         system_msg, user_msg = _build_prompt(agent_config, state)

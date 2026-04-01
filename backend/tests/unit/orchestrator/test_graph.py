@@ -74,7 +74,7 @@ def _regulator_state(role: str) -> dict[str, Any]:
         "role": role,
         "name": role,
         "agent_type": "regulator",
-        "model_id": "claude-sonnet-4",
+        "model_id": "claude-sonnet-4-6",
         "last_proposed_price": 0.0,
         "warning_count": 0,
     }
@@ -259,7 +259,7 @@ class TestBuildGraph:
             agents=[
                 _agent_def("Buyer"),
                 _agent_def("Seller"),
-                _agent_def("Regulator", "regulator", "claude-sonnet-4"),
+                _agent_def("Regulator", "regulator", "claude-sonnet-4-6"),
             ],
             turn_order=["Buyer", "Regulator", "Seller", "Regulator"],
         )

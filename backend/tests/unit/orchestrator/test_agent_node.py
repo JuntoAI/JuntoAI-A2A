@@ -298,7 +298,7 @@ class TestUpdateStateRegulator:
         ]
         agent_states = {
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
-            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4", "last_proposed_price": 0.0, "warning_count": 0},
+            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(warning_count=1, agents=agents, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
         delta = _update_state(parsed, "regulator", "Regulator", state)
@@ -308,7 +308,7 @@ class TestUpdateStateRegulator:
         parsed = RegulatorOutput(status="WARNING", reasoning="too high")
         agent_states = {
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
-            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4", "last_proposed_price": 0.0, "warning_count": 1},
+            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 1},
         }
         state = _make_state(warning_count=1, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
         delta = _update_state(parsed, "regulator", "Regulator", state)
@@ -318,7 +318,7 @@ class TestUpdateStateRegulator:
         parsed = RegulatorOutput(status="CLEAR", reasoning="all good")
         agent_states = {
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
-            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4", "last_proposed_price": 0.0, "warning_count": 0},
+            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(warning_count=0, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
         delta = _update_state(parsed, "regulator", "Regulator", state)
@@ -329,7 +329,7 @@ class TestUpdateStateRegulator:
         parsed = RegulatorOutput(status="BLOCKED", reasoning="violation")
         agent_states = {
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
-            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4", "last_proposed_price": 0.0, "warning_count": 0},
+            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(agent_states=agent_states, turn_order=["Buyer", "Regulator"])
         delta = _update_state(parsed, "regulator", "Regulator", state)
@@ -339,7 +339,7 @@ class TestUpdateStateRegulator:
         parsed = RegulatorOutput(status="WARNING", reasoning="third warning")
         agent_states = {
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
-            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4", "last_proposed_price": 0.0, "warning_count": 2},
+            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 2},
         }
         state = _make_state(warning_count=2, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
         delta = _update_state(parsed, "regulator", "Regulator", state)
@@ -349,7 +349,7 @@ class TestUpdateStateRegulator:
     def test_appends_history_entry(self):
         parsed = RegulatorOutput(status="CLEAR", reasoning="ok")
         agent_states = {
-            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4", "last_proposed_price": 0.0, "warning_count": 0},
+            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(agent_states=agent_states, turn_order=["Regulator"], turn_count=1)
         delta = _update_state(parsed, "regulator", "Regulator", state)
@@ -508,11 +508,11 @@ class TestAgentNodeIntegration:
 
         agents = [
             _make_agent_config("Buyer", "Alice"),
-            _make_agent_config("Regulator", "Carol", "regulator", "claude-sonnet-4", "You are a regulator."),
+            _make_agent_config("Regulator", "Carol", "regulator", "claude-sonnet-4-6", "You are a regulator."),
         ]
         agent_states = {
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
-            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4", "last_proposed_price": 0.0, "warning_count": 0},
+            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(
             turn_order=["Buyer", "Regulator"],

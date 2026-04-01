@@ -91,7 +91,7 @@ class TestGetModelValid:
     def test_claude_sonnet_4(self) -> None:
         fam = _mock_families()
         with patch.dict(_FAMILIES_PATH, fam):
-            model = get_model("claude-sonnet-4", project="proj", location="eu")
+            model = get_model("claude-sonnet-4-6", project="proj", location="eu")
         assert isinstance(model, BaseChatModel)
 
 
@@ -119,7 +119,7 @@ class TestGetModelFallback:
         with patch.dict(_FAMILIES_PATH, fam):
             model = get_model(
                 "gemini-2.5-flash",
-                fallback_model_id="claude-sonnet-4",
+                fallback_model_id="claude-sonnet-4-6",
                 project="proj",
                 location="eu",
             )
@@ -134,7 +134,7 @@ class TestGetModelFallback:
             with pytest.raises(ModelNotAvailableError) as exc_info:
                 get_model(
                     "gemini-2.5-flash",
-                    fallback_model_id="claude-sonnet-4",
+                    fallback_model_id="claude-sonnet-4-6",
                     project="proj",
                     location="eu",
                 )
@@ -192,7 +192,7 @@ class TestTimeoutConfig:
         assert kw["project"] == "my-proj"
         assert kw["location"] == "asia-east1"
 
-    def test_location_defaults_to_us_central1(self) -> None:
+    def test_location_defaults_to_europe_west1(self) -> None:
         fam = _mock_families()
         env = {"GOOGLE_CLOUD_PROJECT": "p"}
         with patch.dict(os.environ, env, clear=False):
@@ -200,7 +200,7 @@ class TestTimeoutConfig:
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
                 get_model("gemini-2.5-flash")
-        assert fam["gemini"].call_args.kwargs["location"] == "us-central1"
+        assert fam["gemini"].call_args.kwargs["location"] == "europe-west1"
 
 
 # -------------------------------------------------------------------
@@ -210,7 +210,7 @@ _VALID_MODEL_IDS = [
     "gemini-2.5-flash",
     "gemini-2.5-pro",
     "claude-3-5-sonnet-v2",
-    "claude-sonnet-4",
+    "claude-sonnet-4-6",
 ]
 
 _model_id_strategy = st.one_of(
