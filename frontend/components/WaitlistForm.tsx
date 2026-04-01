@@ -42,7 +42,8 @@ export default function WaitlistForm() {
 
       login(doc.email, balance, lastReset);
       router.push("/arena");
-    } catch {
+    } catch (err) {
+      console.error("[WaitlistForm] submission failed:", err);
       setError("Something went wrong. Please try again.");
       setIsLoading(false);
     }
