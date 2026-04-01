@@ -15,4 +15,5 @@ inputs = {
   frontend_sa_email = dependency.iam.outputs.frontend_sa_email
   github_owner      = "JuntoAI"
   github_repo       = "JuntoAI-A2A"
+  trigger_enabled   = true
 }
