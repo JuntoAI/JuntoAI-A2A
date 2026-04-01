@@ -1,3 +1,19 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* JuntoAI Brand Variables — synced with juntoai.org */
+:root {
+  --primary-blue: #007BFF;
+  --secondary-green: #00E676;
+  --dark-charcoal: #1C1C1E;
+  --light-gray: #F4F4F6;
+  --off-white: #FAFAFA;
+  --gradient: linear-gradient(135deg, #007BFF 0%, #00E676 100%);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--dark-charcoal);
+  background-color: var(--off-white);
+}

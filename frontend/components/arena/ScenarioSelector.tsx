@@ -20,7 +20,7 @@ export function ScenarioSelector({
   return (
     <div className="w-full">
       <select
-        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition-colors focus:border-[#007BFF] focus:outline-none focus:ring-2 focus:ring-[#007BFF]/20 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition-colors focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20 disabled:cursor-not-allowed disabled:opacity-50"
         value={selectedId ?? ""}
         disabled={isLoading}
         onChange={(e) => {

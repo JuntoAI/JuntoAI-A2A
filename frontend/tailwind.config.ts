@@ -9,6 +9,15 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      colors: {
+        brand: {
+          blue: '#007BFF',
+          green: '#00E676',
+          charcoal: '#1C1C1E',
+          gray: '#F4F4F6',
+          offwhite: '#FAFAFA',
+        },
+      },
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },

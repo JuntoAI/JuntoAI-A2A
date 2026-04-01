@@ -23,7 +23,7 @@ export default function TerminalPanel({
   return (
     <div
       className="max-h-[60vh] overflow-y-auto rounded-lg p-4 font-mono text-sm"
-      style={{ backgroundColor: "#1C1C1E" }}
+      style={{ backgroundColor: "var(--dark-charcoal)" }}
       data-testid="terminal-panel"
     >
       {thoughts.length === 0 && isConnected && (

@@ -21,7 +21,7 @@ export function InitializeButton({
         type="button"
         onClick={onClick}
         disabled={isDisabled}
-        className="w-full rounded-lg bg-[#007BFF] px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#0069d9] focus:outline-none focus:ring-2 focus:ring-[#007BFF]/50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full rounded-lg bg-brand-blue px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-brand-blue/50 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isLoading ? (
           <span className="inline-flex items-center gap-2">

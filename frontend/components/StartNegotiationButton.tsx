@@ -24,7 +24,7 @@ export default function StartNegotiationButton({
         className={`rounded-lg px-6 py-3 font-semibold text-white transition-colors ${
           insufficientTokens
             ? "cursor-not-allowed bg-gray-400"
-            : "bg-[#007BFF] hover:bg-blue-600"
+            : "bg-brand-blue hover:bg-blue-600"
         }`}
       >
         Initialize A2A Protocol

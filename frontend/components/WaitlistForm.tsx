@@ -59,7 +59,7 @@ export default function WaitlistForm() {
           placeholder="you@example.com"
           aria-label="Email address"
           aria-describedby={error ? "waitlist-error" : undefined}
-          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-[#1C1C1E] placeholder-gray-400 focus:border-[#007BFF] focus:outline-none focus:ring-2 focus:ring-[#007BFF]/30"
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-brand-charcoal placeholder-gray-400 focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
         />
         {error && (
           <p id="waitlist-error" role="alert" className="text-sm text-red-600">
@@ -70,7 +70,7 @@ export default function WaitlistForm() {
       <button
         type="submit"
         disabled={isLoading}
-        className="flex items-center justify-center gap-2 rounded-lg bg-[#007BFF] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0069d9] disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex items-center justify-center gap-2 rounded-lg bg-brand-blue px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
         {isLoading ? "Joining..." : "Join the Waitlist"}
