@@ -1,22 +1,14 @@
 steps:
   - id: build-backend
-    name: gcr.io/cloud-builders/docker
+    name: gcr.io/kaniko-project/executor:latest
     args:
-      - build
-      - -t
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
-      - -t
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
-      - ./backend
+      - --dockerfile=./backend/Dockerfile
+      - --context=dir:///workspace/backend
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
+      - --cache=true
+      - --cache-ttl=168h
     waitFor: ["-"]
-
-  - id: push-backend
-    name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - --all-tags
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend
-    waitFor: ["build-backend"]
 
   - id: write-backend-env
     name: gcr.io/cloud-builders/docker
@@ -45,11 +37,7 @@ steps:
       - --env-vars-file
       - /workspace/backend-env.yaml
       - --quiet
-    waitFor: ["push-backend", "write-backend-env"]
-
-images:
-  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
-  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
+    waitFor: ["build-backend", "write-backend-env"]
 
 options:
   logging: CLOUD_LOGGING_ONLY

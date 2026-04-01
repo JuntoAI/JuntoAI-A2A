@@ -1,53 +1,32 @@
 steps:
-  # --- Build (parallel) ---
+  # --- Build + Push with kaniko layer caching (parallel) ---
   - id: build-backend
-    name: gcr.io/cloud-builders/docker
+    name: gcr.io/kaniko-project/executor:latest
     args:
-      - build
-      - -t
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
-      - -t
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
-      - ./backend
+      - --dockerfile=./backend/Dockerfile
+      - --context=dir:///workspace/backend
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
+      - --cache=true
+      - --cache-ttl=168h
     waitFor: ["-"]
 
   - id: build-frontend
-    name: gcr.io/cloud-builders/docker
+    name: gcr.io/kaniko-project/executor:latest
     args:
-      - build
-      - --build-arg
-      - NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}
-      - --build-arg
-      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_PROJECT_ID}
-      - --build-arg
-      - NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
-      - --build-arg
-      - NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app/api/v1
-      - -t
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
-      - -t
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:latest
-      - ./frontend
+      - --dockerfile=./frontend/Dockerfile
+      - --context=dir:///workspace/frontend
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:latest
+      - --cache=true
+      - --cache-ttl=168h
+      - --build-arg=NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}
+      - --build-arg=NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_PROJECT_ID}
+      - --build-arg=NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
+      - --build-arg=NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app/api/v1
     waitFor: ["-"]
 
-  # --- Push (after respective build) ---
-  - id: push-backend
-    name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - --all-tags
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend
-    waitFor: ["build-backend"]
-
-  - id: push-frontend
-    name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - --all-tags
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend
-    waitFor: ["build-frontend"]
-
-  # --- Deploy (sequential after respective push) ---
+  # --- Deploy (after respective build) ---
   - id: write-backend-env
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
@@ -75,7 +54,7 @@ steps:
       - --env-vars-file
       - /workspace/backend-env.yaml
       - --quiet
-    waitFor: ["push-backend", "write-backend-env"]
+    waitFor: ["build-backend", "write-backend-env"]
 
   - id: deploy-frontend
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -91,13 +70,7 @@ steps:
       - --service-account
       - ${_FRONTEND_SA_EMAIL}
       - --quiet
-    waitFor: ["push-frontend"]
-
-images:
-  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
-  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
-  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
-  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:latest
+    waitFor: ["build-frontend"]
 
 options:
   logging: CLOUD_LOGGING_ONLY

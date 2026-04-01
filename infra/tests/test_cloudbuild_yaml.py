@@ -1,4 +1,4 @@
-"""Verify cloudbuild YAML pipeline definitions — split per-service pipelines."""
+"""Verify cloudbuild YAML pipeline definitions — kaniko-cached per-service pipelines."""
 
 import os
 import pytest
@@ -37,27 +37,32 @@ def _steps_by_id(pipeline):
     return {s["id"]: s for s in pipeline["steps"]}
 
 
+def _kaniko_args_dict(args):
+    """Parse kaniko --key=value args into a dict."""
+    result = {}
+    for arg in args:
+        if "=" in arg:
+            key, val = arg.split("=", 1)
+            result.setdefault(key, []).append(val)
+        else:
+            result[arg] = True
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Fullstack pipeline (cloudbuild.yaml)
 # ---------------------------------------------------------------------------
 
 class TestFullstackPipeline:
-    """cloudbuild.yaml — builds and deploys both services."""
+    """cloudbuild.yaml — builds and deploys both services with kaniko caching."""
 
-    def test_has_seven_steps(self, fullstack_pipeline):
-        assert len(fullstack_pipeline["steps"]) == 7
-
-    def test_has_images_field(self, fullstack_pipeline):
-        assert "images" in fullstack_pipeline
-
-    def test_four_images_declared(self, fullstack_pipeline):
-        assert len(fullstack_pipeline["images"]) == 4
+    def test_step_count(self, fullstack_pipeline):
+        assert len(fullstack_pipeline["steps"]) == 5
 
     def test_step_ids(self, fullstack_pipeline):
         ids = {s["id"] for s in fullstack_pipeline["steps"]}
-        expected = {"build-backend", "build-frontend", "push-backend",
-                    "push-frontend", "write-backend-env", "deploy-backend",
-                    "deploy-frontend"}
+        expected = {"build-backend", "build-frontend", "write-backend-env",
+                    "deploy-backend", "deploy-frontend"}
         assert ids == expected
 
     def test_builds_run_parallel(self, fullstack_pipeline):
@@ -65,11 +70,22 @@ class TestFullstackPipeline:
         assert steps["build-backend"]["waitFor"] == ["-"]
         assert steps["build-frontend"]["waitFor"] == ["-"]
 
-    def test_deploy_waits_for_push(self, fullstack_pipeline):
+    def test_builds_use_kaniko(self, fullstack_pipeline):
         steps = _steps_by_id(fullstack_pipeline)
-        assert "push-backend" in steps["deploy-backend"]["waitFor"]
+        assert "kaniko" in steps["build-backend"]["name"]
+        assert "kaniko" in steps["build-frontend"]["name"]
+
+    def test_kaniko_cache_enabled(self, fullstack_pipeline):
+        steps = _steps_by_id(fullstack_pipeline)
+        for step_id in ["build-backend", "build-frontend"]:
+            args = _kaniko_args_dict(steps[step_id]["args"])
+            assert "--cache" in args, f"{step_id} must enable kaniko cache"
+
+    def test_deploy_waits_for_build(self, fullstack_pipeline):
+        steps = _steps_by_id(fullstack_pipeline)
+        assert "build-backend" in steps["deploy-backend"]["waitFor"]
         assert "write-backend-env" in steps["deploy-backend"]["waitFor"]
-        assert steps["deploy-frontend"]["waitFor"] == ["push-frontend"]
+        assert steps["deploy-frontend"]["waitFor"] == ["build-frontend"]
 
 
 # ---------------------------------------------------------------------------
@@ -77,37 +93,41 @@ class TestFullstackPipeline:
 # ---------------------------------------------------------------------------
 
 class TestBackendPipeline:
-    """cloudbuild-backend.yaml — backend only."""
+    """cloudbuild-backend.yaml — backend only with kaniko caching."""
 
-    def test_has_four_steps(self, backend_pipeline):
-        assert len(backend_pipeline["steps"]) == 4
+    def test_step_count(self, backend_pipeline):
+        assert len(backend_pipeline["steps"]) == 3
 
     def test_step_ids(self, backend_pipeline):
         ids = {s["id"] for s in backend_pipeline["steps"]}
-        assert ids == {"build-backend", "push-backend", "write-backend-env", "deploy-backend"}
-
-    def test_has_images_field(self, backend_pipeline):
-        assert "images" in backend_pipeline
-
-    def test_two_images_declared(self, backend_pipeline):
-        assert len(backend_pipeline["images"]) == 2
+        assert ids == {"build-backend", "write-backend-env", "deploy-backend"}
 
     def test_build_runs_first(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
         assert steps["build-backend"]["waitFor"] == ["-"]
 
-    def test_push_waits_for_build(self, backend_pipeline):
+    def test_build_uses_kaniko(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
-        assert steps["push-backend"]["waitFor"] == ["build-backend"]
+        assert "kaniko" in steps["build-backend"]["name"]
 
-    def test_deploy_waits_for_push(self, backend_pipeline):
+    def test_kaniko_cache_enabled(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
-        assert "push-backend" in steps["deploy-backend"]["waitFor"]
+        args = _kaniko_args_dict(steps["build-backend"]["args"])
+        assert "--cache" in args
+
+    def test_kaniko_pushes_sha_and_latest(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        args = _kaniko_args_dict(steps["build-backend"]["args"])
+        destinations = args.get("--destination", [])
+        assert len(destinations) == 2
+        dest_str = " ".join(destinations)
+        assert "$SHORT_SHA" in dest_str
+        assert "latest" in dest_str
+
+    def test_deploy_waits_for_build(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        assert "build-backend" in steps["deploy-backend"]["waitFor"]
         assert "write-backend-env" in steps["deploy-backend"]["waitFor"]
-
-    def test_build_uses_docker_builder(self, backend_pipeline):
-        steps = _steps_by_id(backend_pipeline)
-        assert steps["build-backend"]["name"] == "gcr.io/cloud-builders/docker"
 
     def test_deploy_uses_cloud_sdk(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
@@ -144,47 +164,46 @@ class TestBackendPipeline:
         assert "_PROJECT_ID" in subs
         assert "_BACKEND_SERVICE" in subs
 
-    def test_images_use_substitutions(self, backend_pipeline):
-        images = " ".join(backend_pipeline["images"])
-        assert "backend:$SHORT_SHA" in images
-        assert "backend:latest" in images
-
 
 # ---------------------------------------------------------------------------
 # Frontend pipeline (cloudbuild-frontend.yaml)
 # ---------------------------------------------------------------------------
 
 class TestFrontendPipeline:
-    """cloudbuild-frontend.yaml — frontend only."""
+    """cloudbuild-frontend.yaml — frontend only with kaniko caching."""
 
-    def test_has_three_steps(self, frontend_pipeline):
-        assert len(frontend_pipeline["steps"]) == 3
+    def test_step_count(self, frontend_pipeline):
+        assert len(frontend_pipeline["steps"]) == 2
 
     def test_step_ids(self, frontend_pipeline):
         ids = {s["id"] for s in frontend_pipeline["steps"]}
-        assert ids == {"build-frontend", "push-frontend", "deploy-frontend"}
-
-    def test_has_images_field(self, frontend_pipeline):
-        assert "images" in frontend_pipeline
-
-    def test_two_images_declared(self, frontend_pipeline):
-        assert len(frontend_pipeline["images"]) == 2
+        assert ids == {"build-frontend", "deploy-frontend"}
 
     def test_build_runs_first(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)
         assert steps["build-frontend"]["waitFor"] == ["-"]
 
-    def test_push_waits_for_build(self, frontend_pipeline):
+    def test_build_uses_kaniko(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)
-        assert steps["push-frontend"]["waitFor"] == ["build-frontend"]
+        assert "kaniko" in steps["build-frontend"]["name"]
 
-    def test_deploy_waits_for_push(self, frontend_pipeline):
+    def test_kaniko_cache_enabled(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)
-        assert steps["deploy-frontend"]["waitFor"] == ["push-frontend"]
+        args = _kaniko_args_dict(steps["build-frontend"]["args"])
+        assert "--cache" in args
 
-    def test_build_uses_docker_builder(self, frontend_pipeline):
+    def test_kaniko_pushes_sha_and_latest(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)
-        assert steps["build-frontend"]["name"] == "gcr.io/cloud-builders/docker"
+        args = _kaniko_args_dict(steps["build-frontend"]["args"])
+        destinations = args.get("--destination", [])
+        assert len(destinations) == 2
+        dest_str = " ".join(destinations)
+        assert "$SHORT_SHA" in dest_str
+        assert "latest" in dest_str
+
+    def test_deploy_waits_for_build(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        assert steps["deploy-frontend"]["waitFor"] == ["build-frontend"]
 
     def test_deploy_uses_cloud_sdk(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)
@@ -218,8 +237,3 @@ class TestFrontendPipeline:
         assert "_REGION" in subs
         assert "_PROJECT_ID" in subs
         assert "_FRONTEND_SERVICE" in subs
-
-    def test_images_use_substitutions(self, frontend_pipeline):
-        images = " ".join(frontend_pipeline["images"])
-        assert "frontend:$SHORT_SHA" in images
-        assert "frontend:latest" in images
