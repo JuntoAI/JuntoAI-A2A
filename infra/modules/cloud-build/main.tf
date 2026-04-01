@@ -30,6 +30,12 @@ resource "google_project_iam_member" "cloudbuild_sa_user" {
   member  = "serviceAccount:${google_service_account.cloudbuild.email}"
 }
 
+resource "google_project_iam_member" "cloudbuild_log_writer" {
+  project = var.gcp_project_id
+  role    = "roles/logging.logWriter"
+  member  = "serviceAccount:${google_service_account.cloudbuild.email}"
+}
+
 # -----------------------------------------------------------------------------
 # Cloud Build Trigger
 # -----------------------------------------------------------------------------

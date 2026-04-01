@@ -59,13 +59,14 @@ variable "allowed_roles" {
     "roles/artifactregistry.writer",
     "roles/run.admin",
     "roles/iam.serviceAccountUser",
+    "roles/logging.logWriter",
   ]
 
   validation {
     condition = alltrue([
       for role in var.allowed_roles :
-      contains(["roles/artifactregistry.writer", "roles/run.admin", "roles/iam.serviceAccountUser"], role)
+      contains(["roles/artifactregistry.writer", "roles/run.admin", "roles/iam.serviceAccountUser", "roles/logging.logWriter"], role)
     ])
-    error_message = "Only approved roles are permitted: roles/artifactregistry.writer, roles/run.admin, roles/iam.serviceAccountUser."
+    error_message = "Only approved roles are permitted: roles/artifactregistry.writer, roles/run.admin, roles/iam.serviceAccountUser, roles/logging.logWriter."
   }
 }
