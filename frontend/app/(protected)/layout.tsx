@@ -10,7 +10,7 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated } = useSession();
+  const { isAuthenticated, email } = useSession();
   const router = useRouter();
 
   useEffect(() => {
@@ -25,7 +25,10 @@ export default function ProtectedLayout({
 
   return (
     <>
-      <div className="flex justify-end p-4">
+      <div className="flex items-center justify-end gap-3 p-4">
+        <span className="truncate max-w-[220px] text-sm text-gray-600" title={email ?? ""}>
+          {email}
+        </span>
         <TokenDisplay />
       </div>
       {children}

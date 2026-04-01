@@ -138,17 +138,9 @@ function ArenaPageContent() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Arena Control Panel
-        </h1>
-        <div className="flex items-center gap-3 text-sm text-gray-600">
-          <span className="truncate max-w-[200px]" title={email ?? ""}>{email}</span>
-          <span className="rounded-full bg-gray-100 px-3 py-1 font-medium">
-            Tokens: {tokenBalance} / 100
-          </span>
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900">
+        Arena Control Panel
+      </h1>
 
       <ScenarioSelector
         scenarios={scenarios}
