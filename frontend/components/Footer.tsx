@@ -3,7 +3,7 @@ export default function Footer() {
     <footer className="w-full border-t border-gray-200 bg-brand-offwhite px-4 py-4 text-xs text-gray-500">
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 sm:flex-row sm:justify-between">
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-          <span>© 2026 JuntoAI Limited</span>
+          <span>© 2026 <a href="https://juntoai.org" target="_blank" rel="noopener noreferrer" className="hover:text-brand-blue transition-colors">JuntoAI</a> Limited</span>
           <span className="hidden sm:inline">·</span>
           <a href="https://juntoai.org/privacy-policy.html" target="_blank" rel="noopener noreferrer" className="hover:text-brand-blue transition-colors">Privacy Policy</a>
           <span className="hidden sm:inline">·</span>
