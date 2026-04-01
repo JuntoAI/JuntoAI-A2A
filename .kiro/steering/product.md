@@ -31,6 +31,15 @@ Changing a single hidden toggle (e.g., giving an agent a secret competing offer)
 4. Toggles reliably alter negotiation outcome ≥90% of the time
 5. Agents reach agreement, failure, or regulator block — never infinite loop
 
+## Open-Source Battle Arena (Local Mode)
+- Public repo, developers clone and run `docker compose up` — full stack on localhost
+- SQLite replaces Firestore for local mode (zero cloud config)
+- LiteLLM for provider-agnostic LLM routing (OpenAI, Anthropic, Ollama, etc.)
+- Waitlist/token gate bypassed in local mode — unlimited usage
+- Developers bring their own API keys via `.env`
+- Same scenario JSON configs work in both cloud and local modes
+- Future: custom agent plugins + global leaderboard (post-MVP)
+
 ## Full Product Spec
 For detailed scenarios, agent personas, toggle definitions, and UI breakdowns:
 #[[file:docs/JuntoAI A2A MVP_ Product Master Document.md]]

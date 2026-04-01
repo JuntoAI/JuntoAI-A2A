@@ -98,3 +98,58 @@ The MVP is ready for investor demonstrations when:
 3. **Visual Thinking:** The "Inner Monologue" successfully streams to the UI *before* the public message is sent, proving sequential reasoning.  
 4. **Toggle Impact:** Turning on an "Information Toggle" reliably and visibly alters the negotiation outcome at least 90% of the time.  
 5. **Autonomous Termination:** The agents reliably reach an agreement, fail, or get blocked by the regulator without getting stuck in an infinite conversational loop.
+
+---
+
+## **5\. Open-Source Battle Arena (Local Mode)**
+
+### **5.1. Vision**
+
+The JuntoAI A2A Protocol is designed to be publicly distributable as an open-source "Agent Battle Arena." Developers clone the repo, run `docker compose up`, and get the full Arena (Frontend + Backend) on `localhost`. They bring their own API keys, write custom agents, and pit them against each other using the same orchestration engine that powers the cloud demo.
+
+This serves two strategic goals:
+- **Community Growth:** Developers get a fun local sandbox. They build agents, share strategies, and organically evangelize the protocol.
+- **Protocol Validation:** Every external developer who plugs a custom agent into the orchestrator proves the protocol is truly universal and provider-agnostic.
+
+### **5.2. Local Runtime Architecture**
+
+| Cloud Mode | Local Mode |
+|---|---|
+| GCP Firestore | SQLite (file-based, zero config) |
+| Vertex AI Model Garden | Any LLM via LiteLLM (OpenAI, Anthropic, Ollama, etc.) |
+| GCP Cloud Run | Docker Compose (`localhost:3000` frontend, `localhost:8000` backend) |
+| Email waitlist + token gate | Disabled — unlimited local usage |
+| GCP IAM auth | `.env` file with user's own API keys |
+
+### **5.3. Developer Experience (The Battle Flow)**
+
+1. **Clone & Run:** `git clone` → `cp .env.example .env` → add API keys → `docker compose up`
+2. **Pick a Scenario:** Same Arena Selector UI, same 3 MVP scenarios.
+3. **Write Custom Agents (V2):** Developers drop Python files into an `/agents` directory following a simple interface contract. The orchestrator discovers and loads them at runtime.
+4. **Battle:** Two developers each write an agent, plug them into the same scenario, and watch the Glass Box render the negotiation live.
+
+### **5.4. LLM Provider Flexibility**
+
+Local mode uses LiteLLM as a universal LLM proxy. Developers configure their preferred provider in `.env`:
+
+```
+# Pick any supported provider
+LLM_PROVIDER=openai          # or: anthropic, ollama, vertex_ai, azure, etc.
+OPENAI_API_KEY=sk-...        # Only the key for your chosen provider
+# ANTHROPIC_API_KEY=sk-ant-...
+# OLLAMA_BASE_URL=http://localhost:11434
+```
+
+The Model Router reads `model_id` from the scenario JSON and routes through LiteLLM, which handles provider translation transparently.
+
+### **5.5. Local Mode Success Criteria**
+
+1. `docker compose up` launches the full stack on a fresh machine with only Docker installed.
+2. Developer can run all 3 MVP scenarios using OpenAI, Anthropic, or Ollama keys.
+3. No GCP credentials, Firestore, or cloud services required for local mode.
+4. Waitlist/token gate is bypassed — local mode is unlimited.
+5. All scenario JSON configs work identically in both cloud and local modes.
+
+### **5.6. Future: Global Leaderboard (Post-MVP)**
+
+Once the local battle arena has traction, a future version will allow developers to submit their agent's API endpoint to a hosted Global Leaderboard. Their agent battles other developers' agents 24/7 in the cloud, ranking the best AI negotiators. This is explicitly out of scope for the current spec.
