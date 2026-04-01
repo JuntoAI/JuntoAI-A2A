@@ -1,0 +1,71 @@
+steps:
+  # --- Build (parallel) ---
+  - id: build-backend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
+      - ./backend
+    waitFor: ["-"]
+
+  - id: build-frontend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:latest
+      - ./frontend
+    waitFor: ["-"]
+
+  # --- Deploy (sequential after respective build) ---
+  - id: deploy-backend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_BACKEND_SERVICE}
+      - --image
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
+      - --region
+      - ${_REGION}
+      - --service-account
+      - ${_BACKEND_SA_EMAIL}
+      - --quiet
+    waitFor: ["build-backend"]
+
+  - id: deploy-frontend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_FRONTEND_SERVICE}
+      - --image
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
+      - --region
+      - ${_REGION}
+      - --service-account
+      - ${_FRONTEND_SA_EMAIL}
+      - --quiet
+    waitFor: ["build-frontend"]
+
+images:
+  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
+  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:latest
+
+substitutions:
+  _REGION: europe-west1
+  _PROJECT_ID: juntoai-a2a-mvp
+  _REPO_NAME: juntoai-docker
+  _BACKEND_SERVICE: juntoai-backend
+  _FRONTEND_SERVICE: juntoai-frontend
+  _BACKEND_SA_EMAIL: backend-sa@juntoai-a2a-mvp.iam.gserviceaccount.com
+  _FRONTEND_SA_EMAIL: frontend-sa@juntoai-a2a-mvp.iam.gserviceaccount.com

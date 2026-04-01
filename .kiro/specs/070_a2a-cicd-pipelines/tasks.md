@@ -7,7 +7,7 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
 ## Tasks
 
 - [ ] 1. Create `cloudbuild.yaml` pipeline definition at repo root (Phase A)
-  - [ ] 1.1 Create `cloudbuild.yaml` with 4 build steps (build-backend, build-frontend, deploy-backend, deploy-frontend)
+  - [x] 1.1 Create `cloudbuild.yaml` with 4 build steps (build-backend, build-frontend, deploy-backend, deploy-frontend)
     - Use substitution variables (`_REGION`, `_PROJECT_ID`, `_REPO_NAME`, `_BACKEND_SERVICE`, `_FRONTEND_SERVICE`, `_BACKEND_SA_EMAIL`, `_FRONTEND_SA_EMAIL`) — no hardcoded literals
     - Build steps use `gcr.io/cloud-builders/docker`, deploy steps use `gcr.io/google.com/cloudsdktool/cloud-sdk`
     - Build steps: `waitFor: ["-"]` (parallel). Deploy steps: `waitFor: ["build-backend"]` / `waitFor: ["build-frontend"]`
@@ -17,36 +17,36 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 4.3, 5.1, 5.2, 5.3, 6.1, 6.2, 6.3, 9.1, 9.2, 9.3, 9.4_
 
 - [ ] 2. Create Terragrunt `cloud-build/` module (Phase A)
-  - [ ] 2.1 Create `infra/modules/cloud-build/variables.tf`
+  - [x] 2.1 Create `infra/modules/cloud-build/variables.tf`
     - Define inputs: `gcp_project_id`, `gcp_region`, `repository_id` (default `"juntoai-docker"`), `backend_service_name` (default `"juntoai-backend"`), `frontend_service_name` (default `"juntoai-frontend"`), `backend_sa_email`, `frontend_sa_email`, `trigger_enabled` (default `false`), `github_owner`, `github_repo`, `allowed_roles` (default: 3 approved roles with validation block)
     - Add allowlist validation block on `allowed_roles` that rejects any role not in the approved set
     - _Requirements: 8.4, 10.6_
 
-  - [ ] 2.2 Create `infra/modules/cloud-build/main.tf`
+  - [x] 2.2 Create `infra/modules/cloud-build/main.tf`
     - `google_service_account.cloudbuild` with `account_id = "cloudbuild-sa"`
     - 3x `google_project_iam_member` for `roles/artifactregistry.writer`, `roles/run.admin`, `roles/iam.serviceAccountUser`
     - `google_cloudbuild_trigger.main` with `name = "juntoai-cicd-main"`, `filename = "cloudbuild.yaml"`, `disabled = var.trigger_enabled ? false : true`, GitHub push config for `^main$`, substitutions map, `service_account` set to the Cloud Build SA
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 8.1, 8.2, 8.3, 10.1, 10.2, 10.3, 10.4, 10.6_
 
-  - [ ] 2.3 Create `infra/modules/cloud-build/outputs.tf`
+  - [x] 2.3 Create `infra/modules/cloud-build/outputs.tf`
     - Output `trigger_id`, `trigger_name`, `cloudbuild_sa_email`
     - _Requirements: 10.5_
 
-  - [ ] 2.4 Create `infra/modules/cloud-build/terragrunt.hcl`
+  - [x] 2.4 Create `infra/modules/cloud-build/terragrunt.hcl`
     - Include `root.hcl` via `find_in_parent_folders`
     - Declare dependencies on `../iam` and `../artifact-registry`
     - Wire `backend_sa_email` and `frontend_sa_email` from `dependency.iam.outputs`
     - _Requirements: 10.1_
 
-- [ ] 3. Checkpoint — Phase A infrastructure review
+- [x] 3. Checkpoint — Phase A infrastructure review
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 4. Write static analysis tests for `cloud-build/` module and `cloudbuild.yaml` (Phase A)
-  - [ ] 4.1 Add `cloud_build_dir` fixture to `infra/tests/conftest.py`
+  - [x] 4.1 Add `cloud_build_dir` fixture to `infra/tests/conftest.py`
     - Add path fixture for `cloud-build/` module, following existing pattern
     - _Requirements: 10.1_
 
-  - [ ] 4.2 Create `infra/tests/test_cloud_build.py` — HCL unit tests for the module
+  - [x] 4.2 Create `infra/tests/test_cloud_build.py` — HCL unit tests for the module
     - Verify `cloud-build/` directory exists with `main.tf`, `variables.tf`, `outputs.tf`, `terragrunt.hcl`
     - Verify `google_cloudbuild_trigger` resource exists in `main.tf`
     - Verify `google_service_account` resource with `account_id = "cloudbuild-sa"`
@@ -56,7 +56,7 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
     - Verify outputs include `trigger_id`, `trigger_name`, `cloudbuild_sa_email`
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 8.1, 8.2, 8.3, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
 
-  - [ ] 4.3 Create `infra/tests/test_cloudbuild_yaml.py` — YAML pipeline tests
+  - [x] 4.3 Create `infra/tests/test_cloudbuild_yaml.py` — YAML pipeline tests
     - Parse `cloudbuild.yaml` with `pyyaml` and verify 4 step IDs, builder images, `waitFor` directives
     - Verify substitution variables are used (no hardcoded project IDs or regions)
     - Verify `images` field contains all 4 expected image URI patterns
@@ -100,7 +100,7 @@ Two-phase implementation: Phase A creates the `cloudbuild.yaml` pipeline definit
     - Generate random boolean for trigger_enabled, verify disabled field is the inverse
     - **Validates: Requirements 7.4, 10.6**
 
-- [ ] 6. Checkpoint — Phase A complete
+- [x] 6. Checkpoint — Phase A complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. Create Backend Dockerfile (Phase B — after spec 020)
