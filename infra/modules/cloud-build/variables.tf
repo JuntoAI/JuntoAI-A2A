@@ -52,6 +52,16 @@ variable "github_repo" {
   type        = string
 }
 
+variable "firebase_api_key" {
+  description = "Firebase web app API key for frontend build"
+  type        = string
+}
+
+variable "firebase_app_id" {
+  description = "Firebase web app ID for frontend build"
+  type        = string
+}
+
 variable "allowed_roles" {
   description = "Allowlist of IAM roles permitted for the Cloud Build service account"
   type        = list(string)

@@ -63,6 +63,8 @@ resource "google_cloudbuild_trigger" "main" {
     _FRONTEND_SERVICE  = var.frontend_service_name
     _BACKEND_SA_EMAIL  = var.backend_sa_email
     _FRONTEND_SA_EMAIL = var.frontend_sa_email
+    _FIREBASE_API_KEY  = var.firebase_api_key
+    _FIREBASE_APP_ID   = var.firebase_app_id
   }
 
   service_account = google_service_account.cloudbuild.id
