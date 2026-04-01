@@ -44,8 +44,8 @@ def _steps_by_id(pipeline):
 class TestFullstackPipeline:
     """cloudbuild.yaml — builds and deploys both services."""
 
-    def test_has_six_steps(self, fullstack_pipeline):
-        assert len(fullstack_pipeline["steps"]) == 6
+    def test_has_seven_steps(self, fullstack_pipeline):
+        assert len(fullstack_pipeline["steps"]) == 7
 
     def test_has_images_field(self, fullstack_pipeline):
         assert "images" in fullstack_pipeline
@@ -56,7 +56,8 @@ class TestFullstackPipeline:
     def test_step_ids(self, fullstack_pipeline):
         ids = {s["id"] for s in fullstack_pipeline["steps"]}
         expected = {"build-backend", "build-frontend", "push-backend",
-                    "push-frontend", "deploy-backend", "deploy-frontend"}
+                    "push-frontend", "write-backend-env", "deploy-backend",
+                    "deploy-frontend"}
         assert ids == expected
 
     def test_builds_run_parallel(self, fullstack_pipeline):
@@ -66,7 +67,8 @@ class TestFullstackPipeline:
 
     def test_deploy_waits_for_push(self, fullstack_pipeline):
         steps = _steps_by_id(fullstack_pipeline)
-        assert steps["deploy-backend"]["waitFor"] == ["push-backend"]
+        assert "push-backend" in steps["deploy-backend"]["waitFor"]
+        assert "write-backend-env" in steps["deploy-backend"]["waitFor"]
         assert steps["deploy-frontend"]["waitFor"] == ["push-frontend"]
 
 
@@ -77,12 +79,12 @@ class TestFullstackPipeline:
 class TestBackendPipeline:
     """cloudbuild-backend.yaml — backend only."""
 
-    def test_has_three_steps(self, backend_pipeline):
-        assert len(backend_pipeline["steps"]) == 3
+    def test_has_four_steps(self, backend_pipeline):
+        assert len(backend_pipeline["steps"]) == 4
 
     def test_step_ids(self, backend_pipeline):
         ids = {s["id"] for s in backend_pipeline["steps"]}
-        assert ids == {"build-backend", "push-backend", "deploy-backend"}
+        assert ids == {"build-backend", "push-backend", "write-backend-env", "deploy-backend"}
 
     def test_has_images_field(self, backend_pipeline):
         assert "images" in backend_pipeline
@@ -100,7 +102,8 @@ class TestBackendPipeline:
 
     def test_deploy_waits_for_push(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
-        assert steps["deploy-backend"]["waitFor"] == ["push-backend"]
+        assert "push-backend" in steps["deploy-backend"]["waitFor"]
+        assert "write-backend-env" in steps["deploy-backend"]["waitFor"]
 
     def test_build_uses_docker_builder(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
@@ -113,20 +116,21 @@ class TestBackendPipeline:
     def test_deploy_uses_sha_tag(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
         args = steps["deploy-backend"]["args"]
-        # bash -c with inline script
-        script = args[1] if len(args) > 1 else ""
-        assert "$SHORT_SHA" in script
-        assert "latest" not in script.split("--image")[1].split("\\")[0] if "--image" in script else True
+        image_idx = args.index("--image") + 1
+        assert "$SHORT_SHA" in args[image_idx]
+        assert "latest" not in args[image_idx]
 
     def test_deploy_has_service_account_flag(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
-        args = steps["deploy-backend"]["args"]
-        script = args[1] if len(args) > 1 else ""
-        assert "--service-account" in script
+        assert "--service-account" in steps["deploy-backend"]["args"]
 
-    def test_deploy_sets_cors_env_var(self, backend_pipeline):
+    def test_deploy_uses_env_vars_file(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
-        args = steps["deploy-backend"]["args"]
+        assert "--env-vars-file" in steps["deploy-backend"]["args"]
+
+    def test_write_env_step_sets_cors(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        args = steps["write-backend-env"]["args"]
         script = args[1] if len(args) > 1 else ""
         assert "CORS_ALLOWED_ORIGINS" in script
 

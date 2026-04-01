@@ -18,19 +18,34 @@ steps:
       - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend
     waitFor: ["build-backend"]
 
-  - id: deploy-backend
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+  - id: write-backend-env
+    name: gcr.io/cloud-builders/docker
     entrypoint: bash
     args:
       - -c
       - |
-        gcloud run deploy ${_BACKEND_SERVICE} \
-          --image ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA \
-          --region ${_REGION} \
-          --service-account ${_BACKEND_SA_EMAIL} \
-          --set-env-vars "^;^CORS_ALLOWED_ORIGINS=https://a2a.juntoai.org;https://${_FRONTEND_SERVICE}-141882351618.${_REGION}.run.app" \
-          --quiet
-    waitFor: ["push-backend"]
+        cat > /workspace/backend-env.yaml <<EOF
+        CORS_ALLOWED_ORIGINS: "https://a2a.juntoai.org,https://${_FRONTEND_SERVICE}-141882351618.${_REGION}.run.app"
+        EOF
+    waitFor: ["-"]
+
+  - id: deploy-backend
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_BACKEND_SERVICE}
+      - --image
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
+      - --region
+      - ${_REGION}
+      - --service-account
+      - ${_BACKEND_SA_EMAIL}
+      - --env-vars-file
+      - /workspace/backend-env.yaml
+      - --quiet
+    waitFor: ["push-backend", "write-backend-env"]
 
 images:
   - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
