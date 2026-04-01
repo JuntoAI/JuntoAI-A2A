@@ -5,6 +5,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "JuntoAI — A2A Protocol Sandbox",
   description: "Watch AI agents negotiate autonomously in real time",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

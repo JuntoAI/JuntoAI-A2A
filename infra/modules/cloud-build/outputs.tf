@@ -1,11 +1,31 @@
-output "trigger_id" {
-  description = "Cloud Build trigger ID"
-  value       = google_cloudbuild_trigger.main.trigger_id
+output "backend_trigger_id" {
+  description = "Cloud Build backend trigger ID"
+  value       = google_cloudbuild_trigger.backend.trigger_id
 }
 
-output "trigger_name" {
-  description = "Cloud Build trigger name"
-  value       = google_cloudbuild_trigger.main.name
+output "frontend_trigger_id" {
+  description = "Cloud Build frontend trigger ID"
+  value       = google_cloudbuild_trigger.frontend.trigger_id
+}
+
+output "fullstack_trigger_id" {
+  description = "Cloud Build fullstack trigger ID"
+  value       = google_cloudbuild_trigger.fullstack.trigger_id
+}
+
+output "backend_trigger_name" {
+  description = "Cloud Build backend trigger name"
+  value       = google_cloudbuild_trigger.backend.name
+}
+
+output "frontend_trigger_name" {
+  description = "Cloud Build frontend trigger name"
+  value       = google_cloudbuild_trigger.frontend.name
+}
+
+output "fullstack_trigger_name" {
+  description = "Cloud Build fullstack trigger name"
+  value       = google_cloudbuild_trigger.fullstack.name
 }
 
 output "cloudbuild_sa_email" {

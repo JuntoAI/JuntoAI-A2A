@@ -1,16 +1,4 @@
 steps:
-  # --- Build (parallel) ---
-  - id: build-backend
-    name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -t
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
-      - -t
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
-      - ./backend
-    waitFor: ["-"]
-
   - id: build-frontend
     name: gcr.io/cloud-builders/docker
     args:
@@ -22,22 +10,13 @@ steps:
       - --build-arg
       - NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
       - --build-arg
-      - NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app/api/v1
+      - NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app
       - -t
       - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
       - -t
       - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:latest
       - ./frontend
     waitFor: ["-"]
-
-  # --- Push (after respective build) ---
-  - id: push-backend
-    name: gcr.io/cloud-builders/docker
-    args:
-      - push
-      - --all-tags
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend
-    waitFor: ["build-backend"]
 
   - id: push-frontend
     name: gcr.io/cloud-builders/docker
@@ -46,25 +25,6 @@ steps:
       - --all-tags
       - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend
     waitFor: ["build-frontend"]
-
-  # --- Deploy (sequential after respective push) ---
-  - id: deploy-backend
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
-    args:
-      - run
-      - deploy
-      - ${_BACKEND_SERVICE}
-      - --image
-      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
-      - --region
-      - ${_REGION}
-      - --service-account
-      - ${_BACKEND_SA_EMAIL}
-      - --set-env-vars
-      - CORS_ALLOWED_ORIGINS=https://a2a.juntoai.org,https://${_FRONTEND_SERVICE}-141882351618.${_REGION}.run.app
-      - --quiet
-    waitFor: ["push-backend"]
 
   - id: deploy-frontend
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -83,8 +43,6 @@ steps:
     waitFor: ["push-frontend"]
 
 images:
-  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
-  - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest
   - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:$SHORT_SHA
   - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend:latest
 
@@ -97,7 +55,6 @@ substitutions:
   _REPO_NAME: juntoai-docker
   _BACKEND_SERVICE: juntoai-backend
   _FRONTEND_SERVICE: juntoai-frontend
-  _BACKEND_SA_EMAIL: backend-sa@juntoai-a2a-mvp.iam.gserviceaccount.com
   _FRONTEND_SA_EMAIL: frontend-sa@juntoai-a2a-mvp.iam.gserviceaccount.com
   _FIREBASE_API_KEY: ""
   _FIREBASE_APP_ID: ""

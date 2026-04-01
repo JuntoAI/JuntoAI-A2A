@@ -37,11 +37,11 @@ resource "google_project_iam_member" "cloudbuild_log_writer" {
 }
 
 # -----------------------------------------------------------------------------
-# Cloud Build Trigger
+# Cloud Build Triggers — path-filtered per service
 # -----------------------------------------------------------------------------
 
-resource "google_cloudbuild_trigger" "main" {
-  name     = "juntoai-cicd-main"
+resource "google_cloudbuild_trigger" "backend" {
+  name     = "juntoai-cicd-backend"
   project  = var.gcp_project_id
   disabled = var.trigger_enabled ? false : true
 
@@ -53,6 +53,69 @@ resource "google_cloudbuild_trigger" "main" {
     }
   }
 
+  included_files = ["backend/**"]
+  filename       = "cloudbuild-backend.yaml"
+
+  substitutions = {
+    _REGION           = var.gcp_region
+    _PROJECT_ID       = var.gcp_project_id
+    _REPO_NAME        = var.repository_id
+    _BACKEND_SERVICE  = var.backend_service_name
+    _BACKEND_SA_EMAIL = var.backend_sa_email
+  }
+
+  service_account = google_service_account.cloudbuild.id
+}
+
+resource "google_cloudbuild_trigger" "frontend" {
+  name     = "juntoai-cicd-frontend"
+  project  = var.gcp_project_id
+  disabled = var.trigger_enabled ? false : true
+
+  github {
+    owner = var.github_owner
+    name  = var.github_repo
+    push {
+      branch = "^main$"
+    }
+  }
+
+  included_files = ["frontend/**"]
+  filename       = "cloudbuild-frontend.yaml"
+
+  substitutions = {
+    _REGION            = var.gcp_region
+    _PROJECT_ID        = var.gcp_project_id
+    _REPO_NAME         = var.repository_id
+    _BACKEND_SERVICE   = var.backend_service_name
+    _FRONTEND_SERVICE  = var.frontend_service_name
+    _FRONTEND_SA_EMAIL = var.frontend_sa_email
+    _FIREBASE_API_KEY  = var.firebase_api_key
+    _FIREBASE_APP_ID   = var.firebase_app_id
+  }
+
+  service_account = google_service_account.cloudbuild.id
+}
+
+resource "google_cloudbuild_trigger" "fullstack" {
+  name     = "juntoai-cicd-fullstack"
+  project  = var.gcp_project_id
+  disabled = var.trigger_enabled ? false : true
+
+  github {
+    owner = var.github_owner
+    name  = var.github_repo
+    push {
+      branch = "^main$"
+    }
+  }
+
+  included_files = [
+    "cloudbuild.yaml",
+    "cloudbuild-backend.yaml",
+    "cloudbuild-frontend.yaml",
+    "infra/**",
+  ]
   filename = "cloudbuild.yaml"
 
   substitutions = {
