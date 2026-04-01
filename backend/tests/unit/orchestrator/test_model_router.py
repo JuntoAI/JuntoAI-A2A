@@ -192,7 +192,7 @@ class TestTimeoutConfig:
         assert kw["project"] == "my-proj"
         assert kw["location"] == "asia-east1"
 
-    def test_location_defaults_to_europe_west1(self) -> None:
+    def test_location_defaults_to_us_central1(self) -> None:
         fam = _mock_families()
         env = {"GOOGLE_CLOUD_PROJECT": "p"}
         with patch.dict(os.environ, env, clear=False):
@@ -200,7 +200,7 @@ class TestTimeoutConfig:
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
                 get_model("gemini-2.5-flash")
-        assert fam["gemini"].call_args.kwargs["location"] == "europe-west1"
+        assert fam["gemini"].call_args.kwargs["location"] == "us-central1"
 
 
 # -------------------------------------------------------------------
