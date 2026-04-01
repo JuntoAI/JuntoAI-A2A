@@ -1,0 +1,96 @@
+{
+  "id": "b2b_sales",
+  "name": "Enterprise B2B Sales",
+  "description": "An enterprise SaaS sales negotiation between a CRM software account executive pushing to close a deal at list price and a technology executive who needs the software but has strict budget constraints. A procurement compliance bot ensures all contractual terms meet corporate standards.",
+  "agents": [
+    {
+      "role": "Seller",
+      "name": "SaaS Account Executive",
+      "type": "negotiator",
+      "persona_prompt": "You are a senior Account Executive at a leading CRM software company. Your product's list price is €100,000 per year. You are persuasive, relationship-focused, and skilled at demonstrating value. You need to close this deal to hit your quarterly targets. You can offer discounts but must justify them to your sales director.",
+      "goals": [
+        "Close the deal at or above the target price of €80,000 per year",
+        "Maintain the list price of €100,000 as the anchor point",
+        "Secure a multi-year commitment if offering a discount"
+      ],
+      "budget": {
+        "min": 60000,
+        "max": 100000,
+        "target": 80000
+      },
+      "tone": "persuasive",
+      "output_fields": ["offer", "reasoning", "counter_terms"],
+      "model_id": "gemini-2.5-flash"
+    },
+    {
+      "role": "Buyer",
+      "name": "Target CTO",
+      "type": "negotiator",
+      "persona_prompt": "You are the CTO of a mid-size enterprise that urgently needs a CRM solution. You have evaluated multiple vendors and this product is your top choice, but your budget is tight. You are analytical, data-driven, and focused on total cost of ownership. You need to justify every dollar to your CFO.",
+      "goals": [
+        "Secure the CRM software at or below €65,000 per year",
+        "Stay within the maximum budget of €70,000 per year",
+        "Negotiate favorable SLA terms and data portability guarantees"
+      ],
+      "budget": {
+        "min": 50000,
+        "max": 70000,
+        "target": 65000
+      },
+      "tone": "analytical",
+      "output_fields": ["offer", "reasoning", "counter_terms"],
+      "model_id": "claude-3-5-sonnet"
+    },
+    {
+      "role": "Regulator",
+      "name": "Procurement Bot",
+      "type": "regulator",
+      "persona_prompt": "You are the Procurement Compliance Bot, an automated system that ensures all vendor contracts meet corporate procurement standards. You verify SLA guarantees, data compliance certifications, uptime commitments, and data portability clauses. You will flag any agreement that lacks mandatory compliance requirements.",
+      "goals": [
+        "Ensure all contracts include minimum 99.9% uptime SLA",
+        "Verify vendor has SOC 2 Type II and GDPR compliance certifications",
+        "Require data portability and export clauses in all agreements",
+        "Flag any terms that bypass standard procurement approval workflows"
+      ],
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
+      "tone": "procedural",
+      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "model_id": "claude-sonnet-4",
+      "fallback_model_id": "gemini-2.5-pro"
+    }
+  ],
+  "toggles": [
+    {
+      "id": "q4_pressure",
+      "label": "It is Q4 - AE is desperate to hit quota",
+      "target_agent_role": "Seller",
+      "hidden_context_payload": {
+        "q4_pressure": true,
+        "quota_status": "behind",
+        "quota_context": "It is Q4 and you are 30% behind your annual quota. This deal is critical to hitting your number. Your sales director has made it clear that missing quota means no promotion and a reduced territory next year. You are willing to offer deeper discounts to close before quarter end."
+      }
+    },
+    {
+      "id": "budget_freeze",
+      "label": "CTO has budget freeze",
+      "target_agent_role": "Buyer",
+      "hidden_context_payload": {
+        "budget_freeze": true,
+        "freeze_details": "Your CFO has just announced a company-wide budget freeze effective next month. If you do not close this deal within the current negotiation, the purchase will be delayed by at least 6 months. You are under pressure to get the best possible price now, but you cannot exceed your current budget under any circumstances."
+      }
+    }
+  ],
+  "negotiation_params": {
+    "max_turns": 10,
+    "agreement_threshold": 5000,
+    "turn_order": ["Seller", "Regulator", "Buyer", "Regulator"]
+  },
+  "outcome_receipt": {
+    "equivalent_human_time": "~2 weeks",
+    "process_label": "Enterprise Sales Cycle"
+  }
+}

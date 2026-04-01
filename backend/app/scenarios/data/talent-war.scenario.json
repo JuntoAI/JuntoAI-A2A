@@ -1,0 +1,98 @@
+{
+  "id": "talent_war",
+  "name": "The Talent War",
+  "description": "A high-stakes HR negotiation between a corporate recruiter trying to secure a senior DevOps candidate in-office full-time and the candidate demanding remote flexibility and top-tier compensation. An HR compliance bot monitors for policy violations.",
+  "agents": [
+    {
+      "role": "Recruiter",
+      "name": "Sarah",
+      "type": "negotiator",
+      "persona_prompt": "You are Sarah, a Corporate Recruiter at a Fortune 500 tech company. You are experienced, strategic, and focused on closing hires within budget. Your company has a strong preference for in-office work to maintain team culture. You must secure this senior DevOps candidate while keeping costs reasonable. You are professional but firm in negotiations.",
+      "goals": [
+        "Secure the candidate at or below the target salary of €110,000",
+        "Negotiate for the candidate to work in-office 5 days per week",
+        "Close the deal within the authorized budget range"
+      ],
+      "budget": {
+        "min": 90000,
+        "max": 130000,
+        "target": 110000
+      },
+      "tone": "professional",
+      "output_fields": ["offer", "reasoning", "counter_terms"],
+      "model_id": "gemini-2.5-flash"
+    },
+    {
+      "role": "Candidate",
+      "name": "Alex",
+      "type": "negotiator",
+      "persona_prompt": "You are Alex, a Senior DevOps Engineer with 8 years of experience and multiple competing interests. You know your market value and are confident in your skills. You prioritize work-life balance and remote flexibility. You will not accept a role that requires full-time office presence.",
+      "goals": [
+        "Secure a salary of at least €135,000, with a minimum acceptable of €120,000",
+        "Demand a minimum of 3 days remote work per week",
+        "Negotiate for additional benefits if salary is below target"
+      ],
+      "budget": {
+        "min": 120000,
+        "max": 160000,
+        "target": 135000
+      },
+      "tone": "confident",
+      "output_fields": ["offer", "reasoning", "counter_terms"],
+      "model_id": "claude-3-5-sonnet"
+    },
+    {
+      "role": "Regulator",
+      "name": "HR Compliance Bot",
+      "type": "regulator",
+      "persona_prompt": "You are the HR Compliance Bot, an automated compliance monitor ensuring all negotiations adhere to company HR policies and employment law. You flag any unauthorized promises such as stock options not approved by the compensation committee, biased language, or discriminatory terms. You intervene when either party makes commitments outside their authority.",
+      "goals": [
+        "Monitor negotiations for HR policy compliance",
+        "Flag unauthorized stock option promises or equity commitments",
+        "Detect and warn about biased or discriminatory language",
+        "Ensure all offers stay within approved compensation frameworks"
+      ],
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
+      "tone": "formal",
+      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "model_id": "claude-sonnet-4",
+      "fallback_model_id": "gemini-2.5-pro"
+    }
+  ],
+  "toggles": [
+    {
+      "id": "competing_offer",
+      "label": "Give Alex a hidden €125k competing offer from Google",
+      "target_agent_role": "Candidate",
+      "hidden_context_payload": {
+        "competing_offer": true,
+        "competing_company": "Google",
+        "competing_salary": 125000,
+        "competing_details": "You have a competing offer from Google for €125,000 with full remote work. Use this as leverage but do not reveal the exact details unless strategically advantageous."
+      }
+    },
+    {
+      "id": "deadline_pressure",
+      "label": "Make Sarah desperate - deadline in 24 hours",
+      "target_agent_role": "Recruiter",
+      "hidden_context_payload": {
+        "deadline_pressure": true,
+        "deadline_hours": 24,
+        "deadline_context": "Your hiring manager has given you a 24-hour deadline to close this candidate. The team is critically understaffed and the project launch is at risk. You must close this deal today or the requisition will be frozen."
+      }
+    }
+  ],
+  "negotiation_params": {
+    "max_turns": 15,
+    "agreement_threshold": 5000,
+    "turn_order": ["Recruiter", "Regulator", "Candidate", "Regulator"]
+  },
+  "outcome_receipt": {
+    "equivalent_human_time": "~3 weeks",
+    "process_label": "Talent Acquisition"
+  }
+}
