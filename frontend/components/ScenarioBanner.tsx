@@ -1,16 +1,16 @@
 "use client";
 
 const SCENARIOS = [
-  "How does my manager react to a salary increase request?",
-  "How to convince my parents to let me go to a party tonight?",
-  "How to align the whole team on a new product strategy?",
-  "How to negotiate a fair remote work policy with HR?",
-  "How to find a compromise on the family holiday destination?",
-  "How to get buy-in from investors on a pivot?",
-  "How to mediate between two co-founders who disagree?",
-  "How to renegotiate a freelance contract without losing the client?",
-  "How to agree on a fair equity split with a new co-founder?",
-  "How to help roommates agree on shared expenses?",
+  "My landlord wants to raise rent 30% — what's a fair counter?",
+  "The team can't agree on a product direction before the deadline",
+  "I need a raise but my manager keeps dodging the conversation",
+  "Two co-founders disagree on equity — the partnership is at risk",
+  "How to close a six-figure deal when the client keeps stalling",
+  "Our family holiday plan turns into a fight every single year",
+  "The investor wants 25% equity for a seed round — is that fair?",
+  "My freelance client wants more scope but won't increase the budget",
+  "HR says no to remote work — but half the team is threatening to leave",
+  "Roommates can't split expenses without someone feeling ripped off",
 ];
 
 // Duplicate for seamless infinite scroll

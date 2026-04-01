@@ -93,7 +93,8 @@ def get_model(
         GCP project.  Defaults to ``GOOGLE_CLOUD_PROJECT`` env var.
     location:
         Vertex AI region.  Defaults to ``VERTEX_AI_LOCATION`` env var
-        (or ``europe-west1``).
+        (or ``us-central1``). Claude models use ``VERTEX_AI_CLAUDE_LOCATION``
+        (or ``us-east5``) since Anthropic models have different region support.
 
     Returns
     -------
@@ -106,7 +107,8 @@ def get_model(
         If neither the primary nor the fallback model can be created.
     """
     resolved_project = project or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
-    resolved_location = location or os.environ.get("VERTEX_AI_LOCATION", "europe-west1")
+    resolved_location = location or os.environ.get("VERTEX_AI_LOCATION", "us-central1")
+    claude_location = os.environ.get("VERTEX_AI_CLAUDE_LOCATION", "us-east5")
     timeout = float(os.environ.get("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", "60"))
 
     # Log a note about slow-request warning threshold (actual monitoring
@@ -120,7 +122,9 @@ def get_model(
         )
 
     try:
-        return _instantiate_model(model_id, resolved_project, resolved_location, timeout)
+        # Use Claude-specific region for Anthropic models
+        effective_location = claude_location if _get_family_prefix(model_id) == _CLAUDE_FAMILY else resolved_location
+        return _instantiate_model(model_id, resolved_project, effective_location, timeout)
     except ModelNotAvailableError:
         if fallback_model_id is not None:
             logger.warning(
@@ -129,8 +133,9 @@ def get_model(
                 fallback_model_id,
             )
             try:
+                fb_location = claude_location if _get_family_prefix(fallback_model_id) == _CLAUDE_FAMILY else resolved_location
                 return _instantiate_model(
-                    fallback_model_id, resolved_project, resolved_location, timeout
+                    fallback_model_id, resolved_project, fb_location, timeout
                 )
             except Exception as fallback_exc:
                 raise ModelNotAvailableError(
@@ -150,8 +155,9 @@ def get_model(
                 fallback_model_id,
             )
             try:
+                fb_location = claude_location if _get_family_prefix(fallback_model_id) == _CLAUDE_FAMILY else resolved_location
                 return _instantiate_model(
-                    fallback_model_id, resolved_project, resolved_location, timeout
+                    fallback_model_id, resolved_project, fb_location, timeout
                 )
             except Exception as fallback_exc:
                 raise ModelNotAvailableError(
