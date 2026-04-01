@@ -110,7 +110,7 @@ export function glassBoxReducer(
       if (status !== undefined) entry.regulatorStatus = status;
 
       const nextRegulatorStatuses =
-        status !== undefined
+        status != null
           ? { ...state.regulatorStatuses, [agent_name]: status }
           : state.regulatorStatuses;
 

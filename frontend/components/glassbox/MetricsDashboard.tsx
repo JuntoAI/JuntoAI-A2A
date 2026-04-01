@@ -57,7 +57,7 @@ export default function MetricsDashboard({
                 >
                   <span
                     className={`inline-block h-3 w-3 rounded-full animate-pulse ${STATUS_COLORS[status] ?? "bg-gray-400"}`}
-                    data-testid={`traffic-light-${status.toLowerCase()}`}
+                    data-testid={`traffic-light-${status?.toLowerCase() ?? "unknown"}`}
                   />
                   <span className="text-sm text-gray-700">{name}</span>
                 </div>
