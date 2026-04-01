@@ -12,12 +12,10 @@ function initFirebase(): Firestore {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   };
 
-  // Validate all required env vars at init time
   for (const [key, value] of Object.entries(firebaseConfig)) {
     if (!value) throw new Error(`Missing Firebase env var: ${key}`);
   }
 
-  // Singleton pattern: only initialize if no app exists
   const app =
     getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
@@ -25,10 +23,7 @@ function initFirebase(): Firestore {
   return _db;
 }
 
-/** Lazy-initialized Firestore singleton. Only validates env vars on first access. */
-export const db: Firestore = new Proxy({} as Firestore, {
-  get(_target, prop, receiver) {
-    const instance = initFirebase();
-    return Reflect.get(instance, prop, receiver);
-  },
-});
+/** Lazy-initialized Firestore singleton. */
+export function getDb(): Firestore {
+  return initFirebase();
+}

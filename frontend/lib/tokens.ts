@@ -1,5 +1,5 @@
 import { doc, updateDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import { getDb } from "./firebase";
 
 /** Returns the current UTC date as "YYYY-MM-DD". */
 export function getUtcDateString(): string {
@@ -13,7 +13,7 @@ export function needsReset(lastResetDate: string): boolean {
 
 /** Resets token balance to 100 and updates last_reset_date in Firestore. */
 export async function resetTokens(email: string): Promise<void> {
-  await updateDoc(doc(db, "waitlist", email), {
+  await updateDoc(doc(getDb(), "waitlist", email), {
     token_balance: 100,
     last_reset_date: getUtcDateString(),
   });

@@ -44,8 +44,7 @@ export default function WaitlistForm() {
       router.push("/arena");
     } catch (err) {
       console.error("[WaitlistForm] submission failed:", err);
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(`Error: ${msg}`);
+      setError("Something went wrong. Please try again.");
       setIsLoading(false);
     }
   }

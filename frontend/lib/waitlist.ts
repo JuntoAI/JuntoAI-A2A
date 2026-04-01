@@ -1,5 +1,5 @@
 import { doc, getDoc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
-import { db } from "./firebase";
+import { getDb } from "./firebase";
 import { getUtcDateString } from "./tokens";
 
 export interface WaitlistDocument {
@@ -16,7 +16,7 @@ export interface WaitlistDocument {
  */
 export async function joinWaitlist(email: string): Promise<WaitlistDocument> {
   const normalized = email.toLowerCase().trim();
-  const ref = doc(db, "waitlist", normalized);
+  const ref = doc(getDb(), "waitlist", normalized);
   const snap = await getDoc(ref);
 
   if (snap.exists()) {
