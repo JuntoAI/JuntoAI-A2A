@@ -198,6 +198,20 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
     return system_message, user_message
 
 
+def _strip_markdown_fences(text: str) -> str:
+    """Remove markdown code fences (```json ... ```) from LLM output."""
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        # Remove opening fence (```json or ```)
+        first_newline = stripped.find("\n")
+        if first_newline != -1:
+            stripped = stripped[first_newline + 1:]
+        # Remove closing fence
+        if stripped.rstrip().endswith("```"):
+            stripped = stripped.rstrip()[:-3].rstrip()
+    return stripped
+
+
 def _parse_output(
     response_text: str,
     agent_type: str,
@@ -205,13 +219,15 @@ def _parse_output(
 ) -> NegotiatorOutput | RegulatorOutput | ObserverOutput:
     """Parse LLM response JSON into the correct output model by agent type.
 
+    Strips markdown code fences if present before parsing.
     Raises ``AgentOutputParseError`` on invalid JSON or schema mismatch.
     """
     model_cls = _OUTPUT_MODEL_MAP.get(agent_type)
     if model_cls is None:
         raise AgentOutputParseError(agent_name, response_text)
+    cleaned = _strip_markdown_fences(response_text)
     try:
-        return model_cls.model_validate_json(response_text)
+        return model_cls.model_validate_json(cleaned)
     except Exception as exc:
         raise AgentOutputParseError(agent_name, response_text) from exc
 
