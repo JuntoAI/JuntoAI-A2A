@@ -26,6 +26,8 @@ dependencies {
 }
 
 inputs = {
-  backend_sa_email  = dependency.iam.outputs.backend_sa_email
-  frontend_sa_email = dependency.iam.outputs.frontend_sa_email
+  backend_sa_email     = dependency.iam.outputs.backend_sa_email
+  frontend_sa_email    = dependency.iam.outputs.frontend_sa_email
+  enable_public_access = false
+  custom_domain        = "a2a.juntoai.org"
 }

@@ -41,3 +41,15 @@ variable "frontend_service_name" {
   type        = string
   default     = "juntoai-frontend"
 }
+
+variable "enable_public_access" {
+  description = "Whether to allow unauthenticated (public) access to both services"
+  type        = bool
+  default     = false
+}
+
+variable "custom_domain" {
+  description = "Custom domain to map to the frontend service (e.g. a2a.juntoai.org). Empty string disables."
+  type        = string
+  default     = ""
+}
