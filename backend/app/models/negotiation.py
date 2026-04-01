@@ -1,0 +1,31 @@
+"""Negotiation state Pydantic model for session persistence and API serialization."""
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class NegotiationStateModel(BaseModel):
+    """Complete state of a negotiation session.
+
+    This is the canonical serialization format for Firestore persistence
+    and API responses. The LangGraph TypedDict (spec 030) is the runtime
+    format — explicit converters bridge the two.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    session_id: str
+    scenario_id: str
+    turn_count: int = Field(default=0, ge=0)
+    max_turns: int = Field(default=15, gt=0)
+    current_speaker: str = Field(default="Buyer")
+    deal_status: Literal["Negotiating", "Agreed", "Blocked", "Failed"] = Field(
+        default="Negotiating"
+    )
+    current_offer: float = Field(default=0.0, ge=0.0)
+    history: list[dict[str, Any]] = Field(default_factory=list)
+    warning_count: int = Field(default=0, ge=0)
+    hidden_context: dict[str, Any] = Field(default_factory=dict)
+    agreement_threshold: float = Field(default=1000000.0, gt=0.0)
+    active_toggles: list[str] = Field(default_factory=list)

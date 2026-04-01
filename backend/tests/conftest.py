@@ -1,0 +1,76 @@
+"""Shared test fixtures for the JuntoAI A2A backend test suite."""
+
+from unittest.mock import AsyncMock, MagicMock
+
+import httpx
+import pytest
+
+from app.db import get_firestore_client
+from app.main import app
+from app.middleware import get_sse_tracker
+from app.middleware.sse_limiter import SSEConnectionTracker
+from app.models.negotiation import NegotiationStateModel
+
+
+@pytest.fixture()
+def sample_state_factory():
+    """Factory fixture that creates NegotiationStateModel instances with test data."""
+
+    def _create(**overrides):
+        defaults = {
+            "session_id": "test-session-001",
+            "scenario_id": "test-scenario-001",
+            "turn_count": 0,
+            "max_turns": 15,
+            "current_speaker": "Buyer",
+            "deal_status": "Negotiating",
+            "current_offer": 0.0,
+            "history": [],
+            "warning_count": 0,
+            "hidden_context": {},
+            "agreement_threshold": 1000000.0,
+            "active_toggles": [],
+        }
+        defaults.update(overrides)
+        return NegotiationStateModel(**defaults)
+
+    return _create
+
+
+@pytest.fixture()
+def sample_state(sample_state_factory):
+    """A default NegotiationStateModel instance for tests."""
+    return sample_state_factory()
+
+
+@pytest.fixture()
+def mock_db():
+    """Mock FirestoreSessionClient with async methods."""
+    db = MagicMock()
+    db.get_session_doc = AsyncMock()
+    db.get_session = AsyncMock()
+    db.create_session = AsyncMock()
+    db.update_session = AsyncMock()
+    return db
+
+
+@pytest.fixture()
+def mock_tracker():
+    """Mock SSEConnectionTracker with async methods."""
+    tracker = MagicMock(spec=SSEConnectionTracker)
+    tracker.acquire = AsyncMock(return_value=True)
+    tracker.release = AsyncMock()
+    return tracker
+
+
+@pytest.fixture()
+async def test_client(mock_db, mock_tracker):
+    """Async httpx client with dependency overrides for integration tests."""
+    app.dependency_overrides[get_firestore_client] = lambda: mock_db
+    app.dependency_overrides[get_sse_tracker] = lambda: mock_tracker
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as client:
+        yield client
+    app.dependency_overrides.clear()
