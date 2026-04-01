@@ -60,12 +60,12 @@ class TestCloudBuildServiceAccount:
         assert binding is not None
         assert binding["role"] == "roles/iam.serviceAccountUser"
 
-    def test_exactly_three_iam_bindings(self):
+    def test_exactly_four_iam_bindings(self):
         iam_count = 0
         for r in self.resources:
             if "google_project_iam_member" in r:
                 iam_count += len(r["google_project_iam_member"])
-        assert iam_count == 3, f"Expected exactly 3 IAM bindings, got {iam_count}"
+        assert iam_count == 4, f"Expected exactly 4 IAM bindings, got {iam_count}"
 
 
 class TestCloudBuildTrigger:
