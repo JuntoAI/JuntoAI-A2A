@@ -148,7 +148,8 @@ class TestCloudBuildTriggers:
     def test_backend_trigger_substitutions(self):
         trigger = self._find_trigger("backend")
         subs = trigger["substitutions"]
-        for key in ["_REGION", "_PROJECT_ID", "_REPO_NAME", "_BACKEND_SERVICE", "_BACKEND_SA_EMAIL"]:
+        for key in ["_REGION", "_PROJECT_ID", "_REPO_NAME", "_BACKEND_SERVICE",
+                     "_FRONTEND_SERVICE", "_BACKEND_SA_EMAIL"]:
             assert key in subs, f"Substitution {key} missing from backend trigger"
 
     def test_frontend_trigger_substitutions(self):

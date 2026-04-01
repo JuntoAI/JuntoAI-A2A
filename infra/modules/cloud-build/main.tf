@@ -61,6 +61,7 @@ resource "google_cloudbuild_trigger" "backend" {
     _PROJECT_ID       = var.gcp_project_id
     _REPO_NAME        = var.repository_id
     _BACKEND_SERVICE  = var.backend_service_name
+    _FRONTEND_SERVICE = var.frontend_service_name
     _BACKEND_SA_EMAIL = var.backend_sa_email
   }
 

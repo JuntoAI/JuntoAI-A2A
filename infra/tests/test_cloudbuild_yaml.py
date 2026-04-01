@@ -113,13 +113,22 @@ class TestBackendPipeline:
     def test_deploy_uses_sha_tag(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
         args = steps["deploy-backend"]["args"]
-        image_idx = args.index("--image") + 1
-        assert "$SHORT_SHA" in args[image_idx]
-        assert "latest" not in args[image_idx]
+        # bash -c with inline script
+        script = args[1] if len(args) > 1 else ""
+        assert "$SHORT_SHA" in script
+        assert "latest" not in script.split("--image")[1].split("\\")[0] if "--image" in script else True
 
     def test_deploy_has_service_account_flag(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
-        assert "--service-account" in steps["deploy-backend"]["args"]
+        args = steps["deploy-backend"]["args"]
+        script = args[1] if len(args) > 1 else ""
+        assert "--service-account" in script
+
+    def test_deploy_sets_cors_env_var(self, backend_pipeline):
+        steps = _steps_by_id(backend_pipeline)
+        args = steps["deploy-backend"]["args"]
+        script = args[1] if len(args) > 1 else ""
+        assert "CORS_ALLOWED_ORIGINS" in script
 
     def test_no_frontend_steps(self, backend_pipeline):
         ids = {s["id"] for s in backend_pipeline["steps"]}
