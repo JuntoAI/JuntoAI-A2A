@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock the firebase module so importing tokens.ts doesn't trigger env var validation
 vi.mock("../../lib/firebase", () => ({
-  db: { type: "firestore", app: { name: "[DEFAULT]" } },
+  getDb: vi.fn(() => ({ type: "firestore", app: { name: "[DEFAULT]" } })),
 }));
 
 import { getUtcDateString, needsReset, resetTokens, formatTokenDisplay } from "../../lib/tokens";

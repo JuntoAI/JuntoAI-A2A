@@ -66,10 +66,9 @@ describe("Property 13: Missing Firebase env var throws descriptive error", () =>
             // Import the module — it no longer throws at import time (lazy init)
             const mod = await import("../../lib/firebase");
 
-            // Accessing a property on db triggers the lazy initialization via Proxy
+            // Calling getDb() triggers the lazy initialization
             expect(() => {
-              // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-              mod.db.type;
+              mod.getDb();
             }).toThrowError(`Missing Firebase env var: ${configKey}`);
           },
         ),

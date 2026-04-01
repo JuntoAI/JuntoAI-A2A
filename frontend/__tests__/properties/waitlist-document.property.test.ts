@@ -16,7 +16,7 @@ import { getDoc, setDoc } from "firebase/firestore";
 
 // Mock firebase to avoid env var validation on import
 vi.mock("../../lib/firebase", () => ({
-  db: { type: "firestore", app: { name: "[DEFAULT]" } },
+  getDb: vi.fn(() => ({ type: "firestore", app: { name: "[DEFAULT]" } })),
 }));
 
 import { joinWaitlist } from "../../lib/waitlist";
