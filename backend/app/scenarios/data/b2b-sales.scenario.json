@@ -39,7 +39,7 @@
       },
       "tone": "analytical",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "claude-3-5-sonnet"
+      "model_id": "claude-haiku-4-5"
     },
     {
       "role": "Regulator",
