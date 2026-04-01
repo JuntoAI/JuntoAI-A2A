@@ -203,7 +203,7 @@ interface GlassBoxState {
   thoughts: ThoughtEntry[];
   messages: MessageEntry[];
   currentOffer: number;
-  regulatorStatus: "CLEAR" | "WARNING" | "BLOCKED";
+  regulatorStatuses: Record<string, "CLEAR" | "WARNING" | "BLOCKED">; // keyed by regulator agent name
   turnNumber: number;
   maxTurns: number;
   dealStatus: "Negotiating" | "Agreed" | "Blocked" | "Failed";
@@ -337,9 +337,9 @@ interface ChatPanelProps {
 ```
 
 - Chat bubbles with agent name as sender label.
-- Agent differentiation: first negotiator left-aligned (blue), second negotiator right-aligned (green), regulator centered (system style).
+- Agent differentiation: each agent is assigned a unique color from an Agent_Color_Palette (at least 8 colors) based on their index in the scenario's `agents` array. All messages are left-aligned with the agent's name displayed in their assigned color as a label above the bubble. No left/right alignment — this pattern breaks with more than 2 agents.
 - If `proposedPrice` present, rendered as highlighted badge below the message text.
-- If `regulatorStatus` present, rendered as a system message with color coding: green text for CLEAR, yellow for WARNING, red for BLOCKED.
+- If `regulatorStatus` present, rendered as a system message with color coding: green text for CLEAR, yellow for WARNING, red for BLOCKED. If multiple regulators exist, each status message includes the regulator's `agent_name`.
 - Auto-scrolls to bottom on new messages.
 
 ### 11. Metrics Dashboard (`components/glassbox/MetricsDashboard.tsx`)
@@ -348,7 +348,7 @@ Props:
 ```typescript
 interface MetricsDashboardProps {
   currentOffer: number;
-  regulatorStatus: "CLEAR" | "WARNING" | "BLOCKED";
+  regulatorStatuses: Record<string, "CLEAR" | "WARNING" | "BLOCKED">; // keyed by regulator agent name
   turnNumber: number;
   maxTurns: number;
   tokenBalance: number;
@@ -357,7 +357,7 @@ interface MetricsDashboardProps {
 
 - Full-width top bar with four metric cards.
 - Current Offer: formatted as currency with `transition-all` animation on value change.
-- Regulator Traffic Light: colored circle — `bg-green-500` / `bg-yellow-500` / `bg-red-500`. Pulse animation on status transition.
+- Regulator Traffic Lights: one per regulator agent in the scenario, each labeled with the regulator's `name`. Colored circle — `bg-green-500` / `bg-yellow-500` / `bg-red-500`. Pulse animation on status transition. If scenario has zero regulators, no traffic lights rendered. Dashboard uses flexbox with wrapping to adapt to any number of indicators.
 - Turn Counter: "Turn: X / Y".
 - Token Balance: "Tokens: X / 100" (reads from SessionContext via prop).
 

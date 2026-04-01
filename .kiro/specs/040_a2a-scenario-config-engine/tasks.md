@@ -24,13 +24,13 @@ Build the config-driven Scenario Engine under `backend/app/scenarios/`. The engi
 - [ ] 2. Implement Pydantic V2 models
   - [ ] 2.1 Implement `backend/app/scenarios/models.py`
     - Define `Budget` model with `min`, `max`, `target` (float, ge=0) and `model_validator` enforcing `min <= max`
-    - Define `AgentDefinition` with `role`, `name`, `type` (Literal["negotiator", "regulator"]), `persona_prompt`, `goals` (list[str], min_length=1), `budget` (Budget), `tone`, `output_fields` (list[str], min_length=1), `model_id`, `fallback_model_id` (optional)
+    - Define `AgentDefinition` with `role`, `name`, `type` (Literal["negotiator", "regulator", "observer"]), `persona_prompt`, `goals` (list[str], min_length=1), `budget` (Budget), `tone`, `output_fields` (list[str], min_length=1), `model_id`, `fallback_model_id` (optional)
     - Define `ToggleDefinition` with `id`, `label`, `target_agent_role`, `hidden_context_payload` (dict, min_length=1)
-    - Define `NegotiationParams` with `max_turns` (int, gt=0), `agreement_threshold` (float, gt=0)
+    - Define `NegotiationParams` with `max_turns` (int, gt=0), `agreement_threshold` (float, gt=0), `turn_order` (list[str], min_length=1)
     - Define `OutcomeReceipt` with `equivalent_human_time`, `process_label`
     - Define `ArenaScenario` with `id`, `name`, `description`, `agents` (list[AgentDefinition], min_length=2), `toggles` (list[ToggleDefinition], min_length=1), `negotiation_params`, `outcome_receipt`
-    - Add `model_validator` on `ArenaScenario` to enforce unique agent roles and validate toggle `target_agent_role` references
-    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.5, 2.6_
+    - Add `model_validator` on `ArenaScenario` to enforce unique agent roles, validate toggle `target_agent_role` references, validate `turn_order` entries reference valid agent roles, and validate at least 1 agent has type `"negotiator"`
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 1.11, 1.12, 2.5, 2.6_
 
   - [ ]* 2.2 Write unit tests for Pydantic models (`backend/tests/unit/test_scenario_models.py`)
     - Test valid `Budget` instantiation and `min <= max` constraint rejection

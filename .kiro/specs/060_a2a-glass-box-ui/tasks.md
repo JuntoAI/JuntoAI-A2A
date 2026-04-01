@@ -180,7 +180,7 @@ Implement the real-time simulation UI for the JuntoAI A2A MVP on top of the exis
 
   - [ ] 8.2 Create ChatPanel component (`components/glassbox/ChatPanel.tsx`)
     - Chat bubbles with agent name as sender label
-    - First negotiator left-aligned (blue), second negotiator right-aligned (green), regulator centered (system style)
+    - Each agent assigned a unique color from Agent_Color_Palette by index. All messages left-aligned with colored agent name label. No left/right alignment (breaks with N agents).
     - If `proposedPrice` present, render as highlighted badge below message text
     - If `regulatorStatus` present, render as system message with color coding: green for CLEAR, yellow for WARNING, red for BLOCKED
     - Auto-scroll to bottom on new messages
@@ -190,7 +190,7 @@ Implement the real-time simulation UI for the JuntoAI A2A MVP on top of the exis
   - [ ] 8.3 Create MetricsDashboard component (`components/glassbox/MetricsDashboard.tsx`)
     - Full-width top bar with four metric cards
     - Current Offer: formatted as currency with `transition-all` animation on value change
-    - Regulator Traffic Light: colored circle (`bg-green-500` / `bg-yellow-500` / `bg-red-500`) with pulse animation on status transition
+    - Regulator Traffic Lights: one per regulator agent in scenario, each labeled with regulator name. Colored circle (`bg-green-500` / `bg-yellow-500` / `bg-red-500`) with pulse animation. Zero regulators = no traffic lights. Flexbox wrapping layout.
     - Turn Counter: "Turn: X / Y"
     - Token Balance: "Tokens: X / 100"
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7_

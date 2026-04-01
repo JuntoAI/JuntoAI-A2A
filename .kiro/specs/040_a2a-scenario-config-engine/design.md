@@ -14,7 +14,7 @@ This design covers the config-driven Scenario Engine that decouples the JuntoAI 
 
 4. **Toggle Injector merges payloads per role** — When multiple toggles target the same agent role, their `hidden_context_payload` dicts are shallow-merged under a single role key. This matches how the orchestrator (spec 030) reads `hidden_context[role]` as a flat dict. Deep merge would be fragile and scenario authors would need to understand nested key conflicts.
 
-5. **`turn_order` derived from agents array** — The scenario JSON does not include an explicit `turn_order` field in `negotiation_params`. The engine derives it from the `agents` array order: negotiator roles interleaved with regulator checks, matching the orchestrator's dispatcher pattern from spec 030. This keeps scenario authoring simple — just order the agents array correctly.
+5. **`turn_order` in negotiation_params** — The scenario JSON includes an explicit `turn_order` array in `negotiation_params` that defines the execution sequence per cycle (e.g., `["Recruiter", "Regulator", "Candidate", "Regulator"]`). The orchestrator (spec 030) reads this field to construct the LangGraph routing. Each entry must reference a valid agent role from the same scenario.
 
 6. **`type` field on Agent_Definition** — Each agent has a `type` field (`"negotiator"` or `"regulator"`) that the orchestrator uses to select the output schema and state update logic. This is not in the original requirements but is required by spec 030's `create_agent_node()` factory. The schema enforces it.
 
@@ -109,7 +109,7 @@ class Budget(BaseModel):
 class AgentDefinition(BaseModel):
     role: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1)
-    type: Literal["negotiator", "regulator"] = Field(
+    type: Literal["negotiator", "regulator", "observer"] = Field(
         ..., description="Agent type for output schema selection"
     )
     persona_prompt: str = Field(..., min_length=1)
@@ -129,6 +129,7 @@ class ToggleDefinition(BaseModel):
 class NegotiationParams(BaseModel):
     max_turns: int = Field(..., gt=0)
     agreement_threshold: float = Field(..., gt=0)
+    turn_order: list[str] = Field(..., min_length=1, description="Agent role execution sequence per cycle")
 
 class OutcomeReceipt(BaseModel):
     equivalent_human_time: str = Field(..., min_length=1)
@@ -161,7 +162,7 @@ class ArenaScenario(BaseModel):
         return self
 ```
 
-Why `min_length=2` on `agents`: The requirements state "exactly 3" agents, but the technical master doc and spec 030 design support N-agent scenarios. Enforcing exactly 3 would break extensibility (Requirement 10). The minimum of 2 ensures at least two parties exist for a negotiation. The `type` field on each agent tells the orchestrator how to handle it.
+Why `min_length=2` on `agents`: The requirements state "at least 2" agents. The minimum of 2 ensures at least two parties exist for a negotiation. The `type` field on each agent tells the orchestrator how to handle it. There is no upper bound — scenarios with 5, 10, or more agents work without code changes.
 
 Why `min_length=1` on `toggles`: Requirements 1.6 states "at least 1 Toggle_Definition."
 
@@ -408,7 +409,7 @@ def get_scenario_registry() -> ScenarioRegistry:
 |---|---|---|---|
 | `role` | `str` | min_length=1 | Unique role name within scenario |
 | `name` | `str` | min_length=1 | Display name |
-| `type` | `Literal["negotiator", "regulator"]` | — | Determines output schema in orchestrator |
+| `type` | `Literal["negotiator", "regulator", "observer"]` | — | Determines output schema in orchestrator |
 | `persona_prompt` | `str` | min_length=1 | Full system prompt text |
 | `goals` | `list[str]` | min_length=1 | Structured goals for UI display |
 | `budget` | `Budget` | min ≤ max | Financial constraints |
