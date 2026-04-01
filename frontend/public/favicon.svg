@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#007BFF"/>
-  <text x="16" y="23" font-family="system-ui,sans-serif" font-size="20" font-weight="bold" fill="white" text-anchor="middle">J</text>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Human loop (blue) -->
+  <circle cx="10" cy="10" r="8" fill="none" stroke="#007BFF" stroke-width="3"/>
+  <!-- AI loop (green) -->
+  <circle cx="16" cy="16" r="8" fill="none" stroke="#00E676" stroke-width="3"/>
 </svg>
