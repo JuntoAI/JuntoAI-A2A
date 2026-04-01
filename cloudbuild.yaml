@@ -22,7 +22,24 @@ steps:
       - ./frontend
     waitFor: ["-"]
 
-  # --- Deploy (sequential after respective build) ---
+  # --- Push (after respective build) ---
+  - id: push-backend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend
+    waitFor: ["build-backend"]
+
+  - id: push-frontend
+    name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - --all-tags
+      - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend
+    waitFor: ["build-frontend"]
+
+  # --- Deploy (sequential after respective push) ---
   - id: deploy-backend
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -37,7 +54,7 @@ steps:
       - --service-account
       - ${_BACKEND_SA_EMAIL}
       - --quiet
-    waitFor: ["build-backend"]
+    waitFor: ["push-backend"]
 
   - id: deploy-frontend
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -53,7 +70,7 @@ steps:
       - --service-account
       - ${_FRONTEND_SA_EMAIL}
       - --quiet
-    waitFor: ["build-frontend"]
+    waitFor: ["push-frontend"]
 
 images:
   - ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:$SHORT_SHA
