@@ -1,4 +1,5 @@
 import WaitlistForm from "@/components/WaitlistForm";
+import ScenarioBanner from "@/components/ScenarioBanner";
 
 export default function Home() {
   return (
@@ -14,10 +15,14 @@ export default function Home() {
           negotiate deals and discuss challenges in real time. Pick a scenario,
           flip the hidden variables, and watch the outcome change.
         </p>
+      </div>
 
-        <div className="mt-8 w-full flex justify-center">
-          <WaitlistForm />
-        </div>
+      <div className="mt-8 w-screen">
+        <ScenarioBanner />
+      </div>
+
+      <div className="mt-8 w-full max-w-md">
+        <WaitlistForm />
       </div>
     </main>
   );
