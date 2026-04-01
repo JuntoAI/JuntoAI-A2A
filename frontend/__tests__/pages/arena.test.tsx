@@ -245,7 +245,7 @@ describe("Arena Control Panel Page", () => {
 
     // Verify navigation
     expect(mockPush).toHaveBeenCalledWith(
-      "/arena/session/sess-123?max_turns=15",
+      "/arena/session/sess-123?max_turns=15&scenario=talent_war",
     );
     // Verify token balance update
     expect(mockUpdateTokenBalance).toHaveBeenCalledWith(35);

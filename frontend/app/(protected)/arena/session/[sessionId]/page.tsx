@@ -24,6 +24,7 @@ export default function GlassBoxPage() {
 
   const sessionId = params?.sessionId;
   const maxTurns = Number(searchParams.get("max_turns")) || 10;
+  const scenarioId = searchParams.get("scenario");
   const validSessionId = isValidSessionId(sessionId);
 
   const [state, dispatch] = useReducer(
@@ -118,7 +119,7 @@ export default function GlassBoxPage() {
             finalSummary={state.finalSummary ?? {}}
             elapsedTimeMs={elapsedTimeMs}
             scenarioOutcomeReceipt={null}
-            scenarioId={null}
+            scenarioId={scenarioId}
           />
         </div>
       )}

@@ -67,10 +67,28 @@ def mock_tracker():
 
 
 @pytest.fixture()
-async def test_client(mock_db, mock_tracker):
+def mock_registry(valid_scenario_dict):
+    """Mock ScenarioRegistry that returns a valid scenario for any ID."""
+    from app.scenarios.models import ArenaScenario
+    from app.scenarios.registry import ScenarioRegistry
+
+    registry = MagicMock(spec=ScenarioRegistry)
+    scenario = ArenaScenario(**valid_scenario_dict)
+    registry.get_scenario.return_value = scenario
+    registry.list_scenarios.return_value = [
+        {"id": scenario.id, "name": scenario.name, "description": scenario.description}
+    ]
+    return registry
+
+
+@pytest.fixture()
+async def test_client(mock_db, mock_tracker, mock_registry):
     """Async httpx client with dependency overrides for integration tests."""
+    from app.scenarios.router import get_scenario_registry
+
     app.dependency_overrides[get_firestore_client] = lambda: mock_db
     app.dependency_overrides[get_sse_tracker] = lambda: mock_tracker
+    app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://testserver",

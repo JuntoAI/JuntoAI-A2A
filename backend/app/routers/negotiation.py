@@ -19,6 +19,8 @@ from app.models.events import (
     StreamErrorEvent,
 )
 from app.models.negotiation import NegotiationStateModel
+from app.orchestrator.graph import run_negotiation
+from app.orchestrator.state import create_initial_state
 from app.scenarios.registry import ScenarioRegistry
 from app.scenarios.router import get_scenario_registry
 from app.utils.sse import format_sse_event
@@ -100,28 +102,71 @@ async def start_negotiation(
     )
 
 
-async def _placeholder_event_generator(state: NegotiationStateModel):
-    """Temporary placeholder — replaced by orchestrator.run_negotiation() in spec 030."""
-    yield AgentThoughtEvent(
-        event_type="agent_thought",
-        agent_name="Buyer",
-        inner_thought="Analyzing the offer...",
-        turn_number=0,
-    )
-    await asyncio.sleep(0.5)
-    yield AgentMessageEvent(
-        event_type="agent_message",
-        agent_name="Buyer",
-        public_message="I propose €35M.",
-        turn_number=0,
-        proposed_price=35000000.0,
-    )
-    yield NegotiationCompleteEvent(
-        event_type="negotiation_complete",
-        session_id=state.session_id,
-        deal_status="Agreed",
-        final_summary={"final_price": 35000000.0},
-    )
+def _snapshot_to_events(snapshot: dict, session_id: str):
+    """Convert a LangGraph state snapshot into SSE events.
+
+    Each snapshot is keyed by node name. We extract the latest history
+    entry and convert it to thought + message events.
+    """
+    events = []
+    for _node_name, state in snapshot.items():
+        if not isinstance(state, dict) or "history" not in state:
+            continue
+        history = state.get("history", [])
+        if not history:
+            continue
+        entry = history[-1]
+        role = entry.get("role", "Unknown")
+        agent_type = entry.get("agent_type", "negotiator")
+        turn_number = entry.get("turn_number", 0)
+        content = entry.get("content", {})
+
+        # Thought event (inner_thought for negotiators, reasoning for regulators,
+        # observation for observers)
+        thought_text = (
+            content.get("inner_thought")
+            or content.get("reasoning")
+            or content.get("observation")
+            or ""
+        )
+        if thought_text:
+            events.append(AgentThoughtEvent(
+                event_type="agent_thought",
+                agent_name=role,
+                inner_thought=thought_text,
+                turn_number=turn_number,
+            ))
+
+        # Message event
+        public_message = content.get("public_message", "")
+        if public_message:
+            msg = AgentMessageEvent(
+                event_type="agent_message",
+                agent_name=role,
+                public_message=public_message,
+                turn_number=turn_number,
+            )
+            if agent_type == "negotiator" and "proposed_price" in content:
+                msg.proposed_price = content["proposed_price"]
+            if agent_type == "regulator" and "status" in content:
+                msg.status = content["status"]
+            events.append(msg)
+
+        # Check for terminal state
+        deal_status = state.get("deal_status", "Negotiating")
+        if deal_status in ("Agreed", "Blocked", "Failed"):
+            events.append(NegotiationCompleteEvent(
+                event_type="negotiation_complete",
+                session_id=session_id,
+                deal_status=deal_status,
+                final_summary={
+                    "final_price": state.get("current_offer", 0),
+                    "turns_taken": state.get("turn_count", 0),
+                    "warning_count": state.get("warning_count", 0),
+                },
+            ))
+
+    return events
 
 
 @router.get("/negotiation/stream/{session_id}")
@@ -130,6 +175,7 @@ async def stream_negotiation(
     email: str = Query(...),
     db: FirestoreSessionClient = Depends(get_firestore_client),
     tracker: SSEConnectionTracker = Depends(get_sse_tracker),
+    registry: ScenarioRegistry = Depends(get_scenario_registry),
 ):
     """Open an SSE stream for a negotiation session.
 
@@ -150,7 +196,17 @@ async def stream_negotiation(
     # 3. Build state model (extra="ignore" drops owner_email, created_at, etc.)
     state = NegotiationStateModel(**raw_doc)
 
-    # 4. Acquire connection slot
+    # 4. Load scenario config for the orchestrator
+    try:
+        scenario = registry.get_scenario(state.scenario_id)
+        scenario_config = scenario.model_dump()
+    except Exception:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": f"Scenario '{state.scenario_id}' not found"},
+        )
+
+    # 5. Acquire connection slot
     acquired = await tracker.acquire(email)
     if not acquired:
         return JSONResponse(
@@ -160,15 +216,25 @@ async def stream_negotiation(
             },
         )
 
-    # 5. Build the async event stream generator
+    # 6. Build initial orchestrator state
+    initial_state = create_initial_state(
+        session_id=session_id,
+        scenario_config=scenario_config,
+        active_toggles=state.active_toggles,
+        hidden_context=state.hidden_context,
+    )
+
+    # 7. Build the async event stream generator
     async def event_stream():
         timeout = state.max_turns * 30
         try:
             async with asyncio.timeout(timeout):
-                async for event in _placeholder_event_generator(state):
-                    yield format_sse_event(event)
-                    if isinstance(event, NegotiationCompleteEvent):
-                        return
+                async for snapshot in run_negotiation(initial_state, scenario_config):
+                    events = _snapshot_to_events(snapshot, session_id)
+                    for event in events:
+                        yield format_sse_event(event)
+                        if isinstance(event, NegotiationCompleteEvent):
+                            return
         except TimeoutError:
             yield format_sse_event(
                 NegotiationCompleteEvent(
