@@ -73,8 +73,20 @@ export default function WaitlistForm() {
         className="flex items-center justify-center gap-2 rounded-lg bg-brand-blue px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isLoading ? "Joining..." : "Join the Waitlist"}
+        {isLoading ? "Starting..." : "Start the AI 2 AI Negotiation"}
       </button>
+      <p className="text-center text-xs text-brand-charcoal/50">
+        By running this demo you're signing up for the{" "}
+        <a
+          href="https://juntoai.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline text-brand-blue hover:text-blue-700"
+        >
+          JuntoAI
+        </a>{" "}
+        waitlist — the next generation business network.
+      </p>
     </form>
   );
 }
