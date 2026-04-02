@@ -454,9 +454,15 @@ def _update_state(
         # Copy full agent_states and update this role
         agent_states = {k: dict(v) for k, v in state.get("agent_states", {}).items()}
         if role in agent_states:
-            agent_states[role]["last_proposed_price"] = proposed
+            # Only update last_proposed_price if the agent actually proposed
+            # a non-zero value. A 0 proposal means the agent stalled or
+            # couldn't decide — keep the previous price to avoid breaking
+            # agreement detection.
+            if proposed > 0:
+                agent_states[role]["last_proposed_price"] = proposed
 
-        delta["current_offer"] = proposed
+        if proposed > 0:
+            delta["current_offer"] = proposed
         delta["agent_states"] = agent_states
 
     elif agent_type == "regulator":

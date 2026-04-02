@@ -160,9 +160,9 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
         entry = history[-1]
         role = entry.get("role", "Unknown")
         agent_type = entry.get("agent_type", "negotiator")
-        # Use history length as step number (turn_count only increments
-        # on full cycle wraps, which is confusing for display)
-        turn_number = len(history) - 1
+        # Use turn_count from state (increments on full cycle wrap).
+        # Fall back to 0 if not present (dispatcher snapshots).
+        turn_number = state.get("turn_count", 0)
         content = entry.get("content", {})
 
         # Thought event (inner_thought for negotiators, reasoning for regulators,
