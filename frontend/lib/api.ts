@@ -84,8 +84,9 @@ async function extractErrorDetail(res: Response): Promise<string> {
 // API functions
 // ---------------------------------------------------------------------------
 
-export async function fetchScenarios(): Promise<ScenarioSummary[]> {
-  const res = await fetch(`${API_BASE}/scenarios`);
+export async function fetchScenarios(email?: string): Promise<ScenarioSummary[]> {
+  const params = email ? `?email=${encodeURIComponent(email)}` : "";
+  const res = await fetch(`${API_BASE}/scenarios${params}`);
   if (!res.ok) {
     const detail = await extractErrorDetail(res);
     throw new Error(detail);
@@ -95,8 +96,10 @@ export async function fetchScenarios(): Promise<ScenarioSummary[]> {
 
 export async function fetchScenarioDetail(
   scenarioId: string,
+  email?: string,
 ): Promise<ArenaScenario> {
-  const res = await fetch(`${API_BASE}/scenarios/${scenarioId}`);
+  const params = email ? `?email=${encodeURIComponent(email)}` : "";
+  const res = await fetch(`${API_BASE}/scenarios/${scenarioId}${params}`);
   if (!res.ok) {
     const detail = await extractErrorDetail(res);
     throw new Error(detail);

@@ -54,7 +54,7 @@ function ArenaPageContent() {
     async function load() {
       setIsLoadingScenarios(true);
       try {
-        const list = await fetchScenarios();
+        const list = await fetchScenarios(email ?? undefined);
         if (!cancelled) {
           setScenarios(list);
           // Pre-select from URL query param
@@ -114,7 +114,7 @@ function ArenaPageContent() {
     setError(null);
     setIsLoadingDetail(true);
     try {
-      const detail = await fetchScenarioDetail(scenarioId);
+      const detail = await fetchScenarioDetail(scenarioId, email ?? undefined);
       setScenarioDetail(detail);
     } catch (err) {
       setError(
@@ -125,7 +125,7 @@ function ArenaPageContent() {
     } finally {
       setIsLoadingDetail(false);
     }
-  }, []);
+  }, [email]);
 
   // Toggle handler
   const handleToggleChange = useCallback(

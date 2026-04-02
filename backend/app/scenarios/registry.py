@@ -42,7 +42,7 @@ class ScenarioRegistry:
             ) as e:
                 logger.warning(f"Skipping invalid scenario file {path}: {e}")
 
-    def list_scenarios(self) -> list[dict[str, str]]:
+    def list_scenarios(self, email: str | None = None) -> list[dict[str, str]]:
         sorted_scenarios = sorted(
             self._scenarios.values(),
             key=lambda s: (DIFFICULTY_ORDER.get(s.difficulty, 1), s.name),
@@ -55,12 +55,26 @@ class ScenarioRegistry:
                 "difficulty": s.difficulty,
             }
             for s in sorted_scenarios
+            if self._user_can_access(s, email)
         ]
 
-    def get_scenario(self, scenario_id: str) -> ArenaScenario:
+    def get_scenario(self, scenario_id: str, email: str | None = None) -> ArenaScenario:
         if scenario_id not in self._scenarios:
             raise ScenarioNotFoundError(scenario_id)
-        return self._scenarios[scenario_id]
+        scenario = self._scenarios[scenario_id]
+        if not self._user_can_access(scenario, email):
+            raise ScenarioNotFoundError(scenario_id)
+        return scenario
+
+    @staticmethod
+    def _user_can_access(scenario: ArenaScenario, email: str | None) -> bool:
+        """Check if a user's email is allowed to access a scenario."""
+        if scenario.allowed_email_domains is None:
+            return True
+        if email is None:
+            return False
+        domain = email.lower().split("@")[-1] if "@" in email else ""
+        return domain in scenario.allowed_email_domains
 
     def __len__(self) -> int:
         return len(self._scenarios)

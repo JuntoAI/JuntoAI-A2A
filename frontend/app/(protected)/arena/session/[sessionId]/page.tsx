@@ -38,7 +38,7 @@ export default function GlassBoxPage() {
   useEffect(() => {
     if (!scenarioId) return;
     let cancelled = false;
-    fetchScenarioDetail(scenarioId)
+    fetchScenarioDetail(scenarioId, email ?? undefined)
       .then((detail) => {
         if (cancelled) return;
         const params = detail.negotiation_params;

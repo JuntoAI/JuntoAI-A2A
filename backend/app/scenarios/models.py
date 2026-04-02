@@ -110,6 +110,11 @@ class ArenaScenario(BaseModel):
     toggles: list[ToggleDefinition] = Field(..., min_length=1)
     negotiation_params: NegotiationParams
     outcome_receipt: OutcomeReceipt
+    allowed_email_domains: list[str] | None = Field(
+        default=None,
+        description="If set, only users whose email ends with one of these "
+        "domains can see and run this scenario. None means public.",
+    )
 
     @model_validator(mode="after")
     def validate_cross_references(self) -> ArenaScenario:

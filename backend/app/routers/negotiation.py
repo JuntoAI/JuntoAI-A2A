@@ -73,7 +73,7 @@ async def start_negotiation(
     """
     # 1. Validate scenario exists
     try:
-        scenario = registry.get_scenario(body.scenario_id)
+        scenario = registry.get_scenario(body.scenario_id, email=body.email)
     except Exception:
         return JSONResponse(
             status_code=404,
