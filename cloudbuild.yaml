@@ -59,6 +59,8 @@ steps:
       - "300"
       - --min-instances
       - "1"
+      - --no-cpu-throttling
+      - --session-affinity
       - --quiet
     waitFor: ["build-backend", "write-backend-env"]
 
