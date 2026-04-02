@@ -74,3 +74,12 @@ First production release of the JuntoAI A2A Protocol Sandbox — a config-driven
 - Cloud Run deployment with service account identity
 - Cloud Build trigger on `main` branch (Terragrunt-managed)
 - Least-privilege Cloud Build SA permissions
+
+#### Agent Advanced Configuration (Spec 090)
+- "Advanced Config" button on each agent card with settings icon and active-state indicator
+- Modal interface for per-agent custom prompt injection (free-text, 500 char limit with live counter)
+- Model Selector dropdown populated from `GET /api/v1/models` — override any agent's default LLM
+- Custom prompts appended to agent system messages with clear delimiter; model overrides routed through Model Router
+- Backend validation: HTTP 422 on oversized prompts or unrecognized model IDs
+- State management: overrides persist within a session, reset on scenario change
+- Responsive modal layout — bottom sheet on mobile, centered dialog on desktop

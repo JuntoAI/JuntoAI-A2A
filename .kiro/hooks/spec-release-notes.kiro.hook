@@ -4,10 +4,7 @@
   "description": "When a spec file is created in the .kiro/specs/v1-done/ directory (i.e. a spec is moved there after completion), automatically reads the new spec's requirements.md and updates both the frontend release notes page (frontend/app/release-notes/page.tsx) and the GitHub CHANGELOG.md with a new entry for the completed feature.",
   "version": "1",
   "when": {
-    "type": "fileCreated",
-    "patterns": [
-      ".kiro/specs/v1-done/**/requirements.md"
-    ]
+    "type": "userTriggered"
   },
   "then": {
     "type": "askAgent",
