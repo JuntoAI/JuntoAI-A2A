@@ -24,7 +24,7 @@ steps:
 
   # Deploy new revision with NO traffic — old instances keep serving
   - id: deploy-backend-no-traffic
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
       - run
@@ -46,7 +46,7 @@ steps:
 
   # Migrate traffic — Cloud Run drains old instances gracefully
   - id: migrate-backend-traffic
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
       - run

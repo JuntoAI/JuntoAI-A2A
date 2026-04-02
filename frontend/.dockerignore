@@ -9,3 +9,5 @@ __tests__
 vitest.config.ts
 .eslintrc.json
 .gitignore
+tsconfig.tsbuildinfo
+coverage

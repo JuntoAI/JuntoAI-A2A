@@ -51,7 +51,7 @@ steps:
     waitFor: ["-"]
 
   - id: deploy-backend-no-traffic
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
       - run
@@ -78,7 +78,7 @@ steps:
     waitFor: ["build-backend", "write-backend-env"]
 
   - id: deploy-frontend-no-traffic
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
       - run
@@ -100,7 +100,7 @@ steps:
 
   # --- Migrate traffic: old instances drain active SSE connections gracefully ---
   - id: migrate-backend-traffic
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
       - run
@@ -114,7 +114,7 @@ steps:
     waitFor: ["deploy-backend-no-traffic"]
 
   - id: migrate-frontend-traffic
-    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
     entrypoint: gcloud
     args:
       - run
