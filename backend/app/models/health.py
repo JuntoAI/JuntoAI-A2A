@@ -8,3 +8,11 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+
+
+class DeployReadinessResponse(BaseModel):
+    """Response schema for the GET /deploy-readiness endpoint."""
+
+    ready_to_deploy: bool
+    active_simulations: int
+    message: str

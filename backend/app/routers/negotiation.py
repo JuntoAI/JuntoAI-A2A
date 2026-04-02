@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.db import get_firestore_client
 from app.db.firestore_client import FirestoreSessionClient
-from app.middleware import get_sse_tracker
+from app.middleware import get_event_buffer, get_sse_tracker
+from app.middleware.event_buffer import SSEEventBuffer
 from app.middleware.sse_limiter import SSEConnectionTracker
 from app.models.events import (
     AgentMessageEvent,
@@ -258,11 +259,16 @@ async def stream_negotiation(
     db: FirestoreSessionClient = Depends(get_firestore_client),
     tracker: SSEConnectionTracker = Depends(get_sse_tracker),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
+    event_buffer: SSEEventBuffer = Depends(get_event_buffer),
+    last_event_id: int | None = Query(None, alias="last_event_id"),
 ):
     """Open an SSE stream for a negotiation session.
 
     Validates session existence, email ownership, and connection limits
     before returning a StreamingResponse of SSE-formatted events.
+
+    Supports reconnection: if ``last_event_id`` query param is provided,
+    replays buffered events after that ID before streaming new ones.
     """
     # 1. Session lookup — raises SessionNotFoundError → 404 via exception handler
     raw_doc = await db.get_session_doc(session_id)
@@ -298,6 +304,23 @@ async def stream_negotiation(
             },
         )
 
+    # 5a. Check if this is a reconnect to a terminal session — replay and close
+    if last_event_id is not None and await event_buffer.is_session_terminal(session_id):
+        replay = await event_buffer.replay_after(session_id, last_event_id)
+
+        async def replay_stream():
+            try:
+                for eid, evt_data in replay:
+                    yield f"id: {eid}\ndata: {evt_data}\n\n"
+            finally:
+                await tracker.release(email)
+
+        return StreamingResponse(
+            replay_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
+
     # 6. Build initial orchestrator state
     initial_state = create_initial_state(
         session_id=session_id,
@@ -312,6 +335,13 @@ async def stream_negotiation(
     async def event_stream():
         timeout = state.max_turns * 60  # 60s per turn to account for LLM latency
         ai_tokens_used = 0
+
+        # If reconnecting, replay missed events first
+        if last_event_id is not None:
+            replay = await event_buffer.replay_after(session_id, last_event_id)
+            for eid, evt_data in replay:
+                yield f"id: {eid}\ndata: {evt_data}\n\n"
+
         try:
             async with asyncio.timeout(timeout):
                 async for snapshot in run_negotiation(initial_state, scenario_config):
@@ -321,26 +351,31 @@ async def stream_negotiation(
                         if isinstance(s, dict):
                             ai_tokens_used = max(ai_tokens_used, s.get("total_tokens_used", 0))
                     for event in events:
-                        yield format_sse_event(event)
-                        if isinstance(event, NegotiationCompleteEvent):
+                        is_terminal = isinstance(event, (NegotiationCompleteEvent,))
+                        json_data = event.model_dump_json()
+                        eid = await event_buffer.append(session_id, json_data, is_terminal=is_terminal)
+                        yield format_sse_event(event, event_id=eid)
+                        if is_terminal:
                             return
         except TimeoutError:
-            yield format_sse_event(
-                NegotiationCompleteEvent(
-                    event_type="negotiation_complete",
-                    session_id=session_id,
-                    deal_status="Failed",
-                    final_summary={"reason": "timeout"},
-                )
+            timeout_event = NegotiationCompleteEvent(
+                event_type="negotiation_complete",
+                session_id=session_id,
+                deal_status="Failed",
+                final_summary={"reason": "timeout"},
             )
+            json_data = timeout_event.model_dump_json()
+            eid = await event_buffer.append(session_id, json_data, is_terminal=True)
+            yield format_sse_event(timeout_event, event_id=eid)
         except Exception as e:
             logger.exception("Stream error for session %s", session_id)
-            yield format_sse_event(
-                StreamErrorEvent(
-                    event_type="error",
-                    message="An unexpected error occurred",
-                )
+            err_event = StreamErrorEvent(
+                event_type="error",
+                message="An unexpected error occurred",
             )
+            json_data = err_event.model_dump_json()
+            eid = await event_buffer.append(session_id, json_data)
+            yield format_sse_event(err_event, event_id=eid)
         finally:
             await tracker.release(email)
             # Deduct AI tokens from user's balance

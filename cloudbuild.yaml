@@ -26,7 +26,7 @@ steps:
       - --build-arg=NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app/api/v1
     waitFor: ["-"]
 
-  # --- Deploy (after respective build) ---
+  # --- Deploy new revisions with NO traffic (parallel after builds) ---
   - id: write-backend-env
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
@@ -40,7 +40,7 @@ steps:
         EOF
     waitFor: ["-"]
 
-  - id: deploy-backend
+  - id: deploy-backend-no-traffic
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -56,15 +56,18 @@ steps:
       - --env-vars-file
       - /workspace/backend-env.yaml
       - --timeout
-      - "300"
+      - "1200"
       - --min-instances
       - "1"
       - --no-cpu-throttling
       - --session-affinity
+      - --no-traffic
+      - --tag
+      - canary
       - --quiet
     waitFor: ["build-backend", "write-backend-env"]
 
-  - id: deploy-frontend
+  - id: deploy-frontend-no-traffic
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -77,8 +80,40 @@ steps:
       - ${_REGION}
       - --service-account
       - ${_FRONTEND_SA_EMAIL}
+      - --no-traffic
+      - --tag
+      - canary
       - --quiet
     waitFor: ["build-frontend"]
+
+  # --- Migrate traffic: old instances drain active SSE connections gracefully ---
+  - id: migrate-backend-traffic
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update-traffic
+      - ${_BACKEND_SERVICE}
+      - --region
+      - ${_REGION}
+      - --to-latest
+      - --quiet
+    waitFor: ["deploy-backend-no-traffic"]
+
+  - id: migrate-frontend-traffic
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update-traffic
+      - ${_FRONTEND_SERVICE}
+      - --region
+      - ${_REGION}
+      - --to-latest
+      - --quiet
+    waitFor: ["deploy-frontend-no-traffic"]
 
 options:
   logging: CLOUD_LOGGING_ONLY

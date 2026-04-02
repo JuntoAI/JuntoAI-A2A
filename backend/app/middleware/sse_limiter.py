@@ -25,3 +25,8 @@ class SSEConnectionTracker:
             self._active[email] = max(0, self._active[email] - 1)
             if self._active[email] == 0:
                 del self._active[email]
+
+    @property
+    def total_active_connections(self) -> int:
+        """Return total active SSE connections across all emails."""
+        return sum(self._active.values())

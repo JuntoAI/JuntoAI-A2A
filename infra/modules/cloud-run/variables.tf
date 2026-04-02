@@ -53,3 +53,9 @@ variable "custom_domain" {
   type        = string
   default     = ""
 }
+
+variable "backend_instance_shutdown_timeout" {
+  description = "Seconds Cloud Run waits for in-flight requests (SSE streams) to finish before killing the old revision during traffic migration. Max 3600."
+  type        = number
+  default     = 1200
+}

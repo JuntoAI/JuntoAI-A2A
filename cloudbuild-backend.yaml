@@ -22,7 +22,8 @@ steps:
         EOF
     waitFor: ["-"]
 
-  - id: deploy-backend
+  # Deploy new revision with NO traffic — old instances keep serving
+  - id: deploy-backend-no-traffic
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -37,8 +38,26 @@ steps:
       - ${_BACKEND_SA_EMAIL}
       - --env-vars-file
       - /workspace/backend-env.yaml
+      - --no-traffic
+      - --tag
+      - canary
       - --quiet
     waitFor: ["build-backend", "write-backend-env"]
+
+  # Migrate traffic — Cloud Run drains old instances gracefully
+  - id: migrate-backend-traffic
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update-traffic
+      - ${_BACKEND_SERVICE}
+      - --region
+      - ${_REGION}
+      - --to-latest
+      - --quiet
+    waitFor: ["deploy-backend-no-traffic"]
 
 options:
   logging: CLOUD_LOGGING_ONLY
