@@ -18,6 +18,10 @@ The README is the single most important file in the repo. It must be visually co
 - **CTA**: Call-to-action — a visible UI element that directs users to perform a specific action (e.g., visit the GitHub repo).
 - **GitHub_Org_URL**: `https://github.com/Juntoai` — the JuntoAI GitHub organization page.
 - **Badge**: A small inline image in the README (via shields.io or similar) that displays project metadata such as license, build status, or tech stack.
+- **Kiro**: The AI-powered IDE used as the primary development environment for building JuntoAI A2A, providing specs-driven workflows, steering files for project context, and automation hooks.
+- **Steering_Files**: Markdown files in `.kiro/steering/` that provide Kiro with project-specific context (tech stack, styling, testing, deployment, product rules) so AI assistance is tuned to the project's conventions.
+- **Specs_Directory**: The `.kiro/specs/` directory containing feature specifications that were planned and implemented through Kiro's requirements-first workflow.
+- **Kiro_Hooks**: Automation files in `.kiro/hooks/` that Kiro triggers during development workflows (e.g., generating release notes when a spec is completed).
 
 ## Requirements
 
@@ -140,3 +144,30 @@ The README is the single most important file in the repo. It must be visually co
 3. THE README SHALL include a table of contents at the top with anchor links to each major section.
 4. THE README SHALL render correctly on GitHub's Markdown renderer, GitHub Mobile app, and in VS Code's Markdown preview without broken formatting.
 5. THE README total length SHALL remain under 800 lines to avoid overwhelming readers, using collapsible sections and links to separate docs for detailed content.
+
+### Requirement 11: Kiro Development Attribution in README
+
+**User Story:** As a GitHub visitor, I want to see that JuntoAI A2A was built using Kiro (the AI-powered IDE), so that I understand the development tooling behind the project and can evaluate Kiro as a development environment.
+
+#### Acceptance Criteria
+
+1. THE README SHALL include a visible callout (badge, banner, or dedicated callout block) in the top portion of the document (above the fold, within the first 30 lines) stating that JuntoAI A2A was primarily developed using Kiro.
+2. THE README Kiro callout SHALL describe Kiro as the AI-powered IDE that served as the primary development environment for building the project.
+3. THE README Kiro callout SHALL NOT be hidden inside a collapsible `<details>` section, a footnote, or a comment — the attribution SHALL be immediately visible when the README renders on GitHub.
+4. THE README Kiro callout SHALL include a link to the official Kiro website or documentation so visitors can learn more about the tool.
+5. THE README badges row SHALL include a "Built with Kiro" badge alongside the existing license, Python, Next.js, and Docker badges.
+
+### Requirement 12: Developing with Kiro Section in README
+
+**User Story:** As a developer who wants to contribute to JuntoAI A2A, I want a "Developing with Kiro" section in the README, so that I understand how to use Kiro's features (specs, steering files, hooks) to get AI-assisted development that is already tuned to the project's conventions.
+
+#### Acceptance Criteria
+
+1. THE README SHALL include a "Developing with Kiro" section that explains how to open the monorepo in Kiro and begin contributing with full AI context.
+2. THE README Developing with Kiro section SHALL document the `.kiro/` directory structure, listing the three subdirectories (`steering/`, `specs/`, `hooks/`) with a one-line description of each subdirectory's purpose.
+3. THE README Developing with Kiro section SHALL explain that the steering files in `.kiro/steering/` provide project context to Kiro covering: technology stack (`tech.md`), styling conventions (`styling.md`), testing guidelines (`testing.md`), deployment rules (`deployment.md`), and product context (`product.md`).
+4. THE README Developing with Kiro section SHALL explain that Kiro reads the steering files automatically, so contributors receive AI assistance that is already tuned to the project's conventions, tech stack, and coding standards without manual configuration.
+5. THE README Developing with Kiro section SHALL explain how the specs workflow in `.kiro/specs/` was used to plan and implement features, describing that each numbered directory (e.g., `080_a2a-local-battle-arena`, `130_ai-scenario-builder`) represents a feature that was designed and built through Kiro's requirements-first spec process.
+6. THE README Developing with Kiro section SHALL explain that the `.kiro/hooks/` directory contains automation hooks (e.g., `spec-release-notes.kiro.hook`) that Kiro triggers during development workflows.
+7. THE README Developing with Kiro section SHALL provide guidance on how contributors can leverage Kiro's features when working on the project: using specs to plan new features, relying on steering files for consistent AI suggestions, and using hooks for automated workflows.
+8. THE README Developing with Kiro section SHALL clarify that Kiro is recommended but not required — contributors can use any IDE, but Kiro provides the richest AI-assisted experience for this repo due to the pre-configured context files.
