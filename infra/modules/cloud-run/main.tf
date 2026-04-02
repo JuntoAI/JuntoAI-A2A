@@ -28,6 +28,7 @@ resource "google_cloud_run_v2_service" "backend" {
   lifecycle {
     ignore_changes = [
       template[0].containers[0].image,
+      template[0].containers[0].env,
       client,
       client_version,
       traffic,
@@ -56,6 +57,7 @@ resource "google_cloud_run_v2_service" "frontend" {
   lifecycle {
     ignore_changes = [
       template[0].containers[0].image,
+      template[0].containers[0].env,
       client,
       client_version,
       traffic,
