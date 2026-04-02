@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Users who complete their profile — by adding a display name, verifying their email address via a confirmation link, and providing at least one professional link (GitHub or LinkedIn) — receive an upgraded daily token allowance of 150 tokens instead of the default 100. Profile data is stored in a dedicated `profiles` Firestore collection to support future user-centric features (custom scenarios, preferences, etc.). The profile page is accessed by clicking the user's email address displayed in the protected routes header. Once earned, the token bonus is permanent and cannot be revoked.
+Users progress through a 3-tier daily token system based on their engagement level. Tier 1 (Unverified) grants 20 tokens/day upon waitlist signup with any email. Tier 2 (Verified Email) grants 50 tokens/day once the user clicks an email verification link. Tier 3 (Full Profile) grants 100 tokens/day when the user has a verified email, a display name, and at least one professional link (GitHub or LinkedIn). Token cost per simulation remains dynamic: 1 user token per 1,000 AI tokens consumed, rounded up. Profile data is stored in a dedicated `profiles` Firestore collection to support future user-centric features (custom scenarios, preferences, etc.). The profile page is accessed by clicking the user's email address displayed in the protected routes header. Once a user reaches Tier 3, the 100-token allowance is permanent and cannot be revoked even if profile fields are later removed.
 
 ## Glossary
 
@@ -10,8 +10,12 @@ Users who complete their profile — by adding a display name, verifying their e
 - **Profile_Page**: The frontend page where authenticated users can view and edit their profile information (display name, email verification status, GitHub URL, LinkedIn URL).
 - **Token_System**: The existing backend and frontend logic that manages daily token allowances, resets at midnight UTC, and deducts tokens after negotiations.
 - **Email_Verifier**: The backend service responsible for generating, sending, and validating email verification tokens. Uses Amazon SES for email delivery.
-- **Profile_Completeness**: A profile is considered complete when all three conditions are met: (1) display name is set, (2) email is verified, and (3) at least one professional link (GitHub or LinkedIn) is provided with a valid URL format.
-- **Daily_Token_Limit**: The maximum number of tokens a user receives per day. Default is 100; upgraded is 150.
+- **Token_Tier**: The user's current token allocation level. Tier 1 (Unverified) = 20 tokens/day, Tier 2 (Verified Email) = 50 tokens/day, Tier 3 (Full Profile) = 100 tokens/day.
+- **Tier_1_Unverified**: The default tier assigned at waitlist signup. Grants 20 tokens/day (~2-3 simulations). Triggered by entering any email on the waitlist form.
+- **Tier_2_Verified**: The mid-level tier. Grants 50 tokens/day (~5-8 simulations). Triggered by clicking the email verification link.
+- **Tier_3_Full_Profile**: The highest tier. Grants 100 tokens/day (~10-15 simulations). Requires a verified email, a display name, and at least one professional link (GitHub or LinkedIn).
+- **Profile_Completeness**: A profile is considered complete (Tier_3_Full_Profile) when all three conditions are met: (1) display name is set, (2) email is verified, and (3) at least one professional link (GitHub or LinkedIn) is provided with a valid URL format.
+- **Daily_Token_Limit**: The maximum number of tokens a user receives per day, determined by Token_Tier: 20 (Tier 1), 50 (Tier 2), or 100 (Tier 3).
 - **Waitlist_Document**: The existing Firestore document in the `waitlist` collection keyed by email, containing `email`, `signed_up_at`, `token_balance`, and `last_reset_date`.
 - **Profile_Document**: A Firestore document in the `profiles` collection keyed by email, containing `display_name`, `email_verified`, `github_url`, `linkedin_url`, `profile_completed_at`, and `created_at`.
 - **Verification_Token**: A unique, time-limited token sent to the user's email address to confirm ownership.
@@ -53,21 +57,22 @@ Users who complete their profile — by adding a display name, verifying their e
 
 ### Requirement 4: Email Verification
 
-**User Story:** As a user, I want to verify my email address via a confirmation link, so that I can prove ownership of my email and progress toward the token upgrade.
+**User Story:** As a user, I want to verify my email address via a confirmation link, so that I can prove ownership of my email and unlock Tier_2_Verified token allowance.
 
 #### Acceptance Criteria
 
 1. WHEN the user requests email verification on the Profile_Page, THE Email_Verifier SHALL generate a unique Verification_Token and send a verification email to the user's registered email address using Amazon SES.
 2. THE Email_Verifier SHALL set the Verification_Token to expire after 24 hours.
 3. WHEN the user clicks the verification link containing a valid and non-expired Verification_Token, THE Email_Verifier SHALL set `email_verified` to true in the Profile_Document.
-4. IF the user clicks a verification link containing an expired Verification_Token, THEN THE Email_Verifier SHALL display an error message and offer the option to resend a new verification email.
-5. IF the user clicks a verification link containing an invalid Verification_Token, THEN THE Email_Verifier SHALL display an error message indicating the link is invalid.
-6. WHEN the user's email is already verified, THE Profile_Page SHALL hide the verification request button and display a "Verified" status indicator.
-7. THE Email_Verifier SHALL use Amazon SES as the email delivery service, configured with IAM credentials for the backend service account.
+4. WHEN the user clicks the verification link and `email_verified` is set to true, THE Token_System SHALL immediately upgrade the user to Tier_2_Verified by setting the Waitlist_Document `token_balance` to 50 if the current balance is less than 50.
+5. IF the user clicks a verification link containing an expired Verification_Token, THEN THE Email_Verifier SHALL display an error message and offer the option to resend a new verification email.
+6. IF the user clicks a verification link containing an invalid Verification_Token, THEN THE Email_Verifier SHALL display an error message indicating the link is invalid.
+7. WHEN the user's email is already verified, THE Profile_Page SHALL hide the verification request button and display a "Verified" status indicator.
+8. THE Email_Verifier SHALL use Amazon SES as the email delivery service, configured with IAM credentials for the backend service account.
 
 ### Requirement 5: Professional Link Management
 
-**User Story:** As a user, I want to add my GitHub or LinkedIn profile URL, so that I can complete my profile and earn the token upgrade.
+**User Story:** As a user, I want to add my GitHub or LinkedIn profile URL, so that I can complete my profile and earn the Tier_3_Full_Profile token allowance.
 
 #### Acceptance Criteria
 
@@ -77,36 +82,40 @@ Users who complete their profile — by adding a display name, verifying their e
 4. IF the user submits a URL that does not match the expected format, THEN THE Profile_System SHALL return a descriptive validation error specifying the expected format.
 5. THE Profile_System SHALL require at least one professional link (GitHub or LinkedIn) for Profile_Completeness, but both are optional individually.
 
-### Requirement 6: Profile Completeness Evaluation and Token Upgrade
+### Requirement 6: Tier Determination and Token Upgrade
 
-**User Story:** As a user, I want to receive 150 daily tokens immediately when I complete my profile, so that I am rewarded for providing my information.
-
-#### Acceptance Criteria
-
-1. WHEN the user saves a profile update that results in Profile_Completeness, THE Profile_System SHALL set `profile_completed_at` to the current server timestamp in the Profile_Document.
-2. WHEN Profile_Completeness is achieved, THE Token_System SHALL immediately set the user's Daily_Token_Limit to 150.
-3. WHEN Profile_Completeness is achieved and the user's current token balance is based on the default 100-token allowance, THE Token_System SHALL add 50 tokens to the user's current Waitlist_Document `token_balance`.
-4. WHEN the Token_System resets tokens at midnight UTC for a user with a completed profile, THE Token_System SHALL reset the `token_balance` to 150 instead of 100.
-5. THE Profile_System SHALL evaluate Profile_Completeness on every profile save operation by checking all three conditions: display name is set, email is verified, and at least one professional link is present.
-
-### Requirement 7: Permanent Token Bonus
-
-**User Story:** As a user, I want my token bonus to be permanent once earned, so that I do not lose my reward if I later modify my profile.
+**User Story:** As a user, I want my daily token allowance to increase as I complete profile milestones, so that I am rewarded for deeper engagement.
 
 #### Acceptance Criteria
 
-1. WHEN a user has a non-null `profile_completed_at` timestamp in the Profile_Document, THE Token_System SHALL use 150 as the Daily_Token_Limit regardless of the current state of the profile fields.
-2. THE Token_System SHALL determine the Daily_Token_Limit by checking the `profile_completed_at` field, not by re-evaluating Profile_Completeness on each token reset.
+1. WHEN a user signs up via the waitlist form, THE Token_System SHALL assign Tier_1_Unverified with a Daily_Token_Limit of 20 by setting the Waitlist_Document `token_balance` to 20.
+2. WHEN the user verifies their email address, THE Token_System SHALL upgrade the user to Tier_2_Verified with a Daily_Token_Limit of 50.
+3. WHEN the user saves a profile update that results in Profile_Completeness, THE Token_System SHALL upgrade the user to Tier_3_Full_Profile with a Daily_Token_Limit of 100.
+4. WHEN Profile_Completeness is achieved, THE Profile_System SHALL set `profile_completed_at` to the current server timestamp in the Profile_Document.
+5. WHEN a tier upgrade occurs and the user's current `token_balance` is less than the new Daily_Token_Limit, THE Token_System SHALL set the `token_balance` to the new Daily_Token_Limit in the Waitlist_Document.
+6. THE Profile_System SHALL evaluate Profile_Completeness on every profile save operation by checking all three conditions: display name is set, email is verified, and at least one professional link is present.
+7. THE Token_System SHALL determine the user's Token_Tier by checking: (a) if `profile_completed_at` is non-null in the Profile_Document, the tier is Tier_3_Full_Profile (100); (b) else if `email_verified` is true in the Profile_Document, the tier is Tier_2_Verified (50); (c) otherwise the tier is Tier_1_Unverified (20).
+
+### Requirement 7: Permanent Tier 3 Token Bonus
+
+**User Story:** As a user, I want my Tier 3 token bonus to be permanent once earned, so that I do not lose my reward if I later modify my profile.
+
+#### Acceptance Criteria
+
+1. WHEN a user has a non-null `profile_completed_at` timestamp in the Profile_Document, THE Token_System SHALL use 100 as the Daily_Token_Limit regardless of the current state of the profile fields.
+2. THE Token_System SHALL determine the Tier_3_Full_Profile status by checking the `profile_completed_at` field, not by re-evaluating Profile_Completeness on each token reset.
 
 ### Requirement 8: Token Display Update
 
-**User Story:** As a user, I want the token display to reflect my upgraded allowance, so that I can see my correct daily limit.
+**User Story:** As a user, I want the token display to reflect my current tier allowance, so that I can see my correct daily limit.
 
 #### Acceptance Criteria
 
-1. WHEN the user has a completed profile, THE Token_System SHALL display "Tokens: X / 150" instead of "Tokens: X / 100" in the TokenDisplay component.
-2. WHEN the user completes their profile on the Profile_Page, THE Token_System SHALL update the token display immediately without requiring a page refresh.
-3. THE Token_System SHALL fetch the user's Daily_Token_Limit from the Profile_Document `profile_completed_at` field to determine whether to show 100 or 150 as the maximum.
+1. WHEN the user is at Tier_1_Unverified, THE Token_System SHALL display "Tokens: X / 20" in the TokenDisplay component.
+2. WHEN the user is at Tier_2_Verified, THE Token_System SHALL display "Tokens: X / 50" in the TokenDisplay component.
+3. WHEN the user is at Tier_3_Full_Profile, THE Token_System SHALL display "Tokens: X / 100" in the TokenDisplay component.
+4. WHEN the user completes a tier upgrade on the Profile_Page, THE Token_System SHALL update the token display immediately without requiring a page refresh.
+5. THE Token_System SHALL fetch the user's Token_Tier by checking the Profile_Document fields (`profile_completed_at` and `email_verified`) to determine the correct Daily_Token_Limit for display.
 
 ### Requirement 9: Profile API Endpoints
 
@@ -121,12 +130,13 @@ Users who complete their profile — by adding a display name, verifying their e
 5. IF a request targets a non-existent profile, THEN THE Profile_System SHALL return a 404 status code with a descriptive error message.
 6. THE Profile_System SHALL validate all input fields using Pydantic V2 models before processing.
 
-### Requirement 10: Token Reset Integration
+### Requirement 10: Tier-Aware Token Reset
 
-**User Story:** As a developer, I want the token reset logic to account for profile completion status, so that upgraded users receive the correct daily allowance.
+**User Story:** As a developer, I want the token reset logic to account for the user's current tier, so that each user receives the correct daily allowance at midnight UTC.
 
 #### Acceptance Criteria
 
-1. WHEN the Token_System resets a user's tokens, THE Token_System SHALL check the `profiles` collection for a Profile_Document with a non-null `profile_completed_at` field.
-2. WHEN a Profile_Document with a non-null `profile_completed_at` exists, THE Token_System SHALL reset the `token_balance` to 150 in the Waitlist_Document.
-3. WHEN no Profile_Document exists or `profile_completed_at` is null, THE Token_System SHALL reset the `token_balance` to 100 in the Waitlist_Document.
+1. WHEN the Token_System resets a user's tokens, THE Token_System SHALL check the `profiles` collection for the user's Profile_Document.
+2. WHEN a Profile_Document with a non-null `profile_completed_at` exists, THE Token_System SHALL reset the `token_balance` to 100 in the Waitlist_Document.
+3. WHEN a Profile_Document exists with `email_verified` set to true and `profile_completed_at` is null, THE Token_System SHALL reset the `token_balance` to 50 in the Waitlist_Document.
+4. WHEN no Profile_Document exists or `email_verified` is false and `profile_completed_at` is null, THE Token_System SHALL reset the `token_balance` to 20 in the Waitlist_Document.
