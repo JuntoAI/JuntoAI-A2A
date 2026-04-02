@@ -145,6 +145,74 @@ async def start_negotiation(
     )
 
 
+def _build_block_advice(history: list[dict], blocker: str) -> list[dict]:
+    """Build actionable advice from regulator warnings that led to a block.
+
+    Returns a list of advice objects, each containing:
+    - ``agent_role``: which agent to adjust
+    - ``issue``: what the regulator flagged
+    - ``suggested_prompt``: a ready-to-use custom_prompts snippet (≤500 chars)
+      the user can paste into the "Advanced Options" panel when re-running
+    """
+    # Collect (warned_agent_role, warning_reasoning) pairs
+    flagged: list[tuple[str, str]] = []
+    for i, entry in enumerate(history):
+        if entry.get("agent_type") != "regulator":
+            continue
+        content = entry.get("content", {})
+        if content.get("status") != "WARNING":
+            continue
+        reasoning = content.get("reasoning", "") or content.get("public_message", "")
+        # The agent that spoke right before this warning is the one being flagged
+        warned_role = "Unknown"
+        if i > 0:
+            prev = history[i - 1]
+            if prev.get("agent_type") == "negotiator":
+                warned_role = prev.get("role", "Unknown")
+        flagged.append((warned_role, reasoning))
+
+    if not flagged:
+        return [{
+            "agent_role": "Unknown",
+            "issue": f"{blocker} blocked the deal after repeated warnings.",
+            "suggested_prompt": (
+                "Focus on collaborative problem-solving. If the mediator "
+                "warns you about a tactic, immediately drop it and pivot "
+                "to a different, fact-based argument."
+            ),
+        }]
+
+    # Group warnings by agent role
+    by_role: dict[str, list[str]] = {}
+    for role, reason in flagged:
+        by_role.setdefault(role, []).append(reason)
+
+    advice: list[dict] = []
+    for role, reasons in by_role.items():
+        # Summarize the pattern from the first two warnings (keeps it concise)
+        issue_summary = reasons[0][:200]
+        if len(reasons) > 1:
+            issue_summary += f" (repeated {len(reasons)}x)"
+
+        prompt = (
+            f"IMPORTANT: The mediator has flagged your approach {len(reasons)} "
+            f"time(s). You MUST change tactics. Rules: "
+            f"1) Never repeat an argument the mediator already warned about. "
+            f"2) Lead with concrete proposals and logistics, not emotions. "
+            f"3) Mention your track record only once, then move on. "
+            f"4) If warned, acknowledge it and immediately offer a new "
+            f"safety measure or creative compromise instead."
+        )
+
+        advice.append({
+            "agent_role": role,
+            "issue": issue_summary,
+            "suggested_prompt": prompt,
+        })
+
+    return advice
+
+
 def _snapshot_to_events(snapshot: dict, session_id: str):
     """Convert a LangGraph state snapshot into SSE events.
 
@@ -223,6 +291,9 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
                             break
                 summary["blocked_by"] = blocker
                 summary["reason"] = block_reason or f"{blocker} issued 3 warnings — deal terminated"
+
+                # Build actionable advice from warning history
+                summary["advice"] = _build_block_advice(history, blocker)
 
             elif deal_status == "Failed":
                 max_turns = state.get("max_turns", 0)

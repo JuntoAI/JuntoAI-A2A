@@ -112,6 +112,33 @@ export default function OutcomeReceipt({
                   <span>Total Warnings: {String(finalSummary.total_warnings)}</span>
                 )}
               </div>
+
+              {/* Actionable advice for re-running with better outcome */}
+              {Array.isArray(finalSummary.advice) && (finalSummary.advice as Array<Record<string, unknown>>).length > 0 && (
+                <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4" data-testid="block-advice">
+                  <h4 className="text-sm font-semibold text-blue-900 mb-2">
+                    How to get a different outcome
+                  </h4>
+                  {(finalSummary.advice as Array<Record<string, unknown>>).map((item, i) => (
+                    <div key={i} className="mb-3 last:mb-0">
+                      <p className="text-xs font-medium text-blue-800 mb-1">
+                        Adjust <span className="font-bold">{String(item.agent_role)}</span>
+                        {item.issue ? ` — ${String(item.issue).slice(0, 120)}` : ""}
+                      </p>
+                      {item.suggested_prompt ? (
+                        <div className="relative">
+                          <pre className="text-xs bg-white border border-blue-100 rounded p-2 whitespace-pre-wrap text-gray-700 leading-relaxed">
+                            {String(item.suggested_prompt)}
+                          </pre>
+                          <p className="text-xs text-blue-600 mt-1 italic">
+                            Paste this into Advanced Options → {String(item.agent_role)} prompt, then re-run.
+                          </p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
