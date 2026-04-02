@@ -69,7 +69,7 @@ class TestTalentWarScenario:
 
     def test_regulator_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Regulator")
-        assert agent.name == "HR Compliance Bot"
+        assert agent.name == "Maya"
         assert agent.type == "regulator"
 
     def test_competing_offer_toggle(self, scenario: ArenaScenario):
@@ -96,19 +96,19 @@ class TestMABuyoutScenario:
 
     def test_buyer_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Buyer")
-        assert agent.name == "Titan Corp CEO"
+        assert agent.name == "James"
         assert agent.type == "negotiator"
         assert agent.budget.max == 50_000_000
 
     def test_seller_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Seller")
-        assert agent.name == "Innovate Tech Founder"
+        assert agent.name == "Elena"
         assert agent.type == "negotiator"
         assert agent.budget.min == 40_000_000
 
     def test_regulator_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Regulator")
-        assert agent.name == "EU Regulator Bot"
+        assert agent.name == "Dr. Fischer"
         assert agent.type == "regulator"
 
     def test_hidden_debt_toggle(self, scenario: ArenaScenario):
@@ -135,19 +135,19 @@ class TestB2BSalesScenario:
 
     def test_seller_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Seller")
-        assert agent.name == "SaaS Account Executive"
+        assert agent.name == "David"
         assert agent.type == "negotiator"
         assert agent.budget.max == 100_000
 
     def test_buyer_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Buyer")
-        assert agent.name == "Target CTO"
+        assert agent.name == "Priya"
         assert agent.type == "negotiator"
         assert agent.budget.max == 70_000
 
     def test_regulator_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Regulator")
-        assert agent.name == "Procurement Bot"
+        assert agent.name == "Tom"
         assert agent.type == "regulator"
 
     def test_q4_pressure_toggle(self, scenario: ArenaScenario):
