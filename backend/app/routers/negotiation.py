@@ -163,15 +163,38 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
         # Check for terminal state
         deal_status = state.get("deal_status", "Negotiating")
         if deal_status in ("Agreed", "Blocked", "Failed"):
+            summary: dict = {
+                "current_offer": state.get("current_offer", 0),
+                "turns_completed": state.get("turn_count", 0),
+                "total_warnings": state.get("warning_count", 0),
+            }
+
+            if deal_status == "Agreed":
+                summary["outcome"] = f"All parties reached agreement at ${state.get('current_offer', 0):,.0f}"
+
+            elif deal_status == "Blocked":
+                # Find which regulator blocked and why from history
+                blocker = "Regulator"
+                block_reason = ""
+                for h in reversed(history):
+                    if h.get("agent_type") == "regulator":
+                        c = h.get("content", {})
+                        if c.get("status") in ("BLOCKED", "WARNING"):
+                            blocker = h.get("role", "Regulator")
+                            block_reason = c.get("public_message", c.get("reasoning", ""))
+                            break
+                summary["blocked_by"] = blocker
+                summary["reason"] = block_reason or f"{blocker} issued 3 warnings — deal terminated"
+
+            elif deal_status == "Failed":
+                max_turns = state.get("max_turns", 0)
+                summary["reason"] = f"Reached maximum of {max_turns} turns without agreement"
+
             events.append(NegotiationCompleteEvent(
                 event_type="negotiation_complete",
                 session_id=session_id,
                 deal_status=deal_status,
-                final_summary={
-                    "final_price": state.get("current_offer", 0),
-                    "turns_taken": state.get("turn_count", 0),
-                    "warning_count": state.get("warning_count", 0),
-                },
+                final_summary=summary,
             ))
 
     return events

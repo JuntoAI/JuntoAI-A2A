@@ -67,40 +67,65 @@ export default function OutcomeReceipt({
         {/* Deal content */}
         <div className="mb-6" data-testid="outcome-content">
           {dealStatus === "Agreed" && (
-            <div>
-              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                Final Terms
-              </h3>
-              <dl className="space-y-1">
-                {Object.entries(finalSummary).map(([key, value]) => (
-                  <div key={key} className="flex gap-2 text-sm">
-                    <dt className="font-medium text-gray-700">{key}:</dt>
-                    <dd className="text-gray-900">{String(value)}</dd>
-                  </div>
-                ))}
-              </dl>
+            <div className="space-y-3">
+              {finalSummary.outcome && (
+                <p className="text-sm font-medium text-green-900">
+                  {String(finalSummary.outcome)}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
+                  <span>Final Price: <span className="font-semibold">${Number(finalSummary.current_offer).toLocaleString()}</span></span>
+                )}
+                {finalSummary.turns_completed != null && (
+                  <span>Turns: {String(finalSummary.turns_completed)}</span>
+                )}
+                {finalSummary.total_warnings != null && Number(finalSummary.total_warnings) > 0 && (
+                  <span>Warnings: {String(finalSummary.total_warnings)}</span>
+                )}
+              </div>
             </div>
           )}
 
           {dealStatus === "Blocked" && (
-            <div>
-              <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                Block Reason
-              </h3>
-              <p className="text-sm text-gray-900">
-                {finalSummary.reason
-                  ? String(finalSummary.reason)
-                  : Object.entries(finalSummary)
-                      .map(([k, v]) => `${k}: ${String(v)}`)
-                      .join(", ")}
-              </p>
+            <div className="space-y-3">
+              {finalSummary.blocked_by && (
+                <p className="text-sm font-semibold text-yellow-900">
+                  Blocked by: {String(finalSummary.blocked_by)}
+                </p>
+              )}
+              {finalSummary.reason && (
+                <p className="text-sm text-gray-800 leading-relaxed">
+                  {String(finalSummary.reason)}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
+                  <span>Last Offer: ${Number(finalSummary.current_offer).toLocaleString()}</span>
+                )}
+                {finalSummary.total_warnings != null && (
+                  <span>Total Warnings: {String(finalSummary.total_warnings)}</span>
+                )}
+              </div>
             </div>
           )}
 
           {dealStatus === "Failed" && (
-            <p className="text-sm text-gray-600">
-              Negotiation reached maximum turns without agreement
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-700">
+                {finalSummary.reason
+                  ? String(finalSummary.reason)
+                  : "Negotiation reached maximum turns without agreement"}
+              </p>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
+                  <span>Last Offer: ${Number(finalSummary.current_offer).toLocaleString()}</span>
+                )}
+                {finalSummary.total_warnings != null && Number(finalSummary.total_warnings) > 0 && (
+                  <span>Warnings: {String(finalSummary.total_warnings)}</span>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
