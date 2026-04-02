@@ -82,6 +82,14 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
         response: AIMessage = model.invoke([SystemMessage(content=system_msg), HumanMessage(content=user_msg)])
         response_text = response.content if isinstance(response.content, str) else str(response.content)
 
+        # Track token usage
+        tokens_used = 0
+        usage = getattr(response, "usage_metadata", None)
+        if usage and isinstance(usage, dict):
+            tokens_used += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+        elif usage:
+            tokens_used += getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)
+
         # 5. Parse output (retry once on failure)
         try:
             parsed = _parse_output(response_text, agent_type, agent_name)
@@ -90,6 +98,12 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
             retry_msg = user_msg + "\n\nYour previous response was not valid JSON. Please respond with ONLY valid JSON matching the schema."
             response = model.invoke([SystemMessage(content=system_msg), HumanMessage(content=retry_msg)])
             response_text = response.content if isinstance(response.content, str) else str(response.content)
+            # Add retry tokens
+            usage = getattr(response, "usage_metadata", None)
+            if usage and isinstance(usage, dict):
+                tokens_used += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+            elif usage:
+                tokens_used += getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)
             parsed = _parse_output(response_text, agent_type, agent_name)
 
         # 6. Build state delta
@@ -100,6 +114,7 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
 
         # 8. Merge deltas
         merged = {**state_delta, **turn_delta}
+        merged["total_tokens_used"] = state.get("total_tokens_used", 0) + tokens_used
         return merged
 
     return _node

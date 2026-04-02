@@ -32,3 +32,4 @@ class NegotiationStateModel(BaseModel):
     turn_order: list[str] = Field(default_factory=list)
     turn_order_index: int = Field(default=0, ge=0)
     agent_states: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    total_tokens_used: int = Field(default=0, ge=0)

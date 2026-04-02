@@ -28,6 +28,7 @@ class NegotiationState(TypedDict):
     turn_order_index: int
     agent_states: dict[str, dict[str, Any]]
     active_toggles: list[str]
+    total_tokens_used: int
 
 
 def create_initial_state(
@@ -87,4 +88,5 @@ def create_initial_state(
         turn_order_index=0,
         agent_states=agent_states,
         active_toggles=active_toggles or [],
+        total_tokens_used=0,
     )

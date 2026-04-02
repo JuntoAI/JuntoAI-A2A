@@ -68,11 +68,11 @@ export default function OutcomeReceipt({
         <div className="mb-6" data-testid="outcome-content">
           {dealStatus === "Agreed" && (
             <div className="space-y-3">
-              {finalSummary.outcome && (
+              {finalSummary.outcome ? (
                 <p className="text-sm font-medium text-green-900">
                   {String(finalSummary.outcome)}
                 </p>
-              )}
+              ) : null}
               <div className="flex flex-wrap gap-4 text-sm text-gray-700">
                 {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
                   <span>Final Price: <span className="font-semibold">${Number(finalSummary.current_offer).toLocaleString()}</span></span>
@@ -143,6 +143,11 @@ export default function OutcomeReceipt({
             <p className="text-sm font-medium text-gray-900">
               Time Elapsed: {elapsedSeconds}s
             </p>
+            {finalSummary.ai_tokens_used != null && Number(finalSummary.ai_tokens_used) > 0 && (
+              <p className="text-sm font-medium text-gray-900">
+                AI Tokens Used: {Number(finalSummary.ai_tokens_used).toLocaleString()}
+              </p>
+            )}
           </div>
 
           {/* Scenario-estimated metrics */}

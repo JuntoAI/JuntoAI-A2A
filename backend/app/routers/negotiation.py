@@ -91,17 +91,10 @@ async def start_negotiation(
     doc_ref = db._collection.document(session_id)
     await doc_ref.set(doc_data)
 
-    # 5. Deduct token from waitlist document
-    from google.cloud.firestore import AsyncClient
+    # 5. Return session info (tokens deducted after negotiation completes)
     waitlist_ref = db._db.collection("waitlist").document(body.email.lower().strip())
     waitlist_doc = await waitlist_ref.get()
-    if waitlist_doc.exists:
-        current_balance = waitlist_doc.to_dict().get("token_balance", 0)
-        new_balance = max(0, current_balance - 1)
-        await waitlist_ref.update({"token_balance": new_balance})
-        tokens_remaining = new_balance
-    else:
-        tokens_remaining = 99
+    tokens_remaining = waitlist_doc.to_dict().get("token_balance", 100) if waitlist_doc.exists else 100
 
     return StartNegotiationResponse(
         session_id=session_id,
@@ -167,6 +160,7 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
                 "current_offer": state.get("current_offer", 0),
                 "turns_completed": state.get("turn_count", 0),
                 "total_warnings": state.get("warning_count", 0),
+                "ai_tokens_used": state.get("total_tokens_used", 0),
             }
 
             if deal_status == "Agreed":
@@ -258,10 +252,15 @@ async def stream_negotiation(
     # 7. Build the async event stream generator
     async def event_stream():
         timeout = state.max_turns * 30
+        ai_tokens_used = 0
         try:
             async with asyncio.timeout(timeout):
                 async for snapshot in run_negotiation(initial_state, scenario_config):
                     events = _snapshot_to_events(snapshot, session_id)
+                    # Track tokens from snapshot state
+                    for _node, s in snapshot.items():
+                        if isinstance(s, dict):
+                            ai_tokens_used = max(ai_tokens_used, s.get("total_tokens_used", 0))
                     for event in events:
                         yield format_sse_event(event)
                         if isinstance(event, NegotiationCompleteEvent):
@@ -285,6 +284,19 @@ async def stream_negotiation(
             )
         finally:
             await tracker.release(email)
+            # Deduct AI tokens from user's balance
+            if ai_tokens_used > 0:
+                try:
+                    # Scale: 1 user token per 1000 AI tokens (rounded up)
+                    user_tokens_cost = max(1, (ai_tokens_used + 999) // 1000)
+                    wl_ref = db._db.collection("waitlist").document(email.lower().strip())
+                    wl_doc = await wl_ref.get()
+                    if wl_doc.exists:
+                        balance = wl_doc.to_dict().get("token_balance", 0)
+                        new_balance = max(0, balance - user_tokens_cost)
+                        await wl_ref.update({"token_balance": new_balance})
+                except Exception:
+                    logger.warning("Failed to deduct tokens for %s", email)
 
     return StreamingResponse(
         event_stream(),

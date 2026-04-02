@@ -26,6 +26,7 @@ def to_pydantic(state: NegotiationState) -> NegotiationStateModel:
         turn_order_index=state["turn_order_index"],
         agent_states=state["agent_states"],
         active_toggles=state["active_toggles"],
+        total_tokens_used=state.get("total_tokens_used", 0),
     )
 
 
@@ -52,4 +53,5 @@ def from_pydantic(model: NegotiationStateModel) -> NegotiationState:
         turn_order_index=model.turn_order_index,
         agent_states=model.agent_states,
         active_toggles=model.active_toggles,
+        total_tokens_used=model.total_tokens_used,
     )
