@@ -26,8 +26,9 @@ dependencies {
 }
 
 inputs = {
-  backend_sa_email     = dependency.iam.outputs.backend_sa_email
-  frontend_sa_email    = dependency.iam.outputs.frontend_sa_email
-  enable_public_access = false
-  custom_domain        = "a2a.juntoai.org"
+  backend_sa_email              = dependency.iam.outputs.backend_sa_email
+  frontend_sa_email             = dependency.iam.outputs.frontend_sa_email
+  enable_backend_public_access  = false
+  backend_invoker_members       = ["serviceAccount:${dependency.iam.outputs.frontend_sa_email}"]
+  custom_domain                 = "a2a.juntoai.org"
 }

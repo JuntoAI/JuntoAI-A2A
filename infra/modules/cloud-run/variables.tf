@@ -42,10 +42,16 @@ variable "frontend_service_name" {
   default     = "juntoai-frontend"
 }
 
-variable "enable_public_access" {
-  description = "Whether to allow unauthenticated (public) access to both services"
+variable "enable_backend_public_access" {
+  description = "Whether to allow unauthenticated (public) access to the backend service. Prefer false and use backend_invoker_members for least-privilege."
   type        = bool
   default     = false
+}
+
+variable "backend_invoker_members" {
+  description = "IAM members granted roles/run.invoker on the backend (e.g. frontend SA). Use instead of public access."
+  type        = list(string)
+  default     = []
 }
 
 variable "custom_domain" {

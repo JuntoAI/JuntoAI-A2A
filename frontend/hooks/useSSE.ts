@@ -4,8 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import type { GlassBoxAction } from "@/lib/glassBoxReducer";
 import type { SSEEvent } from "@/types/sse";
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE = "/api/v1";
 
 /** Max reconnection attempts before giving up. */
 const MAX_RETRIES = 5;

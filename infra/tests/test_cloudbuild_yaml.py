@@ -62,15 +62,16 @@ class TestFullstackPipeline:
     """cloudbuild.yaml — builds and deploys both services with no-traffic + migrate."""
 
     def test_step_count(self, fullstack_pipeline):
-        # build-backend, build-frontend, write-backend-env,
+        # build-backend, build-frontend, write-backend-env, write-frontend-env,
         # deploy-backend-no-traffic, deploy-frontend-no-traffic,
         # migrate-backend-traffic, migrate-frontend-traffic
-        assert len(fullstack_pipeline["steps"]) == 7
+        assert len(fullstack_pipeline["steps"]) == 8
 
     def test_step_ids(self, fullstack_pipeline):
         ids = {s["id"] for s in fullstack_pipeline["steps"]}
         expected = {
-            "build-backend", "build-frontend", "write-backend-env",
+            "build-backend", "build-frontend",
+            "write-backend-env", "write-frontend-env",
             "deploy-backend-no-traffic", "deploy-frontend-no-traffic",
             "migrate-backend-traffic", "migrate-frontend-traffic",
         }
@@ -219,12 +220,14 @@ class TestFrontendPipeline:
     """cloudbuild-frontend.yaml — frontend only with no-traffic + migrate."""
 
     def test_step_count(self, frontend_pipeline):
-        # build-frontend, deploy-frontend-no-traffic, migrate-frontend-traffic
-        assert len(frontend_pipeline["steps"]) == 3
+        # build-frontend, write-frontend-env,
+        # deploy-frontend-no-traffic, migrate-frontend-traffic
+        assert len(frontend_pipeline["steps"]) == 4
 
     def test_step_ids(self, frontend_pipeline):
         ids = {s["id"] for s in frontend_pipeline["steps"]}
-        assert ids == {"build-frontend", "deploy-frontend-no-traffic",
+        assert ids == {"build-frontend", "write-frontend-env",
+                       "deploy-frontend-no-traffic",
                        "migrate-frontend-traffic"}
 
     def test_build_runs_first(self, frontend_pipeline):
@@ -290,7 +293,11 @@ class TestFrontendPipeline:
         assert "NEXT_PUBLIC_FIREBASE_API_KEY" in args
         assert "NEXT_PUBLIC_FIREBASE_PROJECT_ID" in args
         assert "NEXT_PUBLIC_FIREBASE_APP_ID" in args
-        assert "NEXT_PUBLIC_API_URL" in args
+
+    def test_frontend_deploy_sets_backend_url(self, frontend_pipeline):
+        steps = _steps_by_id(frontend_pipeline)
+        args = steps["deploy-frontend-no-traffic"]["args"]
+        assert "--env-vars-file" in args
 
     def test_substitutions_use_variables(self, frontend_pipeline):
         subs = frontend_pipeline.get("substitutions", {})

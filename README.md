@@ -214,7 +214,7 @@ Every configurable value lives in a single `.env` file at the monorepo root. Cop
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | Optional | — | Firebase API key for client-side Firestore |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Optional | — | Firebase project ID |
 | `NEXT_PUBLIC_FIREBASE_APP_ID` | Optional | — | Firebase app ID |
-| `NEXT_PUBLIC_API_URL` | Optional | `http://localhost:8000/api/v1` | Backend API base URL |
+| `BACKEND_URL` | Optional | `http://localhost:8000` | Backend origin for server-side API proxy (never exposed to browser) |
 
 #### Backend
 

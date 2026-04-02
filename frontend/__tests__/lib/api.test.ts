@@ -46,7 +46,7 @@ describe("fetchScenarios", () => {
 
     expect(result).toEqual(data);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://localhost:8000/api/v1/scenarios",
+      "/api/v1/scenarios",
     );
   });
 
@@ -100,7 +100,7 @@ describe("fetchScenarioDetail", () => {
 
     expect(result).toEqual(scenario);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://localhost:8000/api/v1/scenarios/talent_war",
+      "/api/v1/scenarios/talent_war",
     );
   });
 
@@ -134,7 +134,7 @@ describe("startNegotiation", () => {
 
     expect(result).toEqual(response);
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://localhost:8000/api/v1/negotiation/start",
+      "/api/v1/negotiation/start",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -182,7 +182,7 @@ describe("startNegotiation", () => {
     await startNegotiation("a@b.com", "ma_buyout", []);
 
     expect(fetchSpy).toHaveBeenCalledWith(
-      "http://localhost:8000/api/v1/negotiation/start",
+      "/api/v1/negotiation/start",
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

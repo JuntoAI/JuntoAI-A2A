@@ -1,13 +1,15 @@
 /**
  * API client for the JuntoAI A2A backend.
  *
+ * All requests go through the Next.js API proxy at /api/v1/* which
+ * handles service-to-service auth to the backend Cloud Run service.
+ *
  * All functions throw on non-2xx responses with the error detail from the
  * response body. `startNegotiation` specifically checks for HTTP 429 and
  * throws a typed `TokenLimitError`.
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE = "/api/v1";
 
 // ---------------------------------------------------------------------------
 // Interfaces

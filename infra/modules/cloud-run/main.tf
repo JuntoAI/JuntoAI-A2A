@@ -66,11 +66,20 @@ resource "google_cloud_run_v2_service" "frontend" {
 }
 
 # -----------------------------------------------------------------------------
-# Public Access (allUsers → roles/run.invoker)
+# Public Access — Frontend
+# -----------------------------------------------------------------------------
+# NOTE: allUsers binding is managed via GCP Console due to org policy
+# constraint (constraints/iam.allowedPolicyMemberDomains) that blocks
+# allUsers in IAM bindings via API/Terraform. Do NOT add an IAM resource
+# here — it will fail on apply.
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# Public Access — Backend (allUsers → roles/run.invoker)
 # -----------------------------------------------------------------------------
 
 resource "google_cloud_run_v2_service_iam_member" "backend_public" {
-  count    = var.enable_public_access ? 1 : 0
+  count    = var.enable_backend_public_access ? 1 : 0
   project  = google_cloud_run_v2_service.backend.project
   location = google_cloud_run_v2_service.backend.location
   name     = google_cloud_run_v2_service.backend.name
@@ -78,13 +87,17 @@ resource "google_cloud_run_v2_service_iam_member" "backend_public" {
   member   = "allUsers"
 }
 
-resource "google_cloud_run_v2_service_iam_member" "frontend_public" {
-  count    = var.enable_public_access ? 1 : 0
-  project  = google_cloud_run_v2_service.frontend.project
-  location = google_cloud_run_v2_service.frontend.location
-  name     = google_cloud_run_v2_service.frontend.name
+# -----------------------------------------------------------------------------
+# Backend Invoker — Least-privilege access (e.g. frontend SA only)
+# -----------------------------------------------------------------------------
+
+resource "google_cloud_run_v2_service_iam_member" "backend_invoker" {
+  for_each = toset(var.backend_invoker_members)
+  project  = google_cloud_run_v2_service.backend.project
+  location = google_cloud_run_v2_service.backend.location
+  name     = google_cloud_run_v2_service.backend.name
   role     = "roles/run.invoker"
-  member   = "allUsers"
+  member   = each.value
 }
 
 # -----------------------------------------------------------------------------

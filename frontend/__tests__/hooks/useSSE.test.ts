@@ -50,7 +50,7 @@ vi.stubGlobal("EventSource", MockEventSource);
 const SESSION_ID = "test-session-123";
 const EMAIL = "investor@example.com";
 const MAX_TURNS = 15;
-const API_BASE = "http://localhost:8000/api/v1";
+const API_BASE = "/api/v1";
 
 function latestES(): MockEventSource {
   return MockEventSource.instances[MockEventSource.instances.length - 1];

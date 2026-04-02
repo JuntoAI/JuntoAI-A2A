@@ -11,7 +11,18 @@ steps:
       - --build-arg=NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}
       - --build-arg=NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_PROJECT_ID}
       - --build-arg=NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
-      - --build-arg=NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app/api/v1
+    waitFor: ["-"]
+
+  # Write frontend runtime env vars
+  - id: write-frontend-env
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        cat > /workspace/frontend-env.yaml <<EOF
+        BACKEND_URL: "https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app"
+        EOF
     waitFor: ["-"]
 
   # Deploy new revision with NO traffic — old instances keep serving
@@ -28,11 +39,13 @@ steps:
       - ${_REGION}
       - --service-account
       - ${_FRONTEND_SA_EMAIL}
+      - --env-vars-file
+      - /workspace/frontend-env.yaml
       - --no-traffic
       - --tag
       - canary
       - --quiet
-    waitFor: ["build-frontend"]
+    waitFor: ["build-frontend", "write-frontend-env"]
 
   # Migrate traffic — Cloud Run drains old instances gracefully
   - id: migrate-frontend-traffic
