@@ -435,3 +435,494 @@ class TestP15TurnNumberConsistency:
         assert current_state["turn_count"] == initial_count + 1
         # And index should be back to 0
         assert current_state["turn_order_index"] == 0
+
+
+# ===========================================================================
+# P5 (Feature: agent-advanced-config): Custom Prompt Injection into System Message
+# **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
+# ===========================================================================
+
+
+# Strategy: generate a custom prompt string (non-empty, printable, ≤500 chars)
+st_custom_prompt = st.text(
+    min_size=1,
+    max_size=500,
+    alphabet=st.characters(categories=("L", "N", "P", "Z"), exclude_characters="\x00"),
+)
+
+
+@st.composite
+def st_prompt_injection_state(
+    draw: st.DrawFn,
+) -> tuple[dict[str, Any], NegotiationState, str | None]:
+    """Generate agent_config + state with or without a custom prompt for the role.
+
+    Returns (agent_config, state, custom_prompt_or_none).
+    """
+    role = draw(st_role)
+    agent_type = draw(st_agent_type)
+    has_custom_prompt = draw(st.booleans())
+    custom_prompt: str | None = draw(st_custom_prompt) if has_custom_prompt else None
+
+    # Optionally add hidden context so we can verify ordering
+    has_hidden = draw(st.booleans())
+    hidden_value = draw(st_text) if has_hidden else None
+
+    agent_config: dict[str, Any] = {
+        "role": role,
+        "name": "Agent",
+        "type": agent_type,
+        "model_id": "gemini-2.5-flash",
+        "persona_prompt": draw(st_text),
+        "goals": draw(st.lists(st_text, min_size=0, max_size=3)),
+    }
+
+    hidden_context: dict[str, Any] = {}
+    if has_hidden and hidden_value:
+        hidden_context[role] = hidden_value
+
+    custom_prompts: dict[str, str] = {}
+    if custom_prompt is not None:
+        custom_prompts[role] = custom_prompt
+
+    state = NegotiationState(
+        session_id="s",
+        scenario_id="s",
+        turn_count=0,
+        max_turns=10,
+        current_speaker=role,
+        deal_status="Negotiating",
+        current_offer=0.0,
+        history=[],
+        hidden_context=hidden_context,
+        warning_count=0,
+        agreement_threshold=5000.0,
+        scenario_config={},
+        turn_order=[role],
+        turn_order_index=0,
+        agent_states={},
+        active_toggles=[],
+        total_tokens_used=0,
+        stall_diagnosis=None,
+        custom_prompts=custom_prompts,
+        model_overrides={},
+    )
+    return agent_config, state, custom_prompt
+
+
+class TestP5CustomPromptInjection:
+    """Feature: agent-advanced-config, Property 5: Custom prompt injection into system message.
+
+    For any non-empty custom prompt and any agent configuration, the system message
+    built by _build_prompt should contain the custom prompt prefixed with
+    '\\nAdditional user instructions:\\n', positioned after persona/goals/hidden_context
+    and before the output schema JSON. When no custom prompt exists, the system message
+    should be identical to the output without the feature.
+
+    **Validates: Requirements 7.1, 7.2, 7.3, 7.4**
+    """
+
+    DELIMITER = "\nAdditional user instructions:\n"
+
+    @settings(max_examples=100)
+    @given(data=st_prompt_injection_state())
+    def test_custom_prompt_present_when_set(self, data: tuple):
+        """When a custom prompt exists for the agent's role, the system message
+        must contain the delimiter + prompt text.
+
+        **Validates: Requirements 7.1, 7.2**
+        """
+        agent_config, state, custom_prompt = data
+        system, _ = _build_prompt(agent_config, state)
+
+        if custom_prompt is not None:
+            assert self.DELIMITER in system, (
+                "Delimiter not found in system message when custom prompt is set"
+            )
+            assert custom_prompt in system, (
+                "Custom prompt text not found in system message"
+            )
+
+    @settings(max_examples=100)
+    @given(data=st_prompt_injection_state())
+    def test_no_delimiter_when_no_custom_prompt(self, data: tuple):
+        """When no custom prompt exists, the delimiter must NOT appear.
+
+        **Validates: Requirements 7.4**
+        """
+        agent_config, state, custom_prompt = data
+        system, _ = _build_prompt(agent_config, state)
+
+        if custom_prompt is None:
+            assert self.DELIMITER not in system, (
+                "Delimiter found in system message when no custom prompt is set"
+            )
+
+    @settings(max_examples=100)
+    @given(data=st_prompt_injection_state())
+    def test_custom_prompt_after_persona_goals_hidden_context(self, data: tuple):
+        """The custom prompt block must appear AFTER persona, goals, and hidden context.
+
+        **Validates: Requirements 7.2, 7.3**
+        """
+        agent_config, state, custom_prompt = data
+        if custom_prompt is None:
+            return  # nothing to check
+
+        system, _ = _build_prompt(agent_config, state)
+        delimiter_pos = system.find(self.DELIMITER)
+        assert delimiter_pos >= 0
+
+        # Persona appears before the delimiter
+        persona = agent_config.get("persona_prompt", "")
+        if persona:
+            persona_pos = system.find(persona)
+            assert persona_pos < delimiter_pos, "Custom prompt must appear after persona"
+
+        # Goals appear before the delimiter
+        for goal in agent_config.get("goals", []):
+            goal_pos = system.find(f"- {goal}")
+            if goal_pos >= 0:
+                assert goal_pos < delimiter_pos, "Custom prompt must appear after goals"
+
+        # Hidden context appears before the delimiter (if present)
+        role = agent_config["role"]
+        hidden_context = state.get("hidden_context", {})
+        if role in hidden_context:
+            conf_pos = system.find("Confidential information")
+            if conf_pos >= 0:
+                assert conf_pos < delimiter_pos, (
+                    "Custom prompt must appear after hidden context"
+                )
+
+    @settings(max_examples=100)
+    @given(data=st_prompt_injection_state())
+    def test_custom_prompt_before_output_schema(self, data: tuple):
+        """The custom prompt block must appear BEFORE the output schema JSON.
+
+        **Validates: Requirements 7.2**
+        """
+        agent_config, state, custom_prompt = data
+        if custom_prompt is None:
+            return  # nothing to check
+
+        system, _ = _build_prompt(agent_config, state)
+        delimiter_pos = system.find(self.DELIMITER)
+        assert delimiter_pos >= 0
+
+        # Output schema marker
+        schema_marker = "You MUST respond with valid JSON matching this schema:"
+        schema_pos = system.find(schema_marker)
+        if schema_pos >= 0:
+            assert delimiter_pos < schema_pos, (
+                "Custom prompt must appear before output schema"
+            )
+
+    @settings(max_examples=100)
+    @given(data=st_prompt_injection_state())
+    def test_system_message_unchanged_without_custom_prompt(self, data: tuple):
+        """When no custom prompt exists, the system message should be identical
+        to calling _build_prompt with an empty custom_prompts dict.
+
+        **Validates: Requirements 7.4**
+        """
+        agent_config, state, custom_prompt = data
+        if custom_prompt is not None:
+            return  # only test the no-prompt case
+
+        # Build with current state (no custom prompt)
+        system_with, _ = _build_prompt(agent_config, state)
+
+        # Build with explicitly empty custom_prompts
+        state_empty = dict(state)
+        state_empty["custom_prompts"] = {}
+        system_without, _ = _build_prompt(agent_config, state_empty)
+
+        assert system_with == system_without, (
+            "System message should be identical when no custom prompt is set"
+        )
+
+
+# ===========================================================================
+# P6 (Feature: agent-advanced-config): Model Override Routing
+# **Validates: Requirements 12.1, 12.2, 12.3, 12.4**
+# ===========================================================================
+
+
+@st.composite
+def st_model_override_scenario(
+    draw: st.DrawFn,
+) -> tuple[str, dict[str, Any], bool, str | None]:
+    """Generate an agent role, scenario config, and optional model override.
+
+    Returns (role, scenario_config_snippet, has_override, override_model_id_or_none).
+    The scenario_config_snippet contains the agent list needed by _find_agent_config.
+    """
+    role = draw(st_role)
+    default_model = draw(st_model_id)
+    fallback_model = draw(st.one_of(st.none(), st_model_id))
+    has_override = draw(st.booleans())
+
+    # Pick an override model that differs from the default when overriding
+    override_model: str | None = None
+    if has_override:
+        override_model = draw(st_model_id.filter(lambda m: m != default_model))
+
+    agent_config: dict[str, Any] = {
+        "role": role,
+        "name": f"Agent-{role}",
+        "type": "negotiator",
+        "model_id": default_model,
+        "persona_prompt": "You are a negotiator.",
+        "goals": ["Negotiate well"],
+    }
+    if fallback_model is not None:
+        agent_config["fallback_model_id"] = fallback_model
+
+    scenario_config: dict[str, Any] = {
+        "id": "test-scenario",
+        "agents": [agent_config],
+        "negotiation_params": {"max_turns": 10},
+    }
+
+    return role, scenario_config, has_override, override_model
+
+
+class TestP6ModelOverrideRouting:
+    """Feature: agent-advanced-config, Property 6: Model override routing.
+
+    For any agent with a model override in the negotiation state, the agent_node
+    should pass the overridden model_id to model_router.get_model() instead of
+    the agent's default model_id, while always preserving the original
+    fallback_model_id. When no model override exists, the default model_id
+    should be used.
+
+    **Validates: Requirements 12.1, 12.2, 12.3, 12.4**
+    """
+
+    @settings(max_examples=100)
+    @given(data=st_model_override_scenario())
+    def test_get_model_called_with_override_when_present(self, data: tuple) -> None:
+        """When model_overrides contains the agent's role, get_model receives
+        the overridden model_id and the original fallback_model_id.
+
+        **Validates: Requirements 12.1, 12.2, 12.3**
+        """
+        from unittest.mock import MagicMock, patch
+
+        role, scenario_config, has_override, override_model = data
+        if not has_override:
+            return  # tested in the other method
+
+        agent_config = scenario_config["agents"][0]
+        default_model = agent_config["model_id"]
+        fallback = agent_config.get("fallback_model_id")
+
+        # Build model_overrides
+        model_overrides: dict[str, str] = {role: override_model}
+
+        # Build a valid NegotiationState
+        state = NegotiationState(
+            session_id="s",
+            scenario_id="test-scenario",
+            turn_count=0,
+            max_turns=10,
+            current_speaker=role,
+            deal_status="Negotiating",
+            current_offer=100.0,
+            history=[],
+            hidden_context={},
+            warning_count=0,
+            agreement_threshold=5000.0,
+            scenario_config=scenario_config,
+            turn_order=[role],
+            turn_order_index=0,
+            agent_states={
+                role: {
+                    "role": role,
+                    "name": f"Agent-{role}",
+                    "agent_type": "negotiator",
+                    "model_id": default_model,
+                    "last_proposed_price": 0.0,
+                    "warning_count": 0,
+                },
+            },
+            active_toggles=[],
+            total_tokens_used=0,
+            stall_diagnosis=None,
+            custom_prompts={},
+            model_overrides=model_overrides,
+        )
+
+        # Mock model_router.get_model and the LLM invoke
+        mock_model = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = NegotiatorOutput(
+            inner_thought="thinking",
+            public_message="hello",
+            proposed_price=150.0,
+        ).model_dump_json()
+        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 10}
+        mock_model.invoke.return_value = mock_response
+
+        with patch("app.orchestrator.agent_node.model_router.get_model", return_value=mock_model) as mock_get_model:
+            from app.orchestrator.agent_node import create_agent_node
+
+            node_fn = create_agent_node(role)
+            node_fn(state)
+
+            # Assert get_model was called with the OVERRIDDEN model_id
+            mock_get_model.assert_called_once_with(
+                override_model,
+                fallback_model_id=fallback,
+            )
+
+    @settings(max_examples=100)
+    @given(data=st_model_override_scenario())
+    def test_get_model_called_with_default_when_no_override(self, data: tuple) -> None:
+        """When model_overrides does NOT contain the agent's role, get_model
+        receives the default model_id from the scenario config.
+
+        **Validates: Requirements 12.4**
+        """
+        from unittest.mock import MagicMock, patch
+
+        role, scenario_config, has_override, override_model = data
+        if has_override:
+            return  # tested in the other method
+
+        agent_config = scenario_config["agents"][0]
+        default_model = agent_config["model_id"]
+        fallback = agent_config.get("fallback_model_id")
+
+        # Build a state with NO model override for this role
+        state = NegotiationState(
+            session_id="s",
+            scenario_id="test-scenario",
+            turn_count=0,
+            max_turns=10,
+            current_speaker=role,
+            deal_status="Negotiating",
+            current_offer=100.0,
+            history=[],
+            hidden_context={},
+            warning_count=0,
+            agreement_threshold=5000.0,
+            scenario_config=scenario_config,
+            turn_order=[role],
+            turn_order_index=0,
+            agent_states={
+                role: {
+                    "role": role,
+                    "name": f"Agent-{role}",
+                    "agent_type": "negotiator",
+                    "model_id": default_model,
+                    "last_proposed_price": 0.0,
+                    "warning_count": 0,
+                },
+            },
+            active_toggles=[],
+            total_tokens_used=0,
+            stall_diagnosis=None,
+            custom_prompts={},
+            model_overrides={},
+        )
+
+        # Mock model_router.get_model and the LLM invoke
+        mock_model = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = NegotiatorOutput(
+            inner_thought="thinking",
+            public_message="hello",
+            proposed_price=150.0,
+        ).model_dump_json()
+        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 10}
+        mock_model.invoke.return_value = mock_response
+
+        with patch("app.orchestrator.agent_node.model_router.get_model", return_value=mock_model) as mock_get_model:
+            from app.orchestrator.agent_node import create_agent_node
+
+            node_fn = create_agent_node(role)
+            node_fn(state)
+
+            # Assert get_model was called with the DEFAULT model_id
+            mock_get_model.assert_called_once_with(
+                default_model,
+                fallback_model_id=fallback,
+            )
+
+    @settings(max_examples=100)
+    @given(data=st_model_override_scenario())
+    def test_fallback_model_always_from_config(self, data: tuple) -> None:
+        """Regardless of whether an override exists, the fallback_model_id
+        passed to get_model always comes from the scenario config, never
+        from model_overrides.
+
+        **Validates: Requirements 12.3**
+        """
+        from unittest.mock import MagicMock, patch
+
+        role, scenario_config, has_override, override_model = data
+
+        agent_config = scenario_config["agents"][0]
+        default_model = agent_config["model_id"]
+        fallback = agent_config.get("fallback_model_id")
+
+        model_overrides: dict[str, str] = {}
+        if has_override and override_model:
+            model_overrides[role] = override_model
+
+        state = NegotiationState(
+            session_id="s",
+            scenario_id="test-scenario",
+            turn_count=0,
+            max_turns=10,
+            current_speaker=role,
+            deal_status="Negotiating",
+            current_offer=100.0,
+            history=[],
+            hidden_context={},
+            warning_count=0,
+            agreement_threshold=5000.0,
+            scenario_config=scenario_config,
+            turn_order=[role],
+            turn_order_index=0,
+            agent_states={
+                role: {
+                    "role": role,
+                    "name": f"Agent-{role}",
+                    "agent_type": "negotiator",
+                    "model_id": default_model,
+                    "last_proposed_price": 0.0,
+                    "warning_count": 0,
+                },
+            },
+            active_toggles=[],
+            total_tokens_used=0,
+            stall_diagnosis=None,
+            custom_prompts={},
+            model_overrides=model_overrides,
+        )
+
+        mock_model = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = NegotiatorOutput(
+            inner_thought="thinking",
+            public_message="hello",
+            proposed_price=150.0,
+        ).model_dump_json()
+        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 10}
+        mock_model.invoke.return_value = mock_response
+
+        with patch("app.orchestrator.agent_node.model_router.get_model", return_value=mock_model) as mock_get_model:
+            from app.orchestrator.agent_node import create_agent_node
+
+            node_fn = create_agent_node(role)
+            node_fn(state)
+
+            # The fallback_model_id kwarg must ALWAYS be the config's fallback
+            call_kwargs = mock_get_model.call_args
+            assert call_kwargs[1]["fallback_model_id"] == fallback, (
+                f"Expected fallback_model_id={fallback!r} from config, "
+                f"got {call_kwargs[1]['fallback_model_id']!r}"
+            )

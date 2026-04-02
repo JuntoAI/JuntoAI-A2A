@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.exceptions import FirestoreConnectionError, SessionNotFoundError
 from app.routers.health import router as health_router
+from app.routers.models import router as models_router
 from app.routers.negotiation import router as negotiation_router
 from app.scenarios.router import router as scenarios_router
 
@@ -40,6 +41,7 @@ app.add_middleware(
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health_router)
+api_router.include_router(models_router)
 api_router.include_router(negotiation_router)
 api_router.include_router(scenarios_router)
 

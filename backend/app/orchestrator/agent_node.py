@@ -69,9 +69,11 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
         agent_type: str = agent_config.get("type", "negotiator")
         agent_name: str = agent_config.get("name", agent_role)
 
-        # 2. Get LLM via model router
+        # 2. Get LLM via model router (apply model override if present)
+        model_overrides = state.get("model_overrides", {})
+        effective_model_id = model_overrides.get(agent_role, agent_config["model_id"])
         model = model_router.get_model(
-            agent_config["model_id"],
+            effective_model_id,
             fallback_model_id=agent_config.get("fallback_model_id"),
         )
 
@@ -178,6 +180,12 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
             parts.append("\nConfidential information:\n" + "\n".join(ctx_lines))
         else:
             parts.append(f"\nConfidential information:\n  {role_context}")
+
+    # Custom prompt injection
+    custom_prompts = state.get("custom_prompts", {})
+    custom_prompt = custom_prompts.get(role)
+    if custom_prompt:
+        parts.append(f"\nAdditional user instructions:\n{custom_prompt}")
 
     # Output schema
     schema = _OUTPUT_SCHEMA_DESCRIPTIONS.get(agent_type, "")

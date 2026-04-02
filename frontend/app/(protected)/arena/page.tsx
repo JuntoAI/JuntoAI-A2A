@@ -5,16 +5,19 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   fetchScenarios,
   fetchScenarioDetail,
+  fetchAvailableModels,
   startNegotiation,
   TokenLimitError,
   type ArenaScenario,
   type ScenarioSummary,
+  type ModelInfo,
 } from "@/lib/api";
 import { useSession } from "@/context/SessionContext";
 import { ScenarioSelector } from "@/components/arena/ScenarioSelector";
 import { AgentCard } from "@/components/arena/AgentCard";
 import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
+import { AdvancedConfigModal } from "@/components/arena/AdvancedConfigModal";
 
 function ArenaPageContent() {
   const router = useRouter();
@@ -33,6 +36,16 @@ function ArenaPageContent() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Advanced config state
+  const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
+  const [modelOverrides, setModelOverrides] = useState<Record<string, string>>({});
+  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
+  const [advancedConfigAgent, setAdvancedConfigAgent] = useState<{
+    name: string;
+    role: string;
+    defaultModelId: string;
+  } | null>(null);
 
   // Fetch scenarios on mount
   useEffect(() => {
@@ -67,6 +80,30 @@ function ArenaPageContent() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch available models on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function loadModels() {
+      try {
+        const models = await fetchAvailableModels();
+        if (!cancelled) setAvailableModels(models);
+      } catch {
+        // Graceful fallback: empty array means Model_Selector shows only default model
+        if (!cancelled) setAvailableModels([]);
+      }
+    }
+    loadModels();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Clear custom prompts and model overrides when scenario changes
+  useEffect(() => {
+    setCustomPrompts({});
+    setModelOverrides({});
+  }, [selectedScenarioId]);
 
   // Fetch scenario detail on selection
   const handleScenarioSelect = useCallback(async (scenarioId: string) => {
@@ -105,10 +142,22 @@ function ArenaPageContent() {
     setIsStarting(true);
     setError(null);
     try {
+      // Filter out empty values from customPrompts and modelOverrides
+      const filteredPrompts: Record<string, string> = {};
+      for (const [role, prompt] of Object.entries(customPrompts)) {
+        if (prompt.trim()) filteredPrompts[role] = prompt;
+      }
+      const filteredOverrides: Record<string, string> = {};
+      for (const [role, modelId] of Object.entries(modelOverrides)) {
+        if (modelId) filteredOverrides[role] = modelId;
+      }
+
       const result = await startNegotiation(
         email,
         selectedScenarioId,
         activeToggles,
+        Object.keys(filteredPrompts).length > 0 ? filteredPrompts : undefined,
+        Object.keys(filteredOverrides).length > 0 ? filteredOverrides : undefined,
       );
       updateTokenBalance(result.tokens_remaining);
       router.push(
@@ -130,6 +179,8 @@ function ArenaPageContent() {
     email,
     selectedScenarioId,
     activeToggles,
+    customPrompts,
+    modelOverrides,
     updateTokenBalance,
     router,
   ]);
@@ -177,6 +228,15 @@ function ArenaPageContent() {
                   goals={agent.goals}
                   modelId={agent.model_id}
                   index={i}
+                  hasCustomPrompt={!!customPrompts[agent.role]?.trim()}
+                  modelOverride={modelOverrides[agent.role] ?? null}
+                  onAdvancedConfig={() =>
+                    setAdvancedConfigAgent({
+                      name: agent.name,
+                      role: agent.role,
+                      defaultModelId: agent.model_id,
+                    })
+                  }
                 />
               ))}
             </div>
@@ -220,6 +280,42 @@ function ArenaPageContent() {
         isLoading={isStarting}
         insufficientTokens={insufficientTokens}
       />
+
+      {/* Advanced Config Modal */}
+      {advancedConfigAgent && (
+        <AdvancedConfigModal
+          isOpen={true}
+          agentName={advancedConfigAgent.name}
+          agentRole={advancedConfigAgent.role}
+          defaultModelId={advancedConfigAgent.defaultModelId}
+          availableModels={availableModels}
+          initialCustomPrompt={customPrompts[advancedConfigAgent.role] ?? ""}
+          initialModelOverride={modelOverrides[advancedConfigAgent.role] ?? null}
+          onSave={(customPrompt, modelOverride) => {
+            const role = advancedConfigAgent.role;
+            setCustomPrompts((prev) => {
+              const next = { ...prev };
+              if (customPrompt.trim()) {
+                next[role] = customPrompt;
+              } else {
+                delete next[role];
+              }
+              return next;
+            });
+            setModelOverrides((prev) => {
+              const next = { ...prev };
+              if (modelOverride) {
+                next[role] = modelOverride;
+              } else {
+                delete next[role];
+              }
+              return next;
+            });
+            setAdvancedConfigAgent(null);
+          }}
+          onCancel={() => setAdvancedConfigAgent(null)}
+        />
+      )}
     </div>
   );
 }
