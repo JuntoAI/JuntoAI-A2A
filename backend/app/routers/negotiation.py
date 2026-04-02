@@ -280,7 +280,7 @@ async def stream_negotiation(
 
     # 4. Load scenario config for the orchestrator
     try:
-        scenario = registry.get_scenario(state.scenario_id)
+        scenario = registry.get_scenario(state.scenario_id, email=email)
         scenario_config = scenario.model_dump()
     except Exception:
         return JSONResponse(
