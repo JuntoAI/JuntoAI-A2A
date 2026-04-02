@@ -55,6 +55,25 @@ _OUTPUT_SCHEMA_DESCRIPTIONS: dict[str, str] = {
 }
 
 
+def _fallback_output(agent_type: str, agent_name: str) -> BaseModel:
+    """Return a safe fallback output when the LLM fails to produce valid JSON."""
+    if agent_type == "negotiator":
+        return NegotiatorOutput(
+            inner_thought=f"[{agent_name} is gathering their thoughts...]",
+            public_message="I need a moment to consider my position. Let me think about this.",
+            proposed_price=0.0,
+        )
+    elif agent_type == "regulator":
+        return RegulatorOutput(
+            status="CLEAR",
+            reasoning=f"[{agent_name} is reviewing the current state of the discussion.]",
+        )
+    else:
+        return ObserverOutput(
+            observation=f"[{agent_name} is observing the discussion.]",
+        )
+
+
 def _get_negotiator_schema(value_label: str) -> str:
     """Return the negotiator JSON schema with a contextual proposed_price description."""
     return json.dumps(
@@ -114,15 +133,22 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
             if response_text.strip():
                 messages.append(AIMessage(content=response_text))
             messages.append(HumanMessage(content="Your previous response was not valid JSON. Please respond with ONLY valid JSON matching the schema."))
-            response = model.invoke(messages)
-            response_text = response.content if isinstance(response.content, str) else str(response.content)
-            # Add retry tokens
-            usage = getattr(response, "usage_metadata", None)
-            if usage and isinstance(usage, dict):
-                tokens_used += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-            elif usage:
-                tokens_used += getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)
-            parsed = _parse_output(response_text, agent_type, agent_name)
+            try:
+                response = model.invoke(messages)
+                response_text = response.content if isinstance(response.content, str) else str(response.content)
+                # Add retry tokens
+                usage = getattr(response, "usage_metadata", None)
+                if usage and isinstance(usage, dict):
+                    tokens_used += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+                elif usage:
+                    tokens_used += getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)
+                parsed = _parse_output(response_text, agent_type, agent_name)
+            except Exception as retry_exc:
+                logger.warning(
+                    "Retry also failed for agent '%s': %s. Using fallback response.",
+                    agent_name, retry_exc,
+                )
+                parsed = _fallback_output(agent_type, agent_name)
 
         # 6. Build state delta
         state_delta = _update_state(parsed, agent_type, agent_role, state)

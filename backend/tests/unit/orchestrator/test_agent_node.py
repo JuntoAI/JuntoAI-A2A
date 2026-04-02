@@ -589,8 +589,8 @@ class TestAgentNodeIntegration:
         assert mock_model.invoke.call_count == 2
 
     @patch("app.orchestrator.agent_node.model_router")
-    def test_double_parse_failure_raises(self, mock_router):
-        """Both LLM calls return garbage → AgentOutputParseError."""
+    def test_double_parse_failure_uses_fallback(self, mock_router):
+        """Both LLM calls return garbage → fallback response used instead of crash."""
         mock_model = MagicMock()
         mock_model.invoke.return_value = AIMessage(content="still not json")
         mock_router.get_model.return_value = mock_model
@@ -602,8 +602,12 @@ class TestAgentNodeIntegration:
         state = _make_state(turn_order=["Buyer"], agents=agents, agent_states=agent_states)
 
         node_fn = create_agent_node("Buyer")
-        with pytest.raises(AgentOutputParseError):
-            node_fn(state)
+        result = node_fn(state)
+        # Fallback produces a valid state delta with a placeholder message
+        assert "history" in result
+        history_entry = result["history"][-1]
+        assert history_entry["role"] == "Buyer"
+        assert "gathering their thoughts" in history_entry["content"]["inner_thought"]
 
     @patch("app.orchestrator.agent_node.model_router")
     def test_missing_role_raises(self, mock_router):
