@@ -30,6 +30,8 @@ class NegotiationState(TypedDict):
     active_toggles: list[str]
     total_tokens_used: int
     stall_diagnosis: dict[str, Any] | None
+    custom_prompts: dict[str, str]
+    model_overrides: dict[str, str]
 
 
 def create_initial_state(
@@ -37,6 +39,8 @@ def create_initial_state(
     scenario_config: dict[str, Any],
     active_toggles: list[str] | None = None,
     hidden_context: dict[str, Any] | None = None,
+    custom_prompts: dict[str, str] | None = None,
+    model_overrides: dict[str, str] | None = None,
 ) -> NegotiationState:
     """Build the initial NegotiationState from a scenario config dict.
 
@@ -91,4 +95,6 @@ def create_initial_state(
         active_toggles=active_toggles or [],
         total_tokens_used=0,
         stall_diagnosis=None,
+        custom_prompts=custom_prompts or {},
+        model_overrides=model_overrides or {},
     )

@@ -105,15 +105,26 @@ export async function startNegotiation(
   email: string,
   scenarioId: string,
   activeToggles: string[],
+  customPrompts?: Record<string, string>,
+  modelOverrides?: Record<string, string>,
 ): Promise<StartNegotiationResponse> {
+  const body: Record<string, unknown> = {
+    email,
+    scenario_id: scenarioId,
+    active_toggles: activeToggles,
+  };
+
+  if (customPrompts && Object.keys(customPrompts).length > 0) {
+    body.custom_prompts = customPrompts;
+  }
+  if (modelOverrides && Object.keys(modelOverrides).length > 0) {
+    body.model_overrides = modelOverrides;
+  }
+
   const res = await fetch(`${API_BASE}/negotiation/start`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      email,
-      scenario_id: scenarioId,
-      active_toggles: activeToggles,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (res.status === 429) {
@@ -126,5 +137,19 @@ export async function startNegotiation(
     throw new Error(detail);
   }
 
+  return res.json();
+}
+
+export interface ModelInfo {
+  model_id: string;
+  family: string;
+}
+
+export async function fetchAvailableModels(): Promise<ModelInfo[]> {
+  const res = await fetch(`${API_BASE}/models`);
+  if (!res.ok) {
+    const detail = await extractErrorDetail(res);
+    throw new Error(detail);
+  }
   return res.json();
 }

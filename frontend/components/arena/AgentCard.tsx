@@ -1,5 +1,7 @@
 "use client";
 
+import { SlidersHorizontal } from "lucide-react";
+
 const AGENT_COLORS = [
   "#007BFF",
   "#00E676",
@@ -17,10 +19,23 @@ export interface AgentCardProps {
   goals: string[];
   modelId: string;
   index: number;
+  hasCustomPrompt?: boolean;
+  modelOverride?: string | null;
+  onAdvancedConfig?: () => void;
 }
 
-export function AgentCard({ name, role, goals, modelId, index }: AgentCardProps) {
+export function AgentCard({
+  name,
+  role,
+  goals,
+  modelId,
+  index,
+  hasCustomPrompt = false,
+  modelOverride = null,
+  onAdvancedConfig = () => {},
+}: AgentCardProps) {
   const color = AGENT_COLORS[index % AGENT_COLORS.length];
+  const displayModel = modelOverride ?? modelId;
 
   return (
     <div
@@ -41,7 +56,27 @@ export function AgentCard({ name, role, goals, modelId, index }: AgentCardProps)
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-xs text-gray-400">Model: {modelId}</p>
+      <p className="mt-3 text-xs text-gray-400">
+        Model: {displayModel}
+        {modelOverride && (
+          <span className="ml-1 text-blue-500">(override)</span>
+        )}
+      </p>
+      <button
+        type="button"
+        onClick={onAdvancedConfig}
+        className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800"
+      >
+        <SlidersHorizontal className="h-3.5 w-3.5" />
+        Advanced Config
+        {hasCustomPrompt && (
+          <span
+            data-testid="custom-prompt-indicator"
+            className="ml-1 inline-block h-2 w-2 rounded-full bg-green-500"
+            aria-label="Custom prompt configured"
+          />
+        )}
+      </button>
     </div>
   );
 }

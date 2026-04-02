@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.db import get_firestore_client
 from app.db.firestore_client import FirestoreSessionClient
@@ -20,6 +20,7 @@ from app.models.events import (
     StreamErrorEvent,
 )
 from app.models.negotiation import NegotiationStateModel
+from app.orchestrator import model_router
 from app.orchestrator.graph import run_negotiation
 from app.orchestrator.state import create_initial_state
 from app.scenarios.registry import ScenarioRegistry
@@ -39,6 +40,18 @@ class StartNegotiationRequest(BaseModel):
     email: str = Field(..., min_length=1)
     scenario_id: str = Field(..., min_length=1)
     active_toggles: list[str] = Field(default_factory=list)
+    custom_prompts: dict[str, str] = Field(default_factory=dict)
+    model_overrides: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_custom_prompt_lengths(self) -> "StartNegotiationRequest":
+        for role, prompt in self.custom_prompts.items():
+            if len(prompt) > 500:
+                raise ValueError(
+                    f"Custom prompt for '{role}' exceeds 500 character limit "
+                    f"({len(prompt)} chars)"
+                )
+        return self
 
 
 class StartNegotiationResponse(BaseModel):
@@ -67,13 +80,38 @@ async def start_negotiation(
             content={"detail": f"Scenario '{body.scenario_id}' not found"},
         )
 
-    # 2. Build hidden context from active toggles
+    # 2. Validate model_overrides against available models
+    if body.model_overrides:
+        available_model_ids: set[str] = set()
+        for sc in registry._scenarios.values():
+            for agent in sc.agents:
+                available_model_ids.add(agent.model_id)
+                if agent.fallback_model_id:
+                    available_model_ids.add(agent.fallback_model_id)
+        # Filter to supported families only
+        available_model_ids = {
+            mid for mid in available_model_ids
+            if (mid.split("-", 1)[0] if "-" in mid else mid) in model_router.MODEL_FAMILIES
+        }
+        for role, mid in body.model_overrides.items():
+            if mid not in available_model_ids:
+                return JSONResponse(
+                    status_code=422,
+                    content={"detail": f"Invalid model_id '{mid}' for role '{role}'. Available models: {sorted(available_model_ids)}"},
+                )
+
+    # 3. Filter custom_prompts and model_overrides to valid agent roles
+    agent_roles = {a.role for a in scenario.agents}
+    filtered_custom_prompts = {k: v for k, v in body.custom_prompts.items() if k in agent_roles}
+    filtered_model_overrides = {k: v for k, v in body.model_overrides.items() if k in agent_roles}
+
+    # 4. Build hidden context from active toggles
     hidden_context: dict = {}
     for toggle in scenario.toggles:
         if toggle.id in body.active_toggles:
             hidden_context[toggle.target_agent_role] = toggle.hidden_context_payload
 
-    # 3. Create session state
+    # 5. Create session state
     session_id = uuid.uuid4().hex
     state = NegotiationStateModel(
         session_id=session_id,
@@ -84,15 +122,17 @@ async def start_negotiation(
         current_speaker=scenario.negotiation_params.turn_order[0],
         active_toggles=body.active_toggles,
         hidden_context=hidden_context,
+        custom_prompts=filtered_custom_prompts,
+        model_overrides=filtered_model_overrides,
     )
 
-    # 4. Persist to Firestore (also stores owner_email for auth)
+    # 6. Persist to Firestore (also stores owner_email for auth)
     doc_data = state.model_dump()
     doc_data["owner_email"] = body.email
     doc_ref = db._collection.document(session_id)
     await doc_ref.set(doc_data)
 
-    # 5. Return session info (tokens deducted after negotiation completes)
+    # 7. Return session info (tokens deducted after negotiation completes)
     waitlist_ref = db._db.collection("waitlist").document(body.email.lower().strip())
     waitlist_doc = await waitlist_ref.get()
     tokens_remaining = waitlist_doc.to_dict().get("token_balance", 100) if waitlist_doc.exists else 100
@@ -264,6 +304,8 @@ async def stream_negotiation(
         scenario_config=scenario_config,
         active_toggles=state.active_toggles,
         hidden_context=state.hidden_context,
+        custom_prompts=state.custom_prompts,
+        model_overrides=state.model_overrides,
     )
 
     # 7. Build the async event stream generator

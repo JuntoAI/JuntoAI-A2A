@@ -34,6 +34,7 @@ import * as api from "@/lib/api";
 vi.mock("@/lib/api", () => ({
   fetchScenarios: vi.fn(),
   fetchScenarioDetail: vi.fn(),
+  fetchAvailableModels: vi.fn(),
   startNegotiation: vi.fn(),
   TokenLimitError: class TokenLimitError extends Error {
     constructor(message: string) {
@@ -114,6 +115,7 @@ describe("Arena Control Panel Page", () => {
     mockSearchParams.delete("scenario");
     vi.mocked(api.fetchScenarios).mockResolvedValue(mockScenarios);
     vi.mocked(api.fetchScenarioDetail).mockResolvedValue(mockDetail);
+    vi.mocked(api.fetchAvailableModels).mockResolvedValue([]);
   });
 
   // Req 1.1: scenarios fetched and rendered on mount
@@ -240,6 +242,8 @@ describe("Arena Control Panel Page", () => {
         "test@example.com",
         "talent_war",
         ["competing_offer"],
+        undefined,
+        undefined,
       );
     });
 
