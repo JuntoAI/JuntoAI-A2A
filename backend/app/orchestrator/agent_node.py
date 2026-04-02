@@ -33,7 +33,7 @@ _OUTPUT_SCHEMA_DESCRIPTIONS: dict[str, str] = {
         {
             "inner_thought": "<string: your private reasoning>",
             "public_message": "<string: what you say publicly>",
-            "proposed_price": "<float: your proposed price>",
+            "proposed_price": "<float: your proposed value>",
             "extra_fields": "<object: optional additional fields>",
         },
         indent=2,
@@ -53,6 +53,19 @@ _OUTPUT_SCHEMA_DESCRIPTIONS: dict[str, str] = {
         indent=2,
     ),
 }
+
+
+def _get_negotiator_schema(value_label: str) -> str:
+    """Return the negotiator JSON schema with a contextual proposed_price description."""
+    return json.dumps(
+        {
+            "inner_thought": "<string: your private reasoning>",
+            "public_message": "<string: what you say publicly>",
+            "proposed_price": f"<float: your proposed {value_label.lower()}>",
+            "extra_fields": "<object: optional additional fields>",
+        },
+        indent=2,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -180,14 +193,16 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
             user_parts.append(f"  [{entry_role}]: {display}")
 
     current_offer = state.get("current_offer", 0.0)
-    user_parts.append(f"\nCurrent offer on the table: {current_offer}")
+    neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
+    value_label = neg_params.get("value_label", "Price")
+    user_parts.append(f"\nCurrent {value_label.lower()} on the table: {current_offer}")
 
     agent_states = state.get("agent_states", {})
     my_state = agent_states.get(role, {})
     last_price = my_state.get("last_proposed_price", 0.0)
     if last_price > 0:
-        user_parts.append(f"Your last proposed price: {last_price}")
-        user_parts.append("You MUST propose a DIFFERENT price this turn.")
+        user_parts.append(f"Your last proposed value: {last_price}")
+        user_parts.append("You MUST propose a DIFFERENT value this turn.")
 
     turn_count = state.get("turn_count", 0)
     max_turns = state.get("max_turns", 15)
@@ -239,7 +254,12 @@ def _build_system_message(agent_config: dict[str, Any], state: NegotiationState)
         parts.append(f"\nAdditional user instructions:\n{custom_prompt}")
 
     # Output schema
-    schema = _OUTPUT_SCHEMA_DESCRIPTIONS.get(agent_type, "")
+    if agent_type == "negotiator":
+        neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
+        value_label = neg_params.get("value_label", "Price")
+        schema = _get_negotiator_schema(value_label)
+    else:
+        schema = _OUTPUT_SCHEMA_DESCRIPTIONS.get(agent_type, "")
     if schema:
         parts.append(f"\nYou MUST respond with valid JSON matching this schema:\n{schema}")
 
@@ -321,15 +341,18 @@ def _build_messages(
     # Final instruction message with current state
     instruction_parts: list[str] = []
 
+    neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
+    value_label = neg_params.get("value_label", "Price")
+
     current_offer = state.get("current_offer", 0.0)
-    instruction_parts.append(f"Current offer on the table: {current_offer}")
+    instruction_parts.append(f"Current {value_label.lower()} on the table: {current_offer}")
 
     agent_states = state.get("agent_states", {})
     my_state = agent_states.get(role, {})
     last_price = my_state.get("last_proposed_price", 0.0)
     if last_price > 0:
-        instruction_parts.append(f"Your last proposed price: {last_price}")
-        instruction_parts.append("You MUST propose a DIFFERENT price this turn.")
+        instruction_parts.append(f"Your last proposed value: {last_price}")
+        instruction_parts.append("You MUST propose a DIFFERENT value this turn.")
 
     turn_count = state.get("turn_count", 0)
     max_turns = state.get("max_turns", 15)
