@@ -16,6 +16,7 @@ export interface SessionState {
   tokenBalance: number;
   lastResetDate: string | null;
   isAuthenticated: boolean;
+  isHydrated: boolean;
 }
 
 export interface SessionContextValue extends SessionState {
@@ -36,6 +37,7 @@ const defaultState: SessionState = {
   tokenBalance: 0,
   lastResetDate: null,
   isAuthenticated: false,
+  isHydrated: false,
 };
 
 // --- Context ---
@@ -59,7 +61,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         tokenBalance: balanceStr !== null ? Number(balanceStr) : 0,
         lastResetDate: lastReset,
         isAuthenticated: true,
+        isHydrated: true,
       });
+    } else {
+      setState((prev) => ({ ...prev, isHydrated: true }));
     }
   }, []);
 
@@ -78,6 +83,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         tokenBalance,
         lastResetDate,
         isAuthenticated: true,
+        isHydrated: true,
       });
     },
     []
