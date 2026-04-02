@@ -1,8 +1,10 @@
 import type { ThoughtEntry, MessageEntry } from "@/lib/glassBoxReducer";
+import { formatValue, type ValueFormat } from "@/lib/valueFormat";
 
 export function buildTranscript(
   thoughts: ThoughtEntry[],
   messages: MessageEntry[],
+  valueFormat: ValueFormat = "currency",
 ): string {
   // Merge and sort by timestamp
   const entries = [
@@ -36,7 +38,7 @@ export function buildTranscript(
     lines.push(e.text);
     if (e.type === "message") {
       const m = e as typeof e & { price?: number; status?: string };
-      if (m.price != null) lines.push(`  → Proposed: $${m.price.toLocaleString()}`);
+      if (m.price != null) lines.push(`  → Proposed: ${formatValue(m.price, valueFormat)}`);
       if (m.status) lines.push(`  → Status: ${m.status}`);
     }
     lines.push("");
@@ -48,8 +50,9 @@ export function buildTranscript(
 export function downloadTranscript(
   thoughts: ThoughtEntry[],
   messages: MessageEntry[],
+  valueFormat: ValueFormat = "currency",
 ): void {
-  const text = buildTranscript(thoughts, messages);
+  const text = buildTranscript(thoughts, messages, valueFormat);
   const blob = new Blob([text], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

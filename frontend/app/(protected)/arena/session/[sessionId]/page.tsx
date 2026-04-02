@@ -93,8 +93,8 @@ export default function GlassBoxPage() {
   }, [stop, dispatch, sessionId, state.currentOffer, state.turnNumber, state.regulatorStatuses]);
 
   const handleDownloadTranscript = useCallback(() => {
-    downloadTranscript(state.thoughts, state.messages);
-  }, [state.thoughts, state.messages]);
+    downloadTranscript(state.thoughts, state.messages, valueFormat);
+  }, [state.thoughts, state.messages, valueFormat]);
 
   // Invalid or missing sessionId
   if (!validSessionId) {
