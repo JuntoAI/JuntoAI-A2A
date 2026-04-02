@@ -107,7 +107,7 @@ def get_model(
         If neither the primary nor the fallback model can be created.
     """
     resolved_project = project or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
-    resolved_location = location or os.environ.get("VERTEX_AI_LOCATION", "us-central1")
+    resolved_location = location or os.environ.get("VERTEX_AI_LOCATION", "europe-west1")
     claude_location = os.environ.get("VERTEX_AI_CLAUDE_LOCATION", "us-east5")
     timeout = float(os.environ.get("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", "60"))
 

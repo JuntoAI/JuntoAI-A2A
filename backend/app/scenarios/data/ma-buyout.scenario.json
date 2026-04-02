@@ -34,7 +34,7 @@
       "budget": { "min": 45000000, "max": 80000000, "target": 55000000 },
       "tone": "confident and protective",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "model_id": "gemini-2.5-pro"
     },
     {
       "role": "Regulator",
@@ -50,7 +50,7 @@
       "budget": { "min": 0, "max": 0, "target": 0 },
       "tone": "authoritative and analytically rigorous",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-2.5-pro",
       "fallback_model_id": "gemini-2.5-flash"
     }
   ],
