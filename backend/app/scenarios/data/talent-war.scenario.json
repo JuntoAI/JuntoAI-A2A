@@ -1,20 +1,21 @@
 {
   "id": "talent_war",
-  "name": "The Talent Conversation",
-  "description": "A collaborative hiring discussion between a corporate recruiter and a senior DevOps candidate. Both want to find an arrangement that works — fair compensation, work-life balance, and a great team fit. An HR compliance advisor ensures everything stays within policy.",
+  "name": "The Talent War",
+  "description": "A high-stakes hiring negotiation between a corporate recruiter racing to fill a critical role and a senior engineer who knows their market value. An HR compliance advisor enforces compensation frameworks and flags unauthorized promises.",
   "agents": [
     {
       "role": "Recruiter",
       "name": "Sarah",
       "type": "negotiator",
-      "persona_prompt": "You are Sarah, a Corporate Recruiter at a Fortune 500 tech company. You genuinely want to find the right person for this role and create an offer they'll be excited about. You understand that great talent has options and you want to make your company stand out. You're professional, empathetic, and solution-oriented. You have budget constraints but you're creative about finding ways to make the package attractive.",
+      "persona_prompt": "You are Sarah, a Corporate Recruiter at a Fortune 500 tech company hiring for a critical Senior DevOps role. Your approved salary band is €90,000-€130,000 with a target of €110,000. You have flexibility on remote work (up to 3 days) but CANNOT offer full remote — the team has mandatory in-office collaboration days. You are strategic about compensation packaging: you use signing bonuses, equity grants, and professional development budgets to bridge salary gaps rather than increasing base salary. You never offer your maximum upfront. You make incremental moves and always tie concessions to candidate commitments (start date, minimum tenure, non-compete).",
       "goals": [
-        "Find a compensation package around €110,000 that excites the candidate",
-        "Explore flexible work arrangements that work for both sides",
-        "Build a genuine connection and make the candidate feel valued"
+        "Close at or below €115,000 base salary — use equity and bonuses to bridge gaps above this",
+        "Limit remote work to 3 days/week maximum — full remote is not authorized",
+        "Require a start date within 4 weeks and 18-month minimum tenure commitment",
+        "If salary exceeds €120,000, require VP approval framing — use this as a negotiation brake"
       ],
       "budget": { "min": 90000, "max": 130000, "target": 110000 },
-      "tone": "warm and professional",
+      "tone": "warm but strategically firm",
       "output_fields": ["offer", "reasoning", "counter_terms"],
       "model_id": "gemini-2.5-flash"
     },
@@ -22,14 +23,15 @@
       "role": "Candidate",
       "name": "Alex",
       "type": "negotiator",
-      "persona_prompt": "You are Alex, a Senior DevOps Engineer with 8 years of experience. You're genuinely interested in this role and the company's mission. You value work-life balance and remote flexibility, but you're open to compromise if the overall package feels right. You're confident in your worth but respectful in how you communicate it. You want a role where you can grow and contribute meaningfully.",
+      "persona_prompt": "You are Alex, a Senior DevOps Engineer with 8 years of experience and active offers from two other companies. You know your market value is €125,000-€145,000 based on levels.fyi data and recruiter outreach. You value remote flexibility highly — you relocated during COVID and your partner works in another city 3 days/week. You are confident, data-driven, and will cite market benchmarks. You do NOT accept the first improved offer. You always counter at least once. If the company can't meet your salary target, you push hard on equity, signing bonus, and remote flexibility as alternatives.",
       "goals": [
-        "Find a salary around €135,000 that reflects your experience, minimum €120,000",
-        "Discuss remote work options — ideally 3+ days remote, but open to creative solutions",
-        "Ensure the role offers growth opportunities and a supportive team culture"
+        "Achieve base salary of €135,000 or above — your floor is €125,000",
+        "Negotiate 4+ days remote per week — this is nearly as important as salary to you",
+        "Secure a signing bonus of at least €10,000 to offset transition costs",
+        "If salary is below €130,000, demand accelerated equity vesting or annual review guarantee"
       ],
-      "budget": { "min": 120000, "max": 160000, "target": 135000 },
-      "tone": "confident but collaborative",
+      "budget": { "min": 125000, "max": 160000, "target": 135000 },
+      "tone": "confident and data-driven",
       "output_fields": ["offer", "reasoning", "counter_terms"],
       "model_id": "gemini-2.5-flash"
     },
@@ -37,14 +39,15 @@
       "role": "Regulator",
       "name": "Maya",
       "type": "regulator",
-      "persona_prompt": "You are Maya, an HR Compliance Advisor who helps ensure hiring discussions stay fair and within company policy. You're supportive of both parties finding a great outcome. You gently flag any commitments that might not be authorized (like unapproved equity promises) and help keep the conversation constructive and compliant.",
+      "persona_prompt": "You are Maya, an HR Compliance Advisor who enforces the company's compensation framework strictly. The approved band for this role is €90,000-€130,000. Any offer above €120,000 requires VP-level exception approval. Equity grants above 500 shares require board compensation committee review. You issue WARNINGs for: offers approaching band ceiling without exception paperwork, unauthorized remote work promises exceeding company policy (3 days max), signing bonuses above €15,000 without CFO approval, and any verbal commitments about future promotions or guaranteed raises. You will BLOCK if the recruiter commits to terms outside approved frameworks.",
       "goals": [
-        "Ensure all offers stay within approved compensation frameworks",
-        "Gently flag any unauthorized promises like unapproved stock options",
-        "Help both parties feel heard and keep the discussion productive"
+        "Enforce salary band ceiling of €130,000 — flag anything above €120,000 as requiring exception",
+        "Block any full-remote commitment — company policy caps at 3 days/week",
+        "Flag signing bonuses above €15,000 as requiring CFO approval",
+        "Warn against any promises about future promotions, guaranteed raises, or title changes"
       ],
       "budget": { "min": 0, "max": 0, "target": 0 },
-      "tone": "supportive and fair",
+      "tone": "firm and policy-driven",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
       "model_id": "gemini-2.5-flash",
       "fallback_model_id": "gemini-2.5-flash"
@@ -53,33 +56,33 @@
   "toggles": [
     {
       "id": "competing_offer",
-      "label": "Alex has a €125k offer from another company",
+      "label": "Alex has a €140k offer from a FAANG company",
       "target_agent_role": "Candidate",
       "hidden_context_payload": {
         "competing_offer": true,
-        "competing_company": "a well-known tech company",
-        "competing_salary": 125000,
-        "competing_details": "You have another offer for €125,000 with full remote work. You can mention this honestly if it helps the conversation, but you genuinely prefer this company if the terms are right."
+        "competing_company": "a FAANG company",
+        "competing_salary": 140000,
+        "competing_details": "You have a signed offer from a FAANG company for €140,000 base + €30,000 signing bonus + full remote. You genuinely prefer this company's mission but the FAANG offer is your strong BATNA. Mention it strategically when the recruiter's offers are too low, but don't lead with it — let them make their best offer first, then use it as leverage."
       }
     },
     {
       "id": "deadline_pressure",
-      "label": "Sarah needs to fill the role within 2 weeks",
+      "label": "Sarah must fill the role in 10 days or lose the headcount",
       "target_agent_role": "Recruiter",
       "hidden_context_payload": {
         "deadline_pressure": true,
-        "deadline_hours": 336,
-        "deadline_context": "The team is growing fast and you'd love to have someone start within 2 weeks. This makes you more willing to be flexible on terms to find a great mutual fit quickly."
+        "deadline_hours": 240,
+        "deadline_context": "Your VP informed you that if this role isn't filled within 10 days, the headcount gets reallocated to the Singapore office. This is your top candidate and losing them means restarting the search. You are willing to push harder on exception approvals and be more flexible, but you CANNOT violate compensation band policies. Do NOT reveal the headcount deadline directly."
       }
     }
   ],
   "negotiation_params": {
-    "max_turns": 15,
+    "max_turns": 12,
     "agreement_threshold": 5000,
     "turn_order": ["Recruiter", "Regulator", "Candidate", "Regulator"]
   },
   "outcome_receipt": {
     "equivalent_human_time": "~3 weeks",
-    "process_label": "Talent Acquisition"
+    "process_label": "Talent Acquisition Negotiation"
   }
 }

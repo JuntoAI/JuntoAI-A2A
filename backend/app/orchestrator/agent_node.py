@@ -184,6 +184,27 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
     if schema:
         parts.append(f"\nYou MUST respond with valid JSON matching this schema:\n{schema}")
 
+    # Negotiation strategy instructions (prevent loops)
+    if agent_type == "negotiator":
+        parts.append(
+            "\nNEGOTIATION RULES — follow these strictly:"
+            "\n- NEVER reveal your maximum or minimum budget to the other party."
+            "\n- NEVER repeat the same price twice in a row. Each proposal must move."
+            "\n- When you make a concession on price, demand something in return (terms, timeline, scope)."
+            "\n- If the other party's offer is far from your target, counter with reasoning and data, not just a different number."
+            "\n- Vary your arguments each turn. Do not restate the same points verbatim."
+            "\n- If you are stuck, introduce a new dimension (payment terms, milestones, guarantees) to create movement."
+            "\n- Your proposed_price MUST be different from your last proposed_price."
+        )
+    elif agent_type == "regulator":
+        parts.append(
+            "\nREGULATOR RULES — follow these strictly:"
+            "\n- Do NOT rubber-stamp agreements. Scrutinize every claim."
+            "\n- If a party says 'we comply' without specifics, issue a WARNING demanding documentation."
+            "\n- Track unresolved items across turns. Do not let parties ignore your previous warnings."
+            "\n- Vary your analysis each turn. Raise new concerns, don't just repeat old ones."
+        )
+
     system_message = "\n".join(parts)
 
     # --- User message ---
@@ -203,7 +224,15 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
             user_parts.append(f"  [{entry_role}]: {display}")
 
     current_offer = state.get("current_offer", 0.0)
-    user_parts.append(f"\nCurrent offer: {current_offer}")
+    user_parts.append(f"\nCurrent offer on the table: {current_offer}")
+
+    # Show this agent's last proposed price (helps prevent repetition)
+    agent_states = state.get("agent_states", {})
+    my_state = agent_states.get(role, {})
+    last_price = my_state.get("last_proposed_price", 0.0)
+    if last_price > 0:
+        user_parts.append(f"Your last proposed price: {last_price}")
+        user_parts.append("You MUST propose a DIFFERENT price this turn.")
 
     turn_count = state.get("turn_count", 0)
     max_turns = state.get("max_turns", 15)

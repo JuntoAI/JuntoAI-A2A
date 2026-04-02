@@ -35,6 +35,17 @@ class NegotiationCompleteEvent(BaseModel):
     final_summary: dict
 
 
+class NegotiationStallEvent(BaseModel):
+    """SSE event when stall detection triggers early termination."""
+
+    event_type: Literal["negotiation_stall"]
+    session_id: str
+    stall_type: str
+    confidence: float
+    advice: list[str]
+    details: dict
+
+
 class StreamErrorEvent(BaseModel):
     """SSE event for unexpected errors during streaming."""
 

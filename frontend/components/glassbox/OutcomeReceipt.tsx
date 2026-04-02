@@ -89,16 +89,16 @@ export default function OutcomeReceipt({
 
           {dealStatus === "Blocked" && (
             <div className="space-y-3">
-              {finalSummary.blocked_by && (
+              {finalSummary.blocked_by ? (
                 <p className="text-sm font-semibold text-yellow-900">
                   Blocked by: {String(finalSummary.blocked_by)}
                 </p>
-              )}
-              {finalSummary.reason && (
+              ) : null}
+              {finalSummary.reason ? (
                 <p className="text-sm text-gray-800 leading-relaxed">
                   {String(finalSummary.reason)}
                 </p>
-              )}
+              ) : null}
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                 {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
                   <span>Last Offer: ${Number(finalSummary.current_offer).toLocaleString()}</span>

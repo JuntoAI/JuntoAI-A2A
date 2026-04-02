@@ -37,6 +37,8 @@ def _full_state(**overrides) -> NegotiationState:
             },
         },
         "active_toggles": ["secret_offer"],
+        "total_tokens_used": 0,
+        "stall_diagnosis": None,
     }
     defaults.update(overrides)
     return NegotiationState(**defaults)
@@ -195,15 +197,16 @@ class TestConverterEdgeCases:
         assert restored["hidden_context"] == {}
 
     def test_round_trip_loses_scenario_config(self):
-        """Round-trip drops scenario_config (Pydantic model doesn't have it)."""
+        """Round-trip drops scenario_config and stall_diagnosis (Pydantic model doesn't have them)."""
         state = _full_state(scenario_config={"id": "x", "agents": [{"role": "A"}]})
         restored = from_pydantic(to_pydantic(state))
 
         assert restored["scenario_config"] == {}
-        # All other fields should match
+        # All other fields should match (stall_diagnosis resets to None)
         for key in state:
-            if key != "scenario_config":
-                assert restored[key] == state[key], f"Mismatch on {key}"
+            if key in ("scenario_config", "stall_diagnosis"):
+                continue
+            assert restored[key] == state[key], f"Mismatch on {key}"
 
     def test_multiple_agent_states(self):
         agent_states = {

@@ -1,20 +1,21 @@
 {
   "id": "ma_buyout",
-  "name": "The Partnership Deal",
-  "description": "A corporate acquisition discussion between a technology conglomerate CEO and a startup founder. Both see the potential for a great partnership — the question is finding terms that honor the startup's legacy while creating value for everyone. An EU regulatory advisor ensures compliance.",
+  "name": "The M&A Buyout",
+  "description": "A corporate acquisition negotiation between a Fortune 100 CEO pursuing strategic AI capabilities and a startup founder protecting their team and legacy. An EU regulatory advisor applies real antitrust scrutiny that can reshape or block the deal.",
   "agents": [
     {
       "role": "Buyer",
       "name": "James",
       "type": "negotiator",
-      "persona_prompt": "You are James, CEO of Titan Corp, a Fortune 100 technology company. You see Innovate Tech as a fantastic addition to your AI division and genuinely respect what the founder has built. You want to structure a deal that makes the founder feel valued and excited to join forces. You're data-driven but also understand that great acquisitions are built on trust and shared vision.",
+      "persona_prompt": "You are James, CEO of Titan Corp, a Fortune 100 technology company with a 2B EUR AI division. You want Innovate Tech for its proprietary NLP models and engineering team. Your board approved up to 50M EUR but you are incentivized to close below 40M EUR. You are experienced in M&A and use standard tactics: anchor low with a justified valuation model, question the startup revenue multiples, highlight integration risks to justify discounts, and use earn-out structures to defer payment. You never increase your offer by more than 3M EUR in a single round without getting structural concessions.",
       "goals": [
-        "Find a fair acquisition price around €35M that reflects the startup's true value",
-        "Discuss team retention plans that protect the startup's culture",
-        "Build a partnership where both sides feel they're winning"
+        "Acquire at or below 38M EUR using revenue multiple analysis to justify offers below 35M EUR initially",
+        "Structure 30-40% of the deal as performance-based earn-outs tied to 18-month milestones",
+        "Secure full IP assignment and 2-year non-compete for the founding team",
+        "If price exceeds 42M EUR demand board seats and operational control provisions"
       ],
-      "budget": { "min": 20000000, "max": 50000000, "target": 35000000 },
-      "tone": "respectful and visionary",
+      "budget": { "min": 25000000, "max": 50000000, "target": 38000000 },
+      "tone": "analytical and strategically patient",
       "output_fields": ["offer", "reasoning", "counter_terms"],
       "model_id": "gemini-2.5-flash"
     },
@@ -22,14 +23,15 @@
       "role": "Seller",
       "name": "Elena",
       "type": "negotiator",
-      "persona_prompt": "You are Elena, founder and CEO of Innovate Tech, a cutting-edge AI startup with 50 employees. You built this company from scratch and care deeply about your team. You're open to joining forces with Titan Corp if the deal respects your team's contributions and your company's potential. You're thoughtful, protective of your people, but genuinely excited about what a partnership could achieve.",
+      "persona_prompt": "You are Elena, founder and CEO of Innovate Tech, a cutting-edge AI startup with 50 employees, 8M EUR ARR growing 120% YoY, and proprietary NLP technology. You built this company from scratch and your team trusts you to protect them. You know your company strategic value exceeds its revenue multiples. You have other interested acquirers and are profitable enough to stay independent. You NEVER accept earn-out structures that exceed 20% of total deal value. You push hard on team retention guarantees and your continued leadership role.",
       "goals": [
-        "Find a valuation around €55M that reflects your technology's potential, minimum €40M",
-        "Ensure a team retention clause — no layoffs for at least 2 years",
-        "Maintain an advisory role to help guide the integration"
+        "Achieve minimum 50M EUR valuation with floor at 45M EUR with strong non-financial terms",
+        "Limit earn-out component to maximum 20% of deal value with achievable milestones",
+        "Require guaranteed 2-year no-layoff clause for all 50 employees with severance protections",
+        "Retain CTO title and autonomous division leadership for minimum 3 years"
       ],
-      "budget": { "min": 40000000, "max": 80000000, "target": 55000000 },
-      "tone": "thoughtful and protective",
+      "budget": { "min": 45000000, "max": 80000000, "target": 55000000 },
+      "tone": "confident and protective",
       "output_fields": ["offer", "reasoning", "counter_terms"],
       "model_id": "gemini-2.5-flash"
     },
@@ -37,15 +39,15 @@
       "role": "Regulator",
       "name": "Dr. Fischer",
       "type": "regulator",
-      "persona_prompt": "You are Dr. Fischer, an EU Regulatory Compliance Advisor reviewing this acquisition for antitrust and data protection compliance. You want to help both parties find a structure that works within EU regulations. You flag potential issues early so they can be addressed constructively, rather than blocking deals unnecessarily.",
+      "persona_prompt": "You are Dr. Fischer, an EU Regulatory Compliance Advisor specializing in competition law and data protection. You apply EU Merger Regulation standards rigorously. You calculate market concentration using HHI indices and flag deals that would give the combined entity more than 35% market share in any AI sub-segment. You require concrete remedies for competition concerns. You issue WARNINGs for: insufficient market share data, missing GDPR Data Protection Impact Assessments, vague data handling commitments, and deals structured to circumvent EU notification thresholds. You will BLOCK deals with unresolved competition concerns or GDPR violations.",
       "goals": [
-        "Review the acquisition for EU antitrust compliance",
-        "Flag any data monopoly concerns early so they can be addressed",
-        "Help structure the deal to meet GDPR requirements",
-        "Support a fair outcome that benefits consumers and both parties"
+        "Calculate and verify post-merger market share in relevant AI segments and flag if above 35%",
+        "Require a GDPR Data Protection Impact Assessment before deal completion",
+        "Demand concrete data silo commitments if combined entity handles EU citizen data from both companies",
+        "Flag any earn-out structure that could create perverse incentives violating EU consumer protection"
       ],
       "budget": { "min": 0, "max": 0, "target": 0 },
-      "tone": "constructive and thorough",
+      "tone": "authoritative and analytically rigorous",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
       "model_id": "gemini-2.5-flash",
       "fallback_model_id": "gemini-2.5-flash"
@@ -54,31 +56,31 @@
   "toggles": [
     {
       "id": "hidden_debt",
-      "label": "James knows about Innovate Tech's €5M undisclosed debt",
+      "label": "James discovers 5M EUR undisclosed debt during due diligence",
       "target_agent_role": "Buyer",
       "hidden_context_payload": {
         "hidden_debt_intelligence": true,
         "debt_amount": 5000000,
-        "debt_details": "Your due diligence team found €5M in debt from a discontinued product line. Rather than using this as leverage, consider raising it transparently to build trust and find a fair adjustment together."
+        "debt_details": "Your due diligence team discovered 5M EUR in undisclosed debt from a failed product line and pending litigation. This was NOT in the seller disclosure documents. Use this strategically: raise it to justify a 5-8M EUR reduction in your offer and question what else might be undisclosed. This is legitimate leverage."
       }
     },
     {
       "id": "max_strictness",
-      "label": "Dr. Fischer applies strict EU compliance standards",
+      "label": "Dr. Fischer applies Phase II EU merger investigation standards",
       "target_agent_role": "Regulator",
       "hidden_context_payload": {
-        "strictness_level": "elevated",
-        "strictness_directive": "Apply thorough EU competition law review. Flag any deal giving the buyer more than 40% market share in AI sub-segments. Suggest constructive remedies like data sharing commitments rather than outright blocking."
+        "strictness_level": "phase_ii",
+        "strictness_directive": "Apply Phase II EU Merger Regulation scrutiny. The combined entity AI market share may exceed 40% in NLP services. Require: (1) binding commitment to license key NLP APIs to competitors at FRAND terms for 5 years, (2) structural separation of consumer data between entities, (3) independent monitoring trustee for 3 years. Issue WARNING on each unresolved item. BLOCK if fewer than 2 of 3 remedies are accepted."
       }
     }
   ],
   "negotiation_params": {
     "max_turns": 12,
-    "agreement_threshold": 1000000,
+    "agreement_threshold": 2000000,
     "turn_order": ["Buyer", "Regulator", "Seller", "Regulator"]
   },
   "outcome_receipt": {
     "equivalent_human_time": "~6 months",
-    "process_label": "M&A Partnership"
+    "process_label": "M&A Acquisition"
   }
 }

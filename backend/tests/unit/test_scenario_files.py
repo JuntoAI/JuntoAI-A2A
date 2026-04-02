@@ -65,7 +65,7 @@ class TestTalentWarScenario:
         agent = _get_agent(scenario, "Candidate")
         assert agent.name == "Alex"
         assert agent.type == "negotiator"
-        assert agent.budget.min == 120000
+        assert agent.budget.min == 125000
 
     def test_regulator_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Regulator")
@@ -104,7 +104,7 @@ class TestMABuyoutScenario:
         agent = _get_agent(scenario, "Seller")
         assert agent.name == "Elena"
         assert agent.type == "negotiator"
-        assert agent.budget.min == 40_000_000
+        assert agent.budget.min == 45_000_000
 
     def test_regulator_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Regulator")
@@ -143,7 +143,7 @@ class TestB2BSalesScenario:
         agent = _get_agent(scenario, "Buyer")
         assert agent.name == "Priya"
         assert agent.type == "negotiator"
-        assert agent.budget.max == 70_000
+        assert agent.budget.max == 72_000
 
     def test_regulator_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Regulator")

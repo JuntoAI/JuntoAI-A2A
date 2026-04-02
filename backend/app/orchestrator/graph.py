@@ -16,6 +16,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from app.orchestrator.agent_node import create_agent_node
+from app.orchestrator.stall_detector import detect_stall
 from app.orchestrator.state import NegotiationState
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ def _dispatcher(state: NegotiationState) -> dict[str, Any]:
     * If ``deal_status`` is already terminal → return ``{}`` (no changes).
     * If ``turn_count >= max_turns`` → set ``deal_status`` to ``"Failed"``.
     * If all negotiators have converged → set ``deal_status`` to ``"Agreed"``.
+    * If stall detected → set ``deal_status`` to ``"Failed"`` with stall info.
     * Otherwise → return ``{}`` (routing handled by ``_route_dispatcher``).
     """
     if state["deal_status"] != "Negotiating":
@@ -85,6 +87,20 @@ def _dispatcher(state: NegotiationState) -> dict[str, Any]:
 
     if _check_agreement(state):
         return {"deal_status": "Agreed"}
+
+    # Stall detection — catch loops before max_turns
+    diagnosis = detect_stall(state)
+    if diagnosis.is_stalled:
+        logger.warning(
+            "Stall detected in session %s: %s (confidence=%.2f)",
+            state.get("session_id", "?"),
+            diagnosis.stall_type,
+            diagnosis.confidence,
+        )
+        return {
+            "deal_status": "Failed",
+            "stall_diagnosis": diagnosis.to_dict(),
+        }
 
     return {}
 

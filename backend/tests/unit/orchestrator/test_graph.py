@@ -55,6 +55,8 @@ def _make_state(
         turn_order_index=0,
         agent_states=agent_states or {},
         active_toggles=[],
+        total_tokens_used=0,
+        stall_diagnosis=None,
     )
 
 

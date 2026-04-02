@@ -33,8 +33,8 @@ def to_pydantic(state: NegotiationState) -> NegotiationStateModel:
 def from_pydantic(model: NegotiationStateModel) -> NegotiationState:
     """Convert a Pydantic NegotiationStateModel back to a LangGraph TypedDict.
 
-    ``scenario_config`` is set to an empty dict because the Pydantic model
-    does not carry it.
+    ``scenario_config`` and ``stall_diagnosis`` are set to defaults because
+    the Pydantic model does not carry them.
     """
     return NegotiationState(
         session_id=model.session_id,
@@ -54,4 +54,5 @@ def from_pydantic(model: NegotiationStateModel) -> NegotiationState:
         agent_states=model.agent_states,
         active_toggles=model.active_toggles,
         total_tokens_used=model.total_tokens_used,
+        stall_diagnosis=None,
     )

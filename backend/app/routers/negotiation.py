@@ -16,6 +16,7 @@ from app.models.events import (
     AgentMessageEvent,
     AgentThoughtEvent,
     NegotiationCompleteEvent,
+    NegotiationStallEvent,
     StreamErrorEvent,
 )
 from app.models.negotiation import NegotiationStateModel
@@ -183,6 +184,20 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
             elif deal_status == "Failed":
                 max_turns = state.get("max_turns", 0)
                 summary["reason"] = f"Reached maximum of {max_turns} turns without agreement"
+
+                # Check for stall diagnosis
+                stall = state.get("stall_diagnosis")
+                if stall and isinstance(stall, dict):
+                    summary["reason"] = f"Negotiation stalled: {stall.get('stall_type', 'unknown pattern')}"
+                    summary["stall_diagnosis"] = stall
+                    events.append(NegotiationStallEvent(
+                        event_type="negotiation_stall",
+                        session_id=session_id,
+                        stall_type=stall.get("stall_type", ""),
+                        confidence=stall.get("confidence", 0.0),
+                        advice=stall.get("advice", []),
+                        details=stall.get("details", {}),
+                    ))
 
             events.append(NegotiationCompleteEvent(
                 event_type="negotiation_complete",
