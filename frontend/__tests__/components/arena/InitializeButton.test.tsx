@@ -10,10 +10,10 @@ describe("InitializeButton", () => {
   };
 
   // Req 4.1: renders label
-  it("renders 'Initialize A2A Protocol' label", () => {
+  it("renders 'Start Negotiation' label", () => {
     render(<InitializeButton {...defaultProps} />);
     expect(
-      screen.getByRole("button", { name: "Initialize A2A Protocol" }),
+      screen.getByRole("button", { name: "Start Negotiation" }),
     ).toBeInTheDocument();
   });
 
@@ -32,7 +32,7 @@ describe("InitializeButton", () => {
   // Req 4.8: loading spinner
   it("shows loading text when isLoading is true", () => {
     render(<InitializeButton {...defaultProps} isLoading={true} />);
-    expect(screen.getByText("Initializing…")).toBeInTheDocument();
+    expect(screen.getByText("Starting…")).toBeInTheDocument();
   });
 
   it("is disabled when isLoading is true", () => {

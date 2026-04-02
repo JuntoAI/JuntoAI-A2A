@@ -231,7 +231,7 @@ describe("Arena Control Panel Page", () => {
     // Click Initialize
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: /Initialize A2A Protocol/i }),
+        screen.getByRole("button", { name: /Start Negotiation/i }),
       );
     });
 
@@ -274,7 +274,7 @@ describe("Arena Control Panel Page", () => {
 
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: /Initialize A2A Protocol/i }),
+        screen.getByRole("button", { name: /Start Negotiation/i }),
       );
     });
 
@@ -311,7 +311,7 @@ describe("Arena Control Panel Page", () => {
 
     await act(async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: /Initialize A2A Protocol/i }),
+        screen.getByRole("button", { name: /Start Negotiation/i }),
       );
     });
 
@@ -345,7 +345,7 @@ describe("Arena Control Panel Page", () => {
     });
 
     const button = screen.getByRole("button", {
-      name: /Initialize A2A Protocol/i,
+      name: /Start Negotiation/i,
     });
     expect(button).toBeDisabled();
   });

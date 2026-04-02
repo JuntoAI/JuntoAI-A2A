@@ -158,6 +158,11 @@ function ArenaPageContent() {
 
       {scenarioDetail && (
         <>
+          {/* Scenario Description */}
+          <p className="text-sm leading-relaxed text-gray-600">
+            {scenarioDetail.description}
+          </p>
+
           {/* Agent Cards */}
           <section>
             <h2 className="mb-4 text-lg font-semibold text-gray-800">
@@ -177,12 +182,15 @@ function ArenaPageContent() {
             </div>
           </section>
 
-          {/* Information Toggles */}
+          {/* Hidden Variables */}
           {scenarioDetail.toggles.length > 0 && (
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-gray-800">
-                Information Toggles
+              <h2 className="mb-1 text-lg font-semibold text-gray-800">
+                Hidden Variables
               </h2>
+              <p className="mb-3 text-sm text-gray-500">
+                Give agents secret context that changes how they negotiate. These are optional — try running with and without to see how outcomes differ.
+              </p>
               <div className="flex flex-wrap gap-3">
                 {scenarioDetail.toggles.map((toggle) => (
                   <InformationToggle

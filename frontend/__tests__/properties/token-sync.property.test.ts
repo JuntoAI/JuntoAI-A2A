@@ -123,7 +123,7 @@ describe("Property 12: Insufficient tokens disables action", () => {
 
           // Button must be disabled
           const button = screen.getByRole("button", {
-            name: /initialize a2a protocol/i,
+            name: /start negotiation/i,
           });
           expect(button).toBeDisabled();
 
