@@ -36,8 +36,20 @@ variable "frontend_sa_email" {
   type        = string
 }
 
-variable "trigger_enabled" {
-  description = "Whether the Cloud Build trigger is active. Set to true after Phase B validation."
+variable "backend_trigger_enabled" {
+  description = "Whether the backend Cloud Build trigger is active."
+  type        = bool
+  default     = true
+}
+
+variable "frontend_trigger_enabled" {
+  description = "Whether the frontend Cloud Build trigger is active."
+  type        = bool
+  default     = true
+}
+
+variable "fullstack_trigger_enabled" {
+  description = "Whether the fullstack Cloud Build trigger is active. Disable when using individual triggers."
   type        = bool
   default     = false
 }

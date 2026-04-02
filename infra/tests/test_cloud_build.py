@@ -96,7 +96,7 @@ class TestCloudBuildTriggers:
 
     def test_backend_trigger_included_files(self):
         trigger = self._find_trigger("backend")
-        assert trigger["included_files"] == ["backend/**"]
+        assert trigger["included_files"] == ["backend/**", "cloudbuild-backend.yaml"]
 
     def test_backend_trigger_has_github_config(self):
         trigger = self._find_trigger("backend")
@@ -116,7 +116,7 @@ class TestCloudBuildTriggers:
 
     def test_frontend_trigger_included_files(self):
         trigger = self._find_trigger("frontend")
-        assert trigger["included_files"] == ["frontend/**"]
+        assert trigger["included_files"] == ["frontend/**", "cloudbuild-frontend.yaml"]
 
     def test_frontend_trigger_has_github_config(self):
         trigger = self._find_trigger("frontend")
@@ -187,9 +187,19 @@ class TestCloudBuildVariables:
                 return v[name]
         return None
 
-    def test_trigger_enabled_defaults_false(self):
-        var = self._find_var("trigger_enabled")
-        assert var is not None, "trigger_enabled variable must exist"
+    def test_backend_trigger_enabled_defaults_true(self):
+        var = self._find_var("backend_trigger_enabled")
+        assert var is not None, "backend_trigger_enabled variable must exist"
+        assert var["default"] is True
+
+    def test_frontend_trigger_enabled_defaults_true(self):
+        var = self._find_var("frontend_trigger_enabled")
+        assert var is not None, "frontend_trigger_enabled variable must exist"
+        assert var["default"] is True
+
+    def test_fullstack_trigger_enabled_defaults_false(self):
+        var = self._find_var("fullstack_trigger_enabled")
+        assert var is not None, "fullstack_trigger_enabled variable must exist"
         assert var["default"] is False
 
     def test_repository_id_default(self):

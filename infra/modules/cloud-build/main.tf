@@ -43,7 +43,7 @@ resource "google_project_iam_member" "cloudbuild_log_writer" {
 resource "google_cloudbuild_trigger" "backend" {
   name     = "juntoai-cicd-backend"
   project  = var.gcp_project_id
-  disabled = var.trigger_enabled ? false : true
+  disabled = !var.backend_trigger_enabled
 
   github {
     owner = var.github_owner
@@ -53,7 +53,7 @@ resource "google_cloudbuild_trigger" "backend" {
     }
   }
 
-  included_files = ["backend/**"]
+  included_files = ["backend/**", "cloudbuild-backend.yaml"]
   filename       = "cloudbuild-backend.yaml"
 
   substitutions = {
@@ -71,7 +71,7 @@ resource "google_cloudbuild_trigger" "backend" {
 resource "google_cloudbuild_trigger" "frontend" {
   name     = "juntoai-cicd-frontend"
   project  = var.gcp_project_id
-  disabled = var.trigger_enabled ? false : true
+  disabled = !var.frontend_trigger_enabled
 
   github {
     owner = var.github_owner
@@ -81,7 +81,7 @@ resource "google_cloudbuild_trigger" "frontend" {
     }
   }
 
-  included_files = ["frontend/**"]
+  included_files = ["frontend/**", "cloudbuild-frontend.yaml"]
   filename       = "cloudbuild-frontend.yaml"
 
   substitutions = {
@@ -101,7 +101,7 @@ resource "google_cloudbuild_trigger" "frontend" {
 resource "google_cloudbuild_trigger" "fullstack" {
   name     = "juntoai-cicd-fullstack"
   project  = var.gcp_project_id
-  disabled = var.trigger_enabled ? false : true
+  disabled = !var.fullstack_trigger_enabled
 
   github {
     owner = var.github_owner
