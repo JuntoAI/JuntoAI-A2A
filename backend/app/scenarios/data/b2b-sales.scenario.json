@@ -31,7 +31,7 @@
       "budget": { "min": 50000, "max": 70000, "target": 65000 },
       "tone": "transparent and analytical",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "claude-sonnet-4"
+      "model_id": "gemini-2.5-flash"
     },
     {
       "role": "Regulator",
@@ -47,7 +47,7 @@
       "budget": { "min": 0, "max": 0, "target": 0 },
       "tone": "helpful and thorough",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
-      "model_id": "claude-sonnet-4",
+      "model_id": "gemini-2.5-flash",
       "fallback_model_id": "gemini-2.5-flash"
     }
   ],
