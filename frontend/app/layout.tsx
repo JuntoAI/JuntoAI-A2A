@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import Providers from "@/components/Providers";
 import Footer from "@/components/Footer";
+import CookieBanner from "@/components/CookieBanner";
 import "./globals.css";
 
 const GA_ID = "G-ZW81C8NCRY";
@@ -91,6 +92,9 @@ export default function RootLayout({
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
+            gtag('consent', 'default', {
+              analytics_storage: localStorage.getItem('cookieConsent') === 'accepted' ? 'granted' : 'denied'
+            });
             gtag('js', new Date());
             gtag('config', '${GA_ID}');
           `}
@@ -100,6 +104,7 @@ export default function RootLayout({
         <Providers>
           <div className="flex-1">{children}</div>
           <Footer />
+          <CookieBanner />
         </Providers>
       </body>
     </html>
