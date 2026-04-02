@@ -76,6 +76,17 @@ class NegotiationParams(BaseModel):
         description="Multiplier to convert the smaller-unit agent's price "
         "to the common unit. E.g. for hourly→total over 480 hours, set 480.",
     )
+    value_label: str = Field(
+        default="Price",
+        description="Display label for the negotiated value in the UI. "
+        "E.g. 'Price (€)', 'Curfew Time', 'Belief Score'.",
+    )
+    value_format: Literal["currency", "time_from_22", "percent", "number"] = Field(
+        default="currency",
+        description="How to format the proposed_price in the UI. "
+        "'currency' → $X, 'time_from_22' → converts minutes-from-10PM to HH:MM, "
+        "'percent' → X%, 'number' → plain number.",
+    )
 
 
 class OutcomeReceipt(BaseModel):

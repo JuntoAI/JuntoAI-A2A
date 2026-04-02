@@ -80,7 +80,8 @@
   "negotiation_params": {
     "max_turns": 10,
     "agreement_threshold": 500000,
-    "turn_order": ["Founder", "Regulator", "Investor", "Regulator"]
+    "turn_order": ["Founder", "Regulator", "Investor", "Regulator"],
+    "value_label": "Valuation (€)"
   },
   "outcome_receipt": {
     "equivalent_human_time": "~2 months",

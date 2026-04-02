@@ -64,7 +64,8 @@
     "agreement_threshold": 2000,
     "turn_order": ["Client", "Freelancer"],
     "price_unit": "total",
-    "normalization_factor": 480
+    "normalization_factor": 480,
+    "value_label": "Rate (€/hr)"
   },
   "outcome_receipt": {
     "equivalent_human_time": "~3 days",

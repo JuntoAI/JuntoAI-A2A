@@ -1,11 +1,15 @@
 "use client";
 
+import { formatValue, type ValueFormat } from "@/lib/valueFormat";
+
 export interface MetricsDashboardProps {
   currentOffer: number;
   regulatorStatuses: Record<string, "CLEAR" | "WARNING" | "BLOCKED">;
   turnNumber: number;
   maxTurns: number;
   tokenBalance: number;
+  valueLabel?: string;
+  valueFormat?: ValueFormat;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -20,6 +24,8 @@ export default function MetricsDashboard({
   turnNumber,
   maxTurns,
   tokenBalance,
+  valueLabel = "Current Offer",
+  valueFormat = "currency",
 }: MetricsDashboardProps) {
   const regulatorEntries = Object.entries(regulatorStatuses);
 
@@ -32,13 +38,13 @@ export default function MetricsDashboard({
         {/* Current Offer */}
         <div className="flex-1 min-w-[140px] rounded-lg bg-white p-3 shadow-sm">
           <p className="text-xs text-gray-500 uppercase tracking-wide">
-            Current Offer
+            {valueLabel}
           </p>
           <p
             className="text-2xl font-bold text-gray-900 transition-all duration-300"
             data-testid="current-offer"
           >
-            ${currentOffer.toLocaleString()}
+            {formatValue(currentOffer, valueFormat)}
           </p>
         </div>
 

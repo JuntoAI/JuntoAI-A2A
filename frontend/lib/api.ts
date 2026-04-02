@@ -41,6 +41,8 @@ export interface ArenaScenario {
   toggles: ToggleDefinition[];
   negotiation_params: {
     max_turns: number;
+    value_label?: string;
+    value_format?: "currency" | "time_from_22" | "percent" | "number";
   };
   outcome_receipt: {
     equivalent_human_time: string;

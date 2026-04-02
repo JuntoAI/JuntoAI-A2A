@@ -55,6 +55,10 @@ steps:
       - ${_BACKEND_SA_EMAIL}
       - --env-vars-file
       - /workspace/backend-env.yaml
+      - --timeout
+      - "300"
+      - --min-instances
+      - "1"
       - --quiet
     waitFor: ["build-backend", "write-backend-env"]
 

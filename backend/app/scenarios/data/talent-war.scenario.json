@@ -80,7 +80,8 @@
   "negotiation_params": {
     "max_turns": 12,
     "agreement_threshold": 5000,
-    "turn_order": ["Recruiter", "Regulator", "Candidate", "Regulator"]
+    "turn_order": ["Recruiter", "Regulator", "Candidate", "Regulator"],
+    "value_label": "Salary (€)"
   },
   "outcome_receipt": {
     "equivalent_human_time": "~3 weeks",

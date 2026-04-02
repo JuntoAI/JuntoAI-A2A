@@ -78,7 +78,9 @@
   "negotiation_params": {
     "max_turns": 8,
     "agreement_threshold": 30,
-    "turn_order": ["Teenager", "Regulator", "Parent", "Regulator"]
+    "turn_order": ["Teenager", "Regulator", "Parent", "Regulator"],
+    "value_label": "Curfew Time",
+    "value_format": "time_from_22"
   },
   "outcome_receipt": {
     "equivalent_human_time": "~45 minutes",

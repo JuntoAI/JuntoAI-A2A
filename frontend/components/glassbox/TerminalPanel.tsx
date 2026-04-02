@@ -40,10 +40,10 @@ export default function TerminalPanel({
       ))}
 
       {isConnected && dealStatus === "Negotiating" && (
-        <span
-          className="inline-block w-2 h-4 bg-green-400 animate-pulse"
-          data-testid="blinking-cursor"
-        />
+        <div className="flex items-center gap-2 mt-2">
+          <div className="h-3 w-3 animate-spin rounded-full border-2 border-green-400/30 border-t-green-400" />
+          <span className="text-green-400/70 text-xs">Agent is thinking…</span>
+        </div>
       )}
 
       <div ref={bottomRef} />

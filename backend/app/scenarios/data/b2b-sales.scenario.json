@@ -79,7 +79,8 @@
   "negotiation_params": {
     "max_turns": 10,
     "agreement_threshold": 3000,
-    "turn_order": ["Seller", "Regulator", "Buyer", "Regulator"]
+    "turn_order": ["Seller", "Regulator", "Buyer", "Regulator"],
+    "value_label": "Price (€)"
   },
   "outcome_receipt": {
     "equivalent_human_time": "~2 weeks",

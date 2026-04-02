@@ -1,12 +1,14 @@
 "use client";
 
-import { useReducer, useMemo, useCallback } from "react";
+import { useReducer, useMemo, useCallback, useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { glassBoxReducer, createInitialState } from "@/lib/glassBoxReducer";
 import { useSSE } from "@/hooks/useSSE";
 import { useSession } from "@/context/SessionContext";
 import { downloadTranscript } from "@/lib/transcript";
+import { fetchScenarioDetail } from "@/lib/api";
+import type { ValueFormat } from "@/lib/valueFormat";
 import MetricsDashboard from "@/components/glassbox/MetricsDashboard";
 import TerminalPanel from "@/components/glassbox/TerminalPanel";
 import ChatPanel from "@/components/glassbox/ChatPanel";
@@ -28,6 +30,24 @@ export default function GlassBoxPage() {
   const maxTurns = Number(searchParams.get("max_turns")) || 10;
   const scenarioId = searchParams.get("scenario");
   const validSessionId = isValidSessionId(sessionId);
+
+  // Value display config from scenario
+  const [valueLabel, setValueLabel] = useState("Current Offer");
+  const [valueFormat, setValueFormat] = useState<ValueFormat>("currency");
+
+  useEffect(() => {
+    if (!scenarioId) return;
+    let cancelled = false;
+    fetchScenarioDetail(scenarioId)
+      .then((detail) => {
+        if (cancelled) return;
+        const params = detail.negotiation_params;
+        if (params.value_label) setValueLabel(params.value_label);
+        if (params.value_format) setValueFormat(params.value_format);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [scenarioId]);
 
   const [state, dispatch] = useReducer(
     glassBoxReducer,
@@ -131,6 +151,8 @@ export default function GlassBoxPage() {
         turnNumber={state.turnNumber}
         maxTurns={state.maxTurns}
         tokenBalance={tokenBalance}
+        valueLabel={valueLabel}
+        valueFormat={valueFormat}
       />
 
       {/* Terminal + Chat: responsive side-by-side (lg) or stacked */}
@@ -152,6 +174,7 @@ export default function GlassBoxPage() {
           <ChatPanel
             messages={state.messages}
             isConnected={state.isConnected}
+            valueFormat={valueFormat}
           />
         </div>
       </div>

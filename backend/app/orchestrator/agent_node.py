@@ -97,7 +97,9 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
             parsed = _parse_output(response_text, agent_type, agent_name)
         except AgentOutputParseError:
             # Retry with explicit JSON instruction
-            messages.append(AIMessage(content=response_text))
+            # Only include the failed response if it's non-empty (Gemini rejects empty parts)
+            if response_text.strip():
+                messages.append(AIMessage(content=response_text))
             messages.append(HumanMessage(content="Your previous response was not valid JSON. Please respond with ONLY valid JSON matching the schema."))
             response = model.invoke(messages)
             response_text = response.content if isinstance(response.content, str) else str(response.content)

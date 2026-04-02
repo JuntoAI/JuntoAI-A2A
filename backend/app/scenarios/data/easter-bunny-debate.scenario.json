@@ -78,7 +78,9 @@
   "negotiation_params": {
     "max_turns": 8,
     "agreement_threshold": 15,
-    "turn_order": ["Skeptic", "Regulator", "EasterBunny", "Regulator"]
+    "turn_order": ["Skeptic", "Regulator", "EasterBunny", "Regulator"],
+    "value_label": "Belief Score",
+    "value_format": "percent"
   },
   "outcome_receipt": {
     "equivalent_human_time": "~1 heated family dinner",

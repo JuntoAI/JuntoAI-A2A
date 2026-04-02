@@ -135,7 +135,8 @@
   "negotiation_params": {
     "max_turns": 16,
     "agreement_threshold": 2000000,
-    "turn_order": ["Developer", "CityPlanner", "CommunityRep", "EnvOfficer", "BankDirector", "CityPlanner", "EnvOfficer"]
+    "turn_order": ["Developer", "CityPlanner", "CommunityRep", "EnvOfficer", "BankDirector", "CityPlanner", "EnvOfficer"],
+    "value_label": "Project Budget (€)"
   },
   "outcome_receipt": {
     "equivalent_human_time": "~18 months",
