@@ -28,7 +28,7 @@ export default function Footer() {
             </svg>
           </a>
           <a
-            href="https://github.com/Juntoai"
+            href="https://github.com/juntoai"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="GitHub"

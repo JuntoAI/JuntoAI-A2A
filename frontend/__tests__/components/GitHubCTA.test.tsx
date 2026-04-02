@@ -31,7 +31,7 @@ describe("Property 6: GitHub CTA link accessibility", () => {
         const { unmount } = render(createElement(Home));
         const link = screen.getByRole("link", { name: /contribute to juntoai on github/i });
 
-        expect(link).toHaveAttribute("href", "https://github.com/Juntoai");
+        expect(link).toHaveAttribute("href", "https://github.com/JuntoAI/JuntoAI-A2A");
         expect(link).toHaveAttribute("target", "_blank");
         expect(link).toHaveAttribute("rel", "noopener noreferrer");
         expect(link).toHaveAttribute("aria-label");

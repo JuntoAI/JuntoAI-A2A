@@ -23,7 +23,7 @@ describe("Property 7: Footer GitHub link attributes", () => {
         render(createElement(Footer));
         const link = screen.getByRole("link", { name: "GitHub" });
 
-        expect(link).toHaveAttribute("href", "https://github.com/Juntoai");
+        expect(link).toHaveAttribute("href", "https://github.com/juntoai");
         expect(link).toHaveAttribute("target", "_blank");
         expect(link).toHaveAttribute("rel", "noopener noreferrer");
         expect(link).toHaveAttribute("aria-label", "GitHub");

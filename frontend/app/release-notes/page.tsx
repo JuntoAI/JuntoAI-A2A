@@ -9,6 +9,22 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "World-Class README & Contributor Hub",
+    specId: "120",
+    date: "2026-04-02",
+    items: [
+      "Monorepo root README with badges, Kiro callout, hero description, and anchor-linked TOC",
+      "Mermaid architecture diagram showing scenario config → orchestrator → agents → SSE → Glass Box UI",
+      "Quick Start guide: clone, .env.example, docker compose up, localhost:3000 in under 5 minutes",
+      "Local Battle Arena section with cloud-vs-local comparison table and model mapping docs",
+      "Environment configuration reference table grouped by category with provider-specific examples",
+      "Connect Your Own Agents guide: scenario JSON schema, agent object schema, copyable example, LiteLLM routing",
+      "Developing with Kiro section documenting .kiro/ directory structure (steering, specs, hooks)",
+      "GitHub CTA on landing page and GitHub icon in footer social icons row",
+      "Property tests: README structure validation (pytest) and frontend accessibility (Vitest/fast-check)",
+    ],
+  },
+  {
     title: "Agent Advanced Configuration",
     specId: "090",
     date: "2026-04-02",

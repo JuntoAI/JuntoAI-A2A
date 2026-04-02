@@ -65,7 +65,7 @@ export default function Home() {
 
         <section className="mt-6 flex w-full max-w-md flex-col items-center text-center">
           <a
-            href="https://github.com/Juntoai"
+            href="https://github.com/JuntoAI/JuntoAI-A2A"
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Contribute to JuntoAI on GitHub"

@@ -6,6 +6,21 @@ Each entry corresponds to a completed spec — shipped when the last task was fi
 
 ---
 
+## World-Class README & Contributor Hub (Spec 120) — 2026-04-02
+
+- Monorepo root README (~800 lines) with badges, Kiro callout, hero description, and anchor-linked TOC
+- Mermaid architecture diagram showing scenario config → orchestrator → agents → SSE → Glass Box UI data flow
+- Quick Start guide: clone, `.env.example`, `docker compose up`, localhost:3000 in under 5 minutes
+- Local Battle Arena section with cloud-vs-local comparison table and model mapping docs (`LLM_PROVIDER`, `LLM_MODEL_OVERRIDE`, `MODEL_MAP`)
+- Environment configuration reference table grouped by category with provider-specific examples (OpenAI, Anthropic, Ollama)
+- "Connect Your Own Agents" guide: scenario JSON schema, agent object schema, copyable example config, LiteLLM routing
+- Leaderboard teaser (Coming Soon) with evaluation dimensions: deal outcome, efficiency, humanization, compliance
+- "Developing with Kiro" section documenting `.kiro/` directory structure (steering, specs, hooks)
+- Contributing guidelines: fork → `feature/*` → PR to `main`, JSON-only scenario contributions
+- GitHub CTA section on landing page with accessible link to GitHub org
+- GitHub icon added to footer social icons row (LinkedIn, GitHub, X)
+- Property tests: README structure validation (Python/pytest), frontend accessibility (Vitest/fast-check)
+
 ## Agent Advanced Configuration (Spec 090) — 2026-04-02
 
 - "Advanced Config" button on each agent card with settings icon and active-state indicator
