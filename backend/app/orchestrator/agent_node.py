@@ -78,10 +78,10 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
         )
 
         # 3. Build prompt
-        system_msg, user_msg = _build_prompt(agent_config, state)
+        messages = _build_messages(agent_config, state)
 
         # 4. Invoke LLM
-        response: AIMessage = model.invoke([SystemMessage(content=system_msg), HumanMessage(content=user_msg)])
+        response: AIMessage = model.invoke(messages)
         response_text = response.content if isinstance(response.content, str) else str(response.content)
 
         # Track token usage
@@ -97,8 +97,9 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
             parsed = _parse_output(response_text, agent_type, agent_name)
         except AgentOutputParseError:
             # Retry with explicit JSON instruction
-            retry_msg = user_msg + "\n\nYour previous response was not valid JSON. Please respond with ONLY valid JSON matching the schema."
-            response = model.invoke([SystemMessage(content=system_msg), HumanMessage(content=retry_msg)])
+            messages.append(AIMessage(content=response_text))
+            messages.append(HumanMessage(content="Your previous response was not valid JSON. Please respond with ONLY valid JSON matching the schema."))
+            response = model.invoke(messages)
             response_text = response.content if isinstance(response.content, str) else str(response.content)
             # Add retry tokens
             usage = getattr(response, "usage_metadata", None)
@@ -149,11 +150,59 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
     and the output JSON schema for the agent's type.
 
     User message includes: history, current_offer, turn info, JSON instruction.
+
+    .. note::
+
+       The public API (return type) is unchanged for backward compatibility
+       with tests and callers.  Use :func:`_build_messages` when you need
+       the full multi-turn message list for the LLM call.
     """
     agent_type: str = agent_config.get("type", "negotiator")
     role: str = agent_config.get("role", "")
 
-    # --- System message ---
+    system_message = _build_system_message(agent_config, state)
+
+    # --- User message (flat format, kept for backward compat) ---
+    user_parts: list[str] = []
+
+    history = state.get("history", [])
+    if history:
+        user_parts.append("Negotiation history so far:")
+        for entry in history:
+            entry_role = entry.get("role", "unknown")
+            content = entry.get("content", {})
+            if isinstance(content, dict):
+                display = content.get("public_message") or content.get("reasoning") or content.get("observation") or str(content)
+            else:
+                display = str(content)
+            user_parts.append(f"  [{entry_role}]: {display}")
+
+    current_offer = state.get("current_offer", 0.0)
+    user_parts.append(f"\nCurrent offer on the table: {current_offer}")
+
+    agent_states = state.get("agent_states", {})
+    my_state = agent_states.get(role, {})
+    last_price = my_state.get("last_proposed_price", 0.0)
+    if last_price > 0:
+        user_parts.append(f"Your last proposed price: {last_price}")
+        user_parts.append("You MUST propose a DIFFERENT price this turn.")
+
+    turn_count = state.get("turn_count", 0)
+    max_turns = state.get("max_turns", 15)
+    user_parts.append(f"Turn: {turn_count} of {max_turns}")
+
+    user_parts.append("\nRespond with JSON only.")
+
+    user_message = "\n".join(user_parts)
+
+    return system_message, user_message
+
+
+def _build_system_message(agent_config: dict[str, Any], state: NegotiationState) -> str:
+    """Build the system message with persona, goals, budget, context, and rules."""
+    agent_type: str = agent_config.get("type", "negotiator")
+    role: str = agent_config.get("role", "")
+
     parts: list[str] = []
 
     persona = agent_config.get("persona_prompt", "")
@@ -213,44 +262,82 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
             "\n- Vary your analysis each turn. Raise new concerns, don't just repeat old ones."
         )
 
-    system_message = "\n".join(parts)
+    return "\n".join(parts)
 
-    # --- User message ---
-    user_parts: list[str] = []
 
+def _extract_display_text(entry: dict[str, Any]) -> str:
+    """Extract the display text from a history entry."""
+    content = entry.get("content", {})
+    if isinstance(content, dict):
+        return (
+            content.get("public_message")
+            or content.get("reasoning")
+            or content.get("observation")
+            or str(content)
+        )
+    return str(content)
+
+
+def _build_messages(
+    agent_config: dict[str, Any], state: NegotiationState,
+) -> list[SystemMessage | HumanMessage | AIMessage]:
+    """Build a multi-turn message list for the LLM call.
+
+    Instead of cramming the entire history into a single user message,
+    this converts each history entry into a proper LangChain message:
+
+    - Entries from *this* agent → ``AIMessage`` (things "I" said before)
+    - Entries from *other* agents → ``HumanMessage`` (things "they" said)
+
+    This gives the LLM genuine conversational context so it understands
+    what it already said and can build on it rather than starting fresh.
+
+    The final ``HumanMessage`` contains the current negotiation status
+    (offer, turn count, last price) and the JSON instruction.
+    """
+    role: str = agent_config.get("role", "")
+
+    system_msg = _build_system_message(agent_config, state)
+    messages: list[SystemMessage | HumanMessage | AIMessage] = [
+        SystemMessage(content=system_msg),
+    ]
+
+    # Convert history into alternating AI/Human messages
     history = state.get("history", [])
-    if history:
-        user_parts.append("Negotiation history so far:")
-        for entry in history:
-            entry_role = entry.get("role", "unknown")
-            content = entry.get("content", {})
-            if isinstance(content, dict):
-                # Show public_message for negotiators, reasoning for regulators, observation for observers
-                display = content.get("public_message") or content.get("reasoning") or content.get("observation") or str(content)
-            else:
-                display = str(content)
-            user_parts.append(f"  [{entry_role}]: {display}")
+    for entry in history:
+        entry_role = entry.get("role", "unknown")
+        display = _extract_display_text(entry)
+        label = f"[{entry_role}]: {display}"
+
+        if entry_role == role:
+            # This agent's own past message → AIMessage
+            messages.append(AIMessage(content=label))
+        else:
+            # Another agent's message → HumanMessage
+            messages.append(HumanMessage(content=label))
+
+    # Final instruction message with current state
+    instruction_parts: list[str] = []
 
     current_offer = state.get("current_offer", 0.0)
-    user_parts.append(f"\nCurrent offer on the table: {current_offer}")
+    instruction_parts.append(f"Current offer on the table: {current_offer}")
 
-    # Show this agent's last proposed price (helps prevent repetition)
     agent_states = state.get("agent_states", {})
     my_state = agent_states.get(role, {})
     last_price = my_state.get("last_proposed_price", 0.0)
     if last_price > 0:
-        user_parts.append(f"Your last proposed price: {last_price}")
-        user_parts.append("You MUST propose a DIFFERENT price this turn.")
+        instruction_parts.append(f"Your last proposed price: {last_price}")
+        instruction_parts.append("You MUST propose a DIFFERENT price this turn.")
 
     turn_count = state.get("turn_count", 0)
     max_turns = state.get("max_turns", 15)
-    user_parts.append(f"Turn: {turn_count} of {max_turns}")
+    instruction_parts.append(f"Turn: {turn_count} of {max_turns}")
 
-    user_parts.append("\nRespond with JSON only.")
+    instruction_parts.append("\nRespond with JSON only.")
 
-    user_message = "\n".join(user_parts)
+    messages.append(HumanMessage(content="\n".join(instruction_parts)))
 
-    return system_message, user_message
+    return messages
 
 
 def _strip_markdown_fences(text: str) -> str:
