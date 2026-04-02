@@ -1,13 +1,15 @@
 {
   "enabled": true,
   "name": "Update Release Notes on Spec Completion",
-  "description": "When a spec file is created in the .kiro/specs/v1-done/ directory (i.e. a spec is moved there after completion), automatically reads the new spec's requirements.md and updates both the frontend release notes page (frontend/app/release-notes/page.tsx) and the GitHub CHANGELOG.md with a new entry for the completed feature.",
-  "version": "1",
+  "description": "When triggered after a spec is moved to DONE, reads the spec's requirements.md, derives the ship date from the tasks.md last-edit timestamp, and prepends a new feature entry to both CHANGELOG.md and the frontend release notes page. No versions — just a flat stream of shipped features ordered newest-first.",
+  "version": "3",
   "when": {
     "type": "userTriggered"
   },
   "then": {
     "type": "askAgent",
-    "prompt": "A spec was just moved to the v1-done folder. Do the following:\n\n1. Read the requirements.md file from the newly created spec folder under .kiro/specs/v1-done/.\n2. Extract the spec name, key features, and acceptance criteria into a concise release notes section.\n3. Update frontend/app/release-notes/page.tsx:\n   - Add a new section entry to the RELEASES[0].sections array (the current version) with a title derived from the spec name, the spec number as specId, and bullet-point items summarizing what shipped.\n   - If this is a new major/minor version, create a new release entry instead.\n4. Update CHANGELOG.md at the repo root:\n   - Add a matching section under the current version's \"### Added\" block following Keep a Changelog format.\n5. Keep the tone concise and technical — match the style of existing entries.\n6. Do NOT create any new files or summaries. Only edit the two existing files."
-  }
+    "prompt": "A spec was just completed. Do the following:\n\n1. Identify the newly completed spec folder under .kiro/specs/DONE/ (the one not yet in the CHANGELOG).\n2. Read its requirements.md and tasks.md files.\n3. Determine the ship date by running `stat -c '%y' .kiro/specs/DONE/<spec>/tasks.md` and extracting the YYYY-MM-DD date portion.\n4. Update CHANGELOG.md:\n   - Prepend a new entry right after the header block (below the `---` separator), using the format:\n     ```\n     ## <Spec Title> (Spec <NNN>) — YYYY-MM-DD\n\n     - bullet 1\n     - bullet 2\n     ```\n   - Extract concise, technical bullet points from requirements.md summarizing what shipped.\n5. Update frontend/app/release-notes/page.tsx:\n   - Add a new object at the START of the FEATURES array with `title`, `specId`, `date`, and `items` fields.\n   - Match the existing data structure and code style exactly.\n6. Keep the tone concise and technical — match the style of existing entries.\n7. Do NOT create any new files or summaries. Only edit the two existing files."
+  },
+  "workspaceFolderName": "JuntoAI-A2A",
+  "shortName": "spec-release-notes"
 }
