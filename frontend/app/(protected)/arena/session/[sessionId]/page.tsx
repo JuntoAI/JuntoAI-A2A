@@ -1,11 +1,12 @@
 "use client";
 
-import { useReducer, useMemo } from "react";
+import { useReducer, useMemo, useCallback } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { glassBoxReducer, createInitialState } from "@/lib/glassBoxReducer";
 import { useSSE } from "@/hooks/useSSE";
 import { useSession } from "@/context/SessionContext";
+import { downloadTranscript } from "@/lib/transcript";
 import MetricsDashboard from "@/components/glassbox/MetricsDashboard";
 import TerminalPanel from "@/components/glassbox/TerminalPanel";
 import ChatPanel from "@/components/glassbox/ChatPanel";
@@ -33,7 +34,7 @@ export default function GlassBoxPage() {
     createInitialState,
   );
 
-  const { startTime } = useSSE(
+  const { startTime, stop } = useSSE(
     validSessionId ? (sessionId as string) : null,
     email ?? "",
     maxTurns,
@@ -46,6 +47,28 @@ export default function GlassBoxPage() {
     if (!isTerminal || !startTime) return 0;
     return Date.now() - startTime;
   }, [isTerminal, startTime]);
+
+  const handleStop = useCallback(() => {
+    stop();
+    dispatch({
+      type: "NEGOTIATION_COMPLETE",
+      payload: {
+        event_type: "negotiation_complete",
+        session_id: sessionId as string,
+        deal_status: "Failed",
+        final_summary: {
+          reason: "Negotiation ended by user",
+          current_offer: state.currentOffer,
+          turns_completed: state.turnNumber,
+          total_warnings: Object.keys(state.regulatorStatuses).length,
+        },
+      },
+    });
+  }, [stop, dispatch, sessionId, state.currentOffer, state.turnNumber, state.regulatorStatuses]);
+
+  const handleDownloadTranscript = useCallback(() => {
+    downloadTranscript(state.thoughts, state.messages);
+  }, [state.thoughts, state.messages]);
 
   // Invalid or missing sessionId
   if (!validSessionId) {
@@ -117,9 +140,22 @@ export default function GlassBoxPage() {
         </div>
       </div>
 
+      {/* Stop button — visible while negotiation is running */}
+      {!isTerminal && state.isConnected && (
+        <div className="flex justify-center">
+          <button
+            onClick={handleStop}
+            className="rounded-lg border border-red-300 bg-white px-6 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+            data-testid="stop-btn"
+          >
+            Stop Negotiation
+          </button>
+        </div>
+      )}
+
       {/* Outcome Receipt overlay when deal reaches terminal status */}
       {isTerminal && (
-        <div className="mt-6" data-testid="outcome-overlay">
+        <div className="mt-6 space-y-4" data-testid="outcome-overlay">
           <OutcomeReceipt
             dealStatus={state.dealStatus as "Agreed" | "Blocked" | "Failed"}
             finalSummary={state.finalSummary ?? {}}
@@ -127,6 +163,15 @@ export default function GlassBoxPage() {
             scenarioOutcomeReceipt={null}
             scenarioId={scenarioId}
           />
+          <div className="flex justify-center">
+            <button
+              onClick={handleDownloadTranscript}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              data-testid="download-transcript-btn"
+            >
+              Download Full Transcript
+            </button>
+          </div>
         </div>
       )}
     </div>

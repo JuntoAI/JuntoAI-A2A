@@ -21,7 +21,7 @@ export function useSSE(
   email: string,
   maxTurns: number,
   dispatch: React.Dispatch<GlassBoxAction>,
-): { isConnected: boolean; startTime: number | null } {
+): { isConnected: boolean; startTime: number | null; stop: () => void } {
   const [isConnected, setIsConnected] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
 
@@ -116,5 +116,17 @@ export function useSSE(
     };
   }, [sessionId, email, connect]);
 
-  return { isConnected, startTime };
+  const stop = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    setIsConnected(false);
+  }, []);
+
+  return { isConnected, startTime, stop };
 }
