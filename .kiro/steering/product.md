@@ -19,6 +19,18 @@ Changing a single hidden toggle (e.g., giving an agent a secret competing offer)
 - Inner thoughts stream BEFORE public messages (proves sequential reasoning)
 - Regulator: 3 warnings = deal blocked
 
+## Turn Definition
+A **turn** = one negotiator speaking. Regulators and observers are interludes between turns, not turns themselves.
+- `turn_count` increments by 1 each time a negotiator is about to speak (before it speaks)
+- The regulator/observer that follows a negotiator shares the same turn number
+- `max_turns` in scenario config = maximum number of negotiator proposals before the negotiation fails
+- Turns are 1-indexed in the UI/transcript: the first negotiator proposal is Turn 1
+- Example for turn_order `[Teenager, Regulator, Parent, Regulator]`:
+  - Turn 1: Teenager proposes → Regulator evaluates (both labeled Turn 1)
+  - Turn 2: Parent responds → Regulator evaluates (both labeled Turn 2)
+  - Turn 3: Teenager counters → Regulator evaluates (both labeled Turn 3)
+  - `max_turns: 8` means up to 8 negotiator proposals (4 full back-and-forth cycles)
+
 ## MVP Ships With 3 Scenarios
 - **Talent War** — HR salary/remote negotiation (Recruiter vs Candidate + HR Compliance)
 - **M&A Buyout** — Corporate acquisition (Buyer CEO vs Founder + EU Regulator)

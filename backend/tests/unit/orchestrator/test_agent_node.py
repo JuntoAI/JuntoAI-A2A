@@ -420,7 +420,12 @@ class TestUpdateStateObserver:
 
 
 class TestAdvanceTurnOrder:
-    """Unit tests for _advance_turn_order()."""
+    """Unit tests for _advance_turn_order().
+
+    _advance_turn_order only handles index advancement and next speaker.
+    turn_count is managed by create_agent_node (incremented before a
+    negotiator speaks).
+    """
 
     def test_simple_advance(self):
         state = _make_state(turn_order=["Buyer", "Seller"], turn_order_index=0, turn_count=0)
@@ -429,41 +434,39 @@ class TestAdvanceTurnOrder:
         assert delta["current_speaker"] == "Seller"
         assert "turn_count" not in delta
 
-    def test_wrap_around_increments_turn_count(self):
+    def test_wrap_around(self):
         state = _make_state(turn_order=["Buyer", "Seller"], turn_order_index=1, turn_count=0)
         delta = _advance_turn_order(state)
         assert delta["turn_order_index"] == 0
         assert delta["current_speaker"] == "Buyer"
-        assert delta["turn_count"] == 1
+        assert "turn_count" not in delta
 
-    def test_three_element_turn_order(self):
-        state = _make_state(turn_order=["A", "B", "C"], turn_order_index=1, turn_count=0)
+    def test_four_element_mid_advance(self):
+        agent_states = {
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "m", "last_proposed_price": 0.0, "warning_count": 0},
+            "Regulator": {"role": "Regulator", "name": "Maya", "agent_type": "regulator", "model_id": "m", "last_proposed_price": 0.0, "warning_count": 0},
+            "Seller": {"role": "Seller", "name": "Bob", "agent_type": "negotiator", "model_id": "m", "last_proposed_price": 0.0, "warning_count": 0},
+        }
+        state = _make_state(
+            turn_order=["Buyer", "Regulator", "Seller", "Regulator"],
+            turn_order_index=2,
+            turn_count=0,
+            agent_states=agent_states,
+        )
         delta = _advance_turn_order(state)
-        assert delta["turn_order_index"] == 2
-        assert delta["current_speaker"] == "C"
+        assert delta["turn_order_index"] == 3
+        assert delta["current_speaker"] == "Regulator"
+        assert "turn_count" not in delta
 
-    def test_three_element_wrap(self):
-        state = _make_state(turn_order=["A", "B", "C"], turn_order_index=2, turn_count=3)
-        delta = _advance_turn_order(state)
-        assert delta["turn_order_index"] == 0
-        assert delta["current_speaker"] == "A"
-        assert delta["turn_count"] == 4
-
-    def test_single_element_always_wraps(self):
-        state = _make_state(turn_order=["Solo"], turn_order_index=0, turn_count=0)
+    def test_single_element_wraps(self):
+        state = _make_state(turn_order=["Solo"], turn_order_index=0, turn_count=0,
+                            agent_states={"Solo": {"role": "Solo", "name": "S", "agent_type": "negotiator", "model_id": "m", "last_proposed_price": 0.0, "warning_count": 0}})
         delta = _advance_turn_order(state)
         assert delta["turn_order_index"] == 0
         assert delta["current_speaker"] == "Solo"
-        assert delta["turn_count"] == 1
-
-    def test_four_element_mid_advance(self):
-        state = _make_state(turn_order=["A", "B", "C", "D"], turn_order_index=2, turn_count=0)
-        delta = _advance_turn_order(state)
-        assert delta["turn_order_index"] == 3
-        assert delta["current_speaker"] == "D"
+        assert "turn_count" not in delta
 
     def test_empty_turn_order_returns_empty(self):
-        # Build state manually to avoid IndexError in helper
         state = NegotiationState(
             session_id="test", scenario_id="test", turn_count=0, max_turns=10,
             current_speaker="", deal_status="Negotiating", current_offer=0.0,
@@ -547,7 +550,8 @@ class TestAgentNodeIntegration:
         assert result["history"][0]["agent_type"] == "regulator"
         # Wraps back to 0
         assert result["turn_order_index"] == 0
-        assert result["turn_count"] == 1
+        # Regulator does not increment turn_count
+        assert "turn_count" not in result
 
     @patch("app.orchestrator.agent_node.model_router")
     def test_observer_node_read_only(self, mock_router):

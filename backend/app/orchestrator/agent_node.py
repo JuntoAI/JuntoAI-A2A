@@ -74,13 +74,27 @@ def _fallback_output(agent_type: str, agent_name: str) -> BaseModel:
         )
 
 
-def _get_negotiator_schema(value_label: str) -> str:
+_VALUE_FORMAT_HINTS: dict[str, str] = {
+    "currency": "numeric amount in the scenario's currency (e.g. 110000 for €110,000)",
+    "time_from_22": (
+        "number of MINUTES after 10:00 PM. "
+        "Examples: 0 = 10:00 PM, 60 = 11:00 PM, 90 = 11:30 PM, "
+        "120 = 12:00 AM (midnight), 150 = 12:30 AM, 180 = 1:00 AM. "
+        "You MUST use this encoding, do NOT put a clock time here"
+    ),
+    "percent": "a percentage value (e.g. 75 for 75%)",
+    "number": "a plain numeric value",
+}
+
+
+def _get_negotiator_schema(value_label: str, value_format: str = "currency") -> str:
     """Return the negotiator JSON schema with a contextual proposed_price description."""
+    hint = _VALUE_FORMAT_HINTS.get(value_format, _VALUE_FORMAT_HINTS["number"])
     return json.dumps(
         {
             "inner_thought": "<string: your private reasoning>",
             "public_message": "<string: what you say publicly>",
-            "proposed_price": f"<float: your proposed {value_label.lower()}>",
+            "proposed_price": f"<float: your proposed {value_label.lower()} — {hint}>",
             "extra_fields": "<object: optional additional fields>",
         },
         indent=2,
@@ -101,6 +115,16 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
         agent_type: str = agent_config.get("type", "negotiator")
         agent_name: str = agent_config.get("name", agent_role)
 
+        # 1b. Increment turn_count BEFORE the negotiator speaks so that:
+        #     - The history entry records the correct turn number
+        #     - The following regulator/observer shares the same turn number
+        #     Regulators and observers do NOT increment — they are part of
+        #     the preceding negotiator's turn.
+        effective_state = state
+        if agent_type == "negotiator":
+            new_turn_count = state.get("turn_count", 0) + 1
+            effective_state = {**state, "turn_count": new_turn_count}
+
         # 2. Get LLM via model router (apply model override if present)
         model_overrides = state.get("model_overrides", {})
         effective_model_id = model_overrides.get(agent_role, agent_config["model_id"])
@@ -110,7 +134,7 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
         )
 
         # 3. Build prompt
-        messages = _build_messages(agent_config, state)
+        messages = _build_messages(agent_config, effective_state)
 
         # 4. Invoke LLM
         response: AIMessage = model.invoke(messages)
@@ -150,14 +174,16 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
                 )
                 parsed = _fallback_output(agent_type, agent_name)
 
-        # 6. Build state delta
-        state_delta = _update_state(parsed, agent_type, agent_role, state)
+        # 6. Build state delta (uses effective_state so turn_number is correct)
+        state_delta = _update_state(parsed, agent_type, agent_role, effective_state)
 
-        # 7. Advance turn order
+        # 7. Advance turn order (index + next speaker only, no turn_count)
         turn_delta = _advance_turn_order(state)
 
         # 8. Merge deltas
         merged = {**state_delta, **turn_delta}
+        if agent_type == "negotiator":
+            merged["turn_count"] = effective_state["turn_count"]
         merged["total_tokens_used"] = state.get("total_tokens_used", 0) + tokens_used
         return merged
 
@@ -221,7 +247,13 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
     current_offer = state.get("current_offer", 0.0)
     neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
     value_label = neg_params.get("value_label", "Price")
+    value_format = neg_params.get("value_format", "currency")
     user_parts.append(f"\nCurrent {value_label.lower()} on the table: {current_offer}")
+    if value_format == "time_from_22":
+        user_parts.append(
+            "Remember: proposed_price is in MINUTES after 10:00 PM "
+            "(0=10PM, 60=11PM, 90=11:30PM, 120=midnight, 180=1AM)."
+        )
 
     agent_states = state.get("agent_states", {})
     my_state = agent_states.get(role, {})
@@ -283,7 +315,8 @@ def _build_system_message(agent_config: dict[str, Any], state: NegotiationState)
     if agent_type == "negotiator":
         neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
         value_label = neg_params.get("value_label", "Price")
-        schema = _get_negotiator_schema(value_label)
+        value_format = neg_params.get("value_format", "currency")
+        schema = _get_negotiator_schema(value_label, value_format)
     else:
         schema = _OUTPUT_SCHEMA_DESCRIPTIONS.get(agent_type, "")
     if schema:
@@ -369,9 +402,15 @@ def _build_messages(
 
     neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
     value_label = neg_params.get("value_label", "Price")
+    value_format = neg_params.get("value_format", "currency")
 
     current_offer = state.get("current_offer", 0.0)
     instruction_parts.append(f"Current {value_label.lower()} on the table: {current_offer}")
+    if value_format == "time_from_22":
+        instruction_parts.append(
+            "Remember: proposed_price is in MINUTES after 10:00 PM "
+            "(0=10PM, 60=11PM, 90=11:30PM, 120=midnight, 180=1AM)."
+        )
 
     agent_states = state.get("agent_states", {})
     my_state = agent_states.get(role, {})
@@ -508,8 +547,10 @@ def _update_state(
 def _advance_turn_order(state: NegotiationState) -> dict[str, Any]:
     """Advance turn_order_index and set current_speaker.
 
-    Returns a state delta with ``turn_order_index``, ``current_speaker``,
-    and optionally ``turn_count`` (incremented on wrap).
+    Returns a state delta with ``turn_order_index`` and ``current_speaker``.
+    Does NOT touch ``turn_count`` — that is incremented at the start of a
+    negotiator's node execution so the turn number is available before the
+    agent speaks (and shared by the regulator/observer that follows).
     """
     turn_order = state.get("turn_order", [])
     if not turn_order:
@@ -518,13 +559,7 @@ def _advance_turn_order(state: NegotiationState) -> dict[str, Any]:
     current_idx = state.get("turn_order_index", 0)
     new_idx = (current_idx + 1) % len(turn_order)
 
-    delta: dict[str, Any] = {
+    return {
         "turn_order_index": new_idx,
         "current_speaker": turn_order[new_idx],
     }
-
-    # Wrap: increment turn_count
-    if new_idx == 0:
-        delta["turn_count"] = state.get("turn_count", 0) + 1
-
-    return delta

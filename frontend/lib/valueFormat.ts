@@ -9,7 +9,8 @@ function minutesFrom22ToTime(minutes: number): string {
   const totalMinutes = 22 * 60 + Math.round(minutes);
   const hours24 = Math.floor(totalMinutes / 60) % 24;
   const mins = totalMinutes % 60;
-  const period = hours24 >= 12 ? "AM" : "PM";
+  // 0-11 in 24h = AM, 12-23 in 24h = PM
+  const period = hours24 >= 12 ? "PM" : "AM";
   const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
   return `${hours12}:${mins.toString().padStart(2, "0")} ${period}`;
 }

@@ -91,7 +91,7 @@ class TestTwoAgentE2E:
                 _agent_def("Seller", "Bob"),
             ],
             "negotiation_params": {
-                "max_turns": 5,
+                "max_turns": 10,
                 "agreement_threshold": 5000.0,
                 "turn_order": ["Buyer", "Seller"],
             },
