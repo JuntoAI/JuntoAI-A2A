@@ -91,9 +91,17 @@ async def start_negotiation(
     doc_ref = db._collection.document(session_id)
     await doc_ref.set(doc_data)
 
-    # 5. Token deduction placeholder — returns 99 for now
-    # TODO: implement real token tracking per email (spec: waitlist-token-gate)
-    tokens_remaining = 99
+    # 5. Deduct token from waitlist document
+    from google.cloud.firestore import AsyncClient
+    waitlist_ref = db._db.collection("waitlist").document(body.email.lower().strip())
+    waitlist_doc = await waitlist_ref.get()
+    if waitlist_doc.exists:
+        current_balance = waitlist_doc.to_dict().get("token_balance", 0)
+        new_balance = max(0, current_balance - 1)
+        await waitlist_ref.update({"token_balance": new_balance})
+        tokens_remaining = new_balance
+    else:
+        tokens_remaining = 99
 
     return StartNegotiationResponse(
         session_id=session_id,
@@ -118,7 +126,7 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
         entry = history[-1]
         role = entry.get("role", "Unknown")
         agent_type = entry.get("agent_type", "negotiator")
-        turn_number = entry.get("turn_number", 0)
+        turn_number = state.get("turn_count", 0)
         content = entry.get("content", {})
 
         # Thought event (inner_thought for negotiators, reasoning for regulators,

@@ -10,7 +10,7 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, email } = useSession();
+  const { isAuthenticated, email, logout } = useSession();
   const router = useRouter();
 
   useEffect(() => {
@@ -23,6 +23,11 @@ export default function ProtectedLayout({
     return null;
   }
 
+  const handleLogout = () => {
+    logout();
+    router.replace("/");
+  };
+
   return (
     <>
       <div className="flex items-center justify-end gap-3 p-4">
@@ -30,6 +35,12 @@ export default function ProtectedLayout({
           {email}
         </span>
         <TokenDisplay />
+        <button
+          onClick={handleLogout}
+          className="rounded-md px-3 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+        >
+          Logout
+        </button>
       </div>
       {children}
     </>

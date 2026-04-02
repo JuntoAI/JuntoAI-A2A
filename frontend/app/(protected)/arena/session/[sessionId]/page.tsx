@@ -97,6 +97,9 @@ export default function GlassBoxPage() {
       {/* Terminal + Chat: responsive side-by-side (lg) or stacked */}
       <div className="flex flex-col lg:flex-row gap-4" data-testid="panels-container">
         <div className="flex-1 min-w-0">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Agent Inner Thoughts
+          </h2>
           <TerminalPanel
             thoughts={state.thoughts}
             isConnected={state.isConnected}
@@ -104,6 +107,9 @@ export default function GlassBoxPage() {
           />
         </div>
         <div className="flex-1 min-w-0">
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            Public Conversation
+          </h2>
           <ChatPanel
             messages={state.messages}
             isConnected={state.isConnected}
