@@ -2,6 +2,12 @@
 
 import type { ScenarioSummary } from "@/lib/api";
 
+const DIFFICULTY_LABEL: Record<string, string> = {
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
+};
+
 export interface ScenarioSelectorProps {
   scenarios: ScenarioSummary[];
   selectedId: string | null;
@@ -32,7 +38,7 @@ export function ScenarioSelector({
         <option value="">Select Simulation Environment</option>
         {scenarios.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.name}
+            [{DIFFICULTY_LABEL[s.difficulty] ?? s.difficulty}] {s.name}
           </option>
         ))}
       </select>

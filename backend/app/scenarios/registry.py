@@ -11,7 +11,7 @@ from app.scenarios.exceptions import (
     ScenarioValidationError,
 )
 from app.scenarios.loader import load_scenario_from_file
-from app.scenarios.models import ArenaScenario
+from app.scenarios.models import DIFFICULTY_ORDER, ArenaScenario
 
 logger = logging.getLogger(__name__)
 
@@ -43,9 +43,18 @@ class ScenarioRegistry:
                 logger.warning(f"Skipping invalid scenario file {path}: {e}")
 
     def list_scenarios(self) -> list[dict[str, str]]:
+        sorted_scenarios = sorted(
+            self._scenarios.values(),
+            key=lambda s: (DIFFICULTY_ORDER.get(s.difficulty, 1), s.name),
+        )
         return [
-            {"id": s.id, "name": s.name, "description": s.description}
-            for s in self._scenarios.values()
+            {
+                "id": s.id,
+                "name": s.name,
+                "description": s.description,
+                "difficulty": s.difficulty,
+            }
+            for s in sorted_scenarios
         ]
 
     def get_scenario(self, scenario_id: str) -> ArenaScenario:

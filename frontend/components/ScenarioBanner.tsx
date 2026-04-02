@@ -1,15 +1,15 @@
 "use client";
 
 const SCENARIOS = [
-  "My landlord wants to raise rent 30% — what's a fair counter?",
+  "My landlord wants to raise rent 30%. What's a fair counter?",
   "The team can't agree on a product direction before the deadline",
   "I need a raise but my manager keeps dodging the conversation",
-  "Two co-founders disagree on equity — the partnership is at risk",
+  "Two co-founders disagree on equity. The partnership is at risk",
   "How to close a six-figure deal when the client keeps stalling",
   "Our family holiday plan turns into a fight every single year",
-  "The investor wants 25% equity for a seed round — is that fair?",
+  "The investor wants 25% equity for a seed round. Is that fair?",
   "My freelance client wants more scope but won't increase the budget",
-  "HR says no to remote work — but half the team is threatening to leave",
+  "HR says no to remote work, but half the team is threatening to leave",
   "Roommates can't split expenses without someone feeling ripped off",
 ];
 

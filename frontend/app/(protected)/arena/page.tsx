@@ -18,6 +18,7 @@ import { AgentCard } from "@/components/arena/AgentCard";
 import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
 import { AdvancedConfigModal } from "@/components/arena/AdvancedConfigModal";
+import { Spinner } from "@/components/ui/Spinner";
 
 function ArenaPageContent() {
   const router = useRouter();
@@ -193,18 +194,22 @@ function ArenaPageContent() {
         Arena Control Panel
       </h1>
 
-      <ScenarioSelector
-        scenarios={scenarios}
-        selectedId={selectedScenarioId}
-        onSelect={handleScenarioSelect}
-        isLoading={isLoadingScenarios}
-        error={
-          error && !selectedScenarioId && !isStarting ? error : null
-        }
-      />
+      {isLoadingScenarios ? (
+        <Spinner message="Loading scenarios…" />
+      ) : (
+        <ScenarioSelector
+          scenarios={scenarios}
+          selectedId={selectedScenarioId}
+          onSelect={handleScenarioSelect}
+          isLoading={isLoadingScenarios}
+          error={
+            error && !selectedScenarioId && !isStarting ? error : null
+          }
+        />
+      )}
 
       {isLoadingDetail && (
-        <p className="text-sm text-gray-500">Loading scenario details…</p>
+        <Spinner message="Loading scenario details…" size="sm" />
       )}
 
       {scenarioDetail && (
@@ -249,7 +254,7 @@ function ArenaPageContent() {
                 Hidden Variables
               </h2>
               <p className="mb-3 text-sm text-gray-500">
-                Give agents secret context that changes how they negotiate. These are optional — try running with and without to see how outcomes differ.
+                Give agents secret context that changes how they negotiate. These are optional. Try running with and without to see how outcomes differ.
               </p>
               <div className="flex flex-wrap gap-3">
                 {scenarioDetail.toggles.map((toggle) => (

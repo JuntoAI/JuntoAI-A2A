@@ -2,6 +2,7 @@
   "id": "ma_buyout",
   "name": "The M&A Buyout",
   "description": "A corporate acquisition negotiation between a Fortune 100 CEO pursuing strategic AI capabilities and a startup founder protecting their team and legacy. An EU regulatory advisor applies real antitrust scrutiny that can reshape or block the deal.",
+  "difficulty": "advanced",
   "agents": [
     {
       "role": "Buyer",

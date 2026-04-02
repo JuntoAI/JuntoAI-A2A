@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+# Canonical difficulty ordering — used by registry for sorting
+DIFFICULTY_ORDER = {"beginner": 0, "intermediate": 1, "advanced": 2}
 
 
 class Budget(BaseModel):
@@ -88,6 +91,10 @@ class ArenaScenario(BaseModel):
     id: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1)
     description: str = Field(..., min_length=1)
+    difficulty: Literal["beginner", "intermediate", "advanced"] = Field(
+        default="intermediate",
+        description="Scenario complexity level — controls dropdown ordering",
+    )
     agents: list[AgentDefinition] = Field(..., min_length=2)
     toggles: list[ToggleDefinition] = Field(..., min_length=1)
     negotiation_params: NegotiationParams

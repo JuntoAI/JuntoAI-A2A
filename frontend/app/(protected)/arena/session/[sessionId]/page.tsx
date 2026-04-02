@@ -11,6 +11,7 @@ import MetricsDashboard from "@/components/glassbox/MetricsDashboard";
 import TerminalPanel from "@/components/glassbox/TerminalPanel";
 import ChatPanel from "@/components/glassbox/ChatPanel";
 import OutcomeReceipt from "@/components/glassbox/OutcomeReceipt";
+import { Spinner } from "@/components/ui/Spinner";
 
 const TERMINAL_STATUSES = new Set(["Agreed", "Blocked", "Failed"]);
 
@@ -42,6 +43,11 @@ export default function GlassBoxPage() {
   );
 
   const isTerminal = TERMINAL_STATUSES.has(state.dealStatus);
+  const isWaitingForFirstEvent =
+    state.isConnected &&
+    state.thoughts.length === 0 &&
+    state.messages.length === 0 &&
+    !isTerminal;
 
   const elapsedTimeMs = useMemo(() => {
     if (!isTerminal || !startTime) return 0;
@@ -108,6 +114,16 @@ export default function GlassBoxPage() {
 
   return (
     <div className="w-full space-y-4 p-4">
+      {/* Connecting spinner — before SSE opens */}
+      {!state.isConnected && !isTerminal && !state.error && (
+        <Spinner message="Connecting to negotiation server…" size="lg" />
+      )}
+
+      {/* Warming up spinner — SSE open but no events yet */}
+      {isWaitingForFirstEvent && (
+        <Spinner message="Agents are warming up… first response incoming" size="lg" />
+      )}
+
       {/* Top: Metrics Dashboard */}
       <MetricsDashboard
         currentOffer={state.currentOffer}

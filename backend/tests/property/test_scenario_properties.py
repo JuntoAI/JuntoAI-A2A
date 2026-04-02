@@ -154,7 +154,7 @@ def test_registry_get_list_consistency(scenario_ids, tmp_path_factory):
     assert listed_ids == set(scenario_ids)
 
     for entry in listed:
-        assert set(entry.keys()) == {"id", "name", "description"}
+        assert set(entry.keys()) == {"id", "name", "description", "difficulty"}
         sid = entry["id"]
         assert entry["name"] == f"Scenario {sid}"
         assert entry["description"] == f"Description for {sid}"

@@ -17,6 +17,7 @@ export interface ScenarioSummary {
   id: string;
   name: string;
   description: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
 }
 
 export interface AgentDefinition {
