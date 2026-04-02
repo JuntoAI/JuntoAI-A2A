@@ -35,6 +35,7 @@ def _make_state(
     max_turns: int = 10,
     current_speaker: str = "Buyer",
     turn_order: list[str] | None = None,
+    scenario_config: dict[str, Any] | None = None,
 ) -> NegotiationState:
     if turn_order is None:
         turn_order = ["Buyer", "Seller"]
@@ -50,7 +51,7 @@ def _make_state(
         hidden_context={},
         warning_count=0,
         agreement_threshold=agreement_threshold,
-        scenario_config={},
+        scenario_config=scenario_config or {},
         turn_order=turn_order,
         turn_order_index=0,
         agent_states=agent_states or {},
@@ -174,6 +175,50 @@ class TestCheckAgreement:
         }
         state = _make_state(agent_states=agent_states, agreement_threshold=5000.0)
         assert _check_agreement(state) is False
+
+    def test_normalization_hourly_vs_total(self):
+        """Freelancer quotes €83/hour, Client quotes €39,840 total.
+        With normalization_factor=480, €83*480=€39,840 → converged."""
+        agent_states = {
+            "Freelancer": _negotiator_state("Freelancer", 83.0),
+            "Client": _negotiator_state("Client", 39840.0),
+        }
+        config = {"negotiation_params": {"normalization_factor": 480}}
+        state = _make_state(
+            agent_states=agent_states,
+            agreement_threshold=2000.0,
+            scenario_config=config,
+        )
+        assert _check_agreement(state) is True
+
+    def test_normalization_hourly_vs_total_diverged(self):
+        """Freelancer quotes €90/hour, Client quotes €38,000 total.
+        €90*480=€43,200 vs €38,000 → gap of €5,200 > threshold."""
+        agent_states = {
+            "Freelancer": _negotiator_state("Freelancer", 90.0),
+            "Client": _negotiator_state("Client", 38000.0),
+        }
+        config = {"negotiation_params": {"normalization_factor": 480}}
+        state = _make_state(
+            agent_states=agent_states,
+            agreement_threshold=2000.0,
+            scenario_config=config,
+        )
+        assert _check_agreement(state) is False
+
+    def test_normalization_factor_1_no_change(self):
+        """Default normalization_factor=1.0 should not alter behavior."""
+        agent_states = {
+            "Buyer": _negotiator_state("Buyer", 100000.0),
+            "Seller": _negotiator_state("Seller", 103000.0),
+        }
+        config = {"negotiation_params": {"normalization_factor": 1.0}}
+        state = _make_state(
+            agent_states=agent_states,
+            agreement_threshold=5000.0,
+            scenario_config=config,
+        )
+        assert _check_agreement(state) is True
 
 
 # ===========================================================================

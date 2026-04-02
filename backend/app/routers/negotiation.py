@@ -120,7 +120,9 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
         entry = history[-1]
         role = entry.get("role", "Unknown")
         agent_type = entry.get("agent_type", "negotiator")
-        turn_number = state.get("turn_count", 0)
+        # Use history length as step number (turn_count only increments
+        # on full cycle wraps, which is confusing for display)
+        turn_number = len(history) - 1
         content = entry.get("content", {})
 
         # Thought event (inner_thought for negotiators, reasoning for regulators,
@@ -266,7 +268,7 @@ async def stream_negotiation(
 
     # 7. Build the async event stream generator
     async def event_stream():
-        timeout = state.max_turns * 30
+        timeout = state.max_turns * 60  # 60s per turn to account for LLM latency
         ai_tokens_used = 0
         try:
             async with asyncio.timeout(timeout):

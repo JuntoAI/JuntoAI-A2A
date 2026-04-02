@@ -61,7 +61,9 @@
   "negotiation_params": {
     "max_turns": 8,
     "agreement_threshold": 2000,
-    "turn_order": ["Client", "Freelancer"]
+    "turn_order": ["Client", "Freelancer"],
+    "price_unit": "total",
+    "normalization_factor": 480
   },
   "outcome_receipt": {
     "equivalent_human_time": "~3 days",

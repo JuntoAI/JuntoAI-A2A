@@ -59,6 +59,20 @@ class NegotiationParams(BaseModel):
     turn_order: list[str] = Field(
         ..., min_length=1, description="Agent role execution sequence per cycle"
     )
+    price_unit: Literal["total", "hourly", "monthly", "annual"] = Field(
+        default="total",
+        description="Common price unit for agreement detection. "
+        "When agents use different units (e.g. hourly vs total), "
+        "set this to the unit the agreement_threshold is expressed in. "
+        "Agents whose budget scale differs will have their proposed_price "
+        "normalized before convergence checks.",
+    )
+    normalization_factor: float = Field(
+        default=1.0,
+        gt=0,
+        description="Multiplier to convert the smaller-unit agent's price "
+        "to the common unit. E.g. for hourly→total over 480 hours, set 480.",
+    )
 
 
 class OutcomeReceipt(BaseModel):

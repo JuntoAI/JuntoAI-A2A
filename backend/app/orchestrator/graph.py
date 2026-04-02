@@ -128,9 +128,15 @@ def _check_agreement(state: NegotiationState) -> bool:
       ``agent_type == "negotiator"``.
     * If only 1 negotiator → return ``False`` (skip convergence).
     * If any price is ``0.0`` (hasn't proposed yet) → return ``False``.
-    * Check: ``max(prices) - min(prices) <= agreement_threshold``.
+    * Normalize prices when agents use different units (e.g. hourly vs total)
+      using the scenario's ``normalization_factor``.
+    * Check: ``max(normalized) - min(normalized) <= agreement_threshold``.
     """
     agent_states = state.get("agent_states", {})
+    scenario_config = state.get("scenario_config", {})
+    params = scenario_config.get("negotiation_params", {})
+    normalization_factor = params.get("normalization_factor", 1.0)
+
     prices: list[float] = []
 
     for _role, info in agent_states.items():
@@ -144,6 +150,20 @@ def _check_agreement(state: NegotiationState) -> bool:
     # Any negotiator hasn't proposed yet
     if any(p == 0.0 for p in prices):
         return False
+
+    # Normalize: if agents operate at different scales, the smaller-value
+    # agent's price gets multiplied by normalization_factor.  We detect
+    # "small" vs "large" by checking if any price is < 1% of the max price.
+    if normalization_factor != 1.0 and len(prices) >= 2:
+        max_price = max(prices)
+        normalized = []
+        for p in prices:
+            if max_price > 0 and p < max_price * 0.01:
+                # This agent is quoting in a smaller unit (e.g. hourly)
+                normalized.append(p * normalization_factor)
+            else:
+                normalized.append(p)
+        prices = normalized
 
     threshold = state.get("agreement_threshold", 1_000_000.0)
     return (max(prices) - min(prices)) <= threshold
