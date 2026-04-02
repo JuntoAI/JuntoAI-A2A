@@ -40,20 +40,20 @@ export default function Home() {
           <ScenarioBanner />
         </div>
 
-        <div className="mt-8 flex w-full max-w-xl flex-col items-center text-center">
+        <div className="mt-8 flex w-full max-w-3xl flex-col items-center text-center">
           <h1 className="text-4xl font-bold tracking-tight text-brand-charcoal sm:text-5xl lg:text-6xl">
             AI Negotiation Sandbox.{" "}
             <span className="text-brand-blue">Find the Win‑Win.</span>
           </h1>
 
-          <p className="mt-4 max-w-md text-base leading-relaxed text-brand-charcoal/70 sm:text-lg">
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-brand-charcoal/70 sm:text-lg">
             Real negotiations aren't about one side winning. They're about
-            finding outcomes everyone can live with. JuntoAI simulates that
+            finding outcomes everyone can live with. JuntoAI A2A simulates that
             process. Autonomous AI agents work through scenarios in real time,
             searching for common ground while protecting their own interests.
           </p>
 
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-brand-charcoal/50">
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-charcoal/50">
             Pick a scenario, flip the hidden variables, and watch how a single
             piece of information reshapes the entire conversation.
           </p>

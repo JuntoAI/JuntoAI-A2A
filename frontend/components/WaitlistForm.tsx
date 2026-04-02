@@ -85,7 +85,7 @@ export default function WaitlistForm() {
         >
           JuntoAI
         </a>{" "}
-        waitlist — building the next-generation business network.
+        waitlist and supporting our vision of building the next-generation business network which is AI enabled and outcome oriented.
       </p>
     </form>
   );
