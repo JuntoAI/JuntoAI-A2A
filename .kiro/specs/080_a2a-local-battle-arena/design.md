@@ -2,11 +2,11 @@
 
 ## Overview
 
-This design enables the JuntoAI A2A MVP to run entirely on a developer's machine with zero GCP dependencies. The approach introduces runtime-switchable abstraction layers for database persistence, LLM routing, and auth gating — all controlled by a single `RUN_MODE` environment variable.
+This design enables the JuntoAI A2A MVP to run entirely on a developer's machine with zero GCP dependencies and zero API key configuration. The approach introduces runtime-switchable abstraction layers for database persistence, LLM routing, and auth gating — all controlled by a single `RUN_MODE` environment variable. Ollama runs as a Docker Compose sidecar service and serves as the default `LLM_PROVIDER`, giving developers a working LLM out of the box.
 
-The core principle: **the cloud path is untouched**. Every change is additive. When `RUN_MODE=cloud`, the application behaves identically to today's production deployment. When `RUN_MODE=local`, SQLite replaces Firestore, LiteLLM replaces Vertex AI, and the auth gate is bypassed.
+The core principle: **the cloud path is untouched**. Every change is additive. When `RUN_MODE=cloud`, the application behaves identically to today's production deployment. When `RUN_MODE=local`, SQLite replaces Firestore, LiteLLM replaces Vertex AI, Ollama provides the default LLM, and the auth gate is bypassed.
 
-A `docker-compose.yml` at the monorepo root gives developers a single `docker compose up` command to launch the full stack (FastAPI + Next.js) on localhost.
+A `docker-compose.yml` at the monorepo root gives developers a single `docker compose up` command to launch the full 3-service stack (FastAPI backend + Next.js frontend + Ollama LLM server) on localhost — no `.env` file needed for a first test.
 
 ### Key Design Decisions
 
@@ -15,6 +15,7 @@ A `docker-compose.yml` at the monorepo root gives developers a single `docker co
 3. **LiteLLM as the local LLM router** — LiteLLM already supports 100+ providers with a unified interface and has a LangChain integration (`ChatLiteLLM`). No need to build custom provider adapters.
 4. **Model mapping layer** — A dedicated `model_mapping.py` translates cloud `model_id` values (e.g., `gemini-2.5-flash`) to local provider equivalents, with override support via environment variables.
 5. **Exception generalization** — `FirestoreConnectionError` → `DatabaseConnectionError`. A single rename that makes the error hierarchy provider-agnostic.
+6. **Ollama as the default LLM provider** — `LLM_PROVIDER` defaults to `ollama` instead of `openai`. Ollama runs as a Docker Compose sidecar with an `ollama-pull` init service that auto-downloads the default model (`llama3.1`). This means `docker compose up` works with zero `.env` configuration — no API keys needed for a first test. Developers who prefer OpenAI or Anthropic override via `.env`.
 
 ## Architecture
 
@@ -59,12 +60,21 @@ graph TB
         DC["docker-compose.yml"]
         BE["backend:8000"]
         FE["frontend:3000"]
+        OLL["ollama:11434"]
+        PULL["ollama-pull<br/>(init service)"]
         VOL["sqlite-data volume"]
+        OVOL["ollama-data volume"]
     end
 
     DC --> BE
     DC --> FE
+    DC --> OLL
+    DC --> PULL
+    PULL -->|pulls model| OLL
+    BE -->|depends_on| PULL
     BE --> VOL
+    OLL --> OVOL
+    LITELLM -->|api_base| OLL
 ```
 
 ### Module Dependency Flow (Local Mode)
@@ -147,21 +157,22 @@ GCP imports (`langchain_google_vertexai`, `ChatVertexAI`, `ChatAnthropicVertex`)
 A new module that translates scenario `model_id` values to local provider model strings:
 
 ```python
+import os
+
+_ollama_model = os.environ.get("OLLAMA_MODEL", "llama3.1")
+
 DEFAULT_MODEL_MAP: dict[str, dict[str, str]] = {
     "openai": {
-        "gemini-2.5-flash": "gpt-4o",
-        "claude-3-5-sonnet-v2": "gpt-4o",
-        "claude-sonnet-4": "gpt-4o",
+        "gemini-2.5-flash": "gpt-4o-mini",
+        "gemini-2.5-pro": "gpt-4o",
     },
     "anthropic": {
-        "gemini-2.5-flash": "claude-3-5-sonnet-20241022",
-        "claude-3-5-sonnet-v2": "claude-3-5-sonnet-20241022",
-        "claude-sonnet-4": "claude-sonnet-4-20250514",
+        "gemini-2.5-flash": "claude-3-5-haiku-20241022",
+        "gemini-2.5-pro": "claude-sonnet-4-20250514",
     },
     "ollama": {
-        "gemini-2.5-flash": "llama3",
-        "claude-3-5-sonnet-v2": "llama3",
-        "claude-sonnet-4": "llama3",
+        "gemini-2.5-flash": f"ollama/{_ollama_model}",
+        "gemini-2.5-pro": f"ollama/{_ollama_model}",
     },
 }
 ```
@@ -193,9 +204,11 @@ New fields on the `Settings` class:
 |-------|------|---------|-------------|
 | `RUN_MODE` | `Literal["cloud", "local"]` | `"local"` | Runtime mode switch |
 | `SQLITE_DB_PATH` | `str` | `"data/juntoai.db"` | SQLite database file path |
-| `LLM_PROVIDER` | `str` | `"openai"` | LiteLLM provider name |
+| `LLM_PROVIDER` | `str` | `"ollama"` | LiteLLM provider name (`ollama`, `openai`, `anthropic`) |
 | `LLM_MODEL_OVERRIDE` | `str` | `""` | Override all model_ids with this model |
 | `MODEL_MAP` | `str` | `""` | JSON string for per-model-id overrides |
+| `OLLAMA_BASE_URL` | `str` | `"http://ollama:11434"` | Ollama API endpoint URL |
+| `OLLAMA_MODEL` | `str` | `"llama3.1"` | Ollama model to pull and use for all agents |
 
 Startup validation ensures `RUN_MODE` is one of `cloud` or `local`.
 
@@ -216,14 +229,39 @@ FirestoreConnectionError = DatabaseConnectionError
 
 ```yaml
 services:
+  ollama:
+    image: ollama/ollama
+    ports: ["11434:11434"]
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama-pull:
+    image: ollama/ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-llama3.1}"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+
   backend:
     build: ./backend
     ports: ["8000:8080"]
     env_file: .env
     environment:
       RUN_MODE: local
+      LLM_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
     volumes:
       - sqlite-data:/app/data
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
       interval: 10s
@@ -242,7 +280,10 @@ services:
 
 volumes:
   sqlite-data:
+  ollama-data:
 ```
+
+The `ollama-pull` init service ensures the model is downloaded before the backend starts. The `ollama-data` volume persists downloaded models across restarts so they aren't re-pulled every time. When `LLM_PROVIDER` is overridden to `openai` or `anthropic`, the Ollama services still start but the backend ignores them.
 
 ### 10. Frontend Environment Detection
 
@@ -274,13 +315,28 @@ The existing Pydantic model in `backend/app/models/negotiation.py` is used as-is
 ### Model Mapping Data Structure
 
 ```python
+import os
+
+_ollama_model = os.environ.get("OLLAMA_MODEL", "llama3.1")
+
 # Per-provider mapping: scenario_model_id → local_model_string
 DEFAULT_MODEL_MAP: dict[str, dict[str, str]] = {
-    "openai": {"gemini-2.5-flash": "gpt-4o", ...},
-    "anthropic": {"gemini-2.5-flash": "claude-3-5-sonnet-20241022", ...},
-    "ollama": {"gemini-2.5-flash": "llama3", ...},
+    "openai": {
+        "gemini-2.5-flash": "gpt-4o-mini",
+        "gemini-2.5-pro": "gpt-4o",
+    },
+    "anthropic": {
+        "gemini-2.5-flash": "claude-3-5-haiku-20241022",
+        "gemini-2.5-pro": "claude-sonnet-4-20250514",
+    },
+    "ollama": {
+        "gemini-2.5-flash": f"ollama/{_ollama_model}",
+        "gemini-2.5-pro": f"ollama/{_ollama_model}",
+    },
 }
 ```
+
+The Ollama mapping is dynamic: it reads `OLLAMA_MODEL` at import time so that overriding `OLLAMA_MODEL=mistral` automatically maps all scenario `model_id` values to `ollama/mistral`. The `model_id` keys (`gemini-2.5-flash`, `gemini-2.5-pro`) match the actual values used in shipped scenario configs.
 
 ### Environment Variable Schema
 
@@ -288,9 +344,11 @@ DEFAULT_MODEL_MAP: dict[str, dict[str, str]] = {
 |----------|----------|---------|-------------|
 | `RUN_MODE` | No | `local` | `cloud` or `local` |
 | `SQLITE_DB_PATH` | No | `data/juntoai.db` | SQLite file path (local mode) |
-| `LLM_PROVIDER` | No | `openai` | LiteLLM provider |
+| `LLM_PROVIDER` | No | `ollama` | LiteLLM provider (`ollama`, `openai`, `anthropic`) |
 | `LLM_MODEL_OVERRIDE` | No | `""` | Single model for all agents |
 | `MODEL_MAP` | No | `""` | JSON per-model-id overrides |
+| `OLLAMA_BASE_URL` | No | `http://ollama:11434` | Ollama API endpoint URL |
+| `OLLAMA_MODEL` | No | `llama3.1` | Ollama model to pull and use |
 | `OPENAI_API_KEY` | Local+OpenAI | — | OpenAI API key |
 | `ANTHROPIC_API_KEY` | Local+Anthropic | — | Anthropic API key |
 | `GOOGLE_CLOUD_PROJECT` | Cloud | — | GCP project ID |
@@ -357,6 +415,18 @@ DEFAULT_MODEL_MAP: dict[str, dict[str, str]] = {
 
 **Validates: Requirements 10.5**
 
+### Property 10: Ollama mapping uses OLLAMA_MODEL for all scenario model_ids
+
+*For any* `OLLAMA_MODEL` value and *for any* scenario `model_id` present in the default mapping, when `LLM_PROVIDER=ollama`, `resolve_model_id(model_id, "ollama")` shall return `ollama/{OLLAMA_MODEL}`. Overriding `OLLAMA_MODEL` (e.g., to `mistral`) shall cause all scenario model_ids to resolve to `ollama/mistral`.
+
+**Validates: Requirements 4.2, 15.1, 15.5**
+
+### Property 11: Ollama provider requires no API keys
+
+*For any* configuration where `LLM_PROVIDER=ollama`, the model router shall not raise `ModelNotAvailableError` due to missing API key environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, etc.). The Ollama provider path shall be fully functional without any API key configuration.
+
+**Validates: Requirements 15.3**
+
 ## Error Handling
 
 ### Exception Hierarchy
@@ -371,9 +441,11 @@ DEFAULT_MODEL_MAP: dict[str, dict[str, str]] = {
 ### Error Handling by Mode
 
 **Local mode specific errors:**
-- Missing API key → `ModelNotAvailableError` with message like `"Missing OPENAI_API_KEY for provider 'openai'"`
+- Missing API key (non-Ollama providers) → `ModelNotAvailableError` with message like `"Missing OPENAI_API_KEY for provider 'openai'"`
 - Invalid SQLite path (e.g., read-only filesystem) → `DatabaseConnectionError`
 - Unknown `model_id` with no mapping → fallback to provider default + warning log; if no default exists → `ModelNotAvailableError`
+- Ollama server unreachable at `OLLAMA_BASE_URL` → `ModelNotAvailableError` with message like `"Ollama server unreachable at http://ollama:11434. Check that the Ollama service is running (docker compose ps ollama)."`
+- Ollama model not pulled (e.g., `ollama-pull` failed) → LiteLLM returns an error on first request; surfaced as `ModelNotAvailableError`
 
 **Cloud mode specific errors:**
 - Missing GCP package → `ImportError` with message listing the package name (e.g., `"google-cloud-firestore is required for cloud mode"`)
@@ -408,12 +480,13 @@ This feature requires both unit tests and property-based tests:
 | Factory function | Returns correct type per `RUN_MODE` | Mock `Settings` |
 | Factory singleton | Second call returns same object | Mock `Settings` |
 | Model router (cloud) | Returns `ChatVertexAI` / `ChatAnthropicVertex` | Mock Vertex AI SDK |
-| Model router (local) | Returns `ChatLiteLLM` with correct model string | Mock LiteLLM |
+| Model router (local) | Returns `ChatLiteLLM` with correct model string; Ollama provider sets `api_base` to `OLLAMA_BASE_URL` | Mock LiteLLM |
+| Ollama unreachable | `LLM_PROVIDER=ollama` with unreachable `OLLAMA_BASE_URL` raises `ModelNotAvailableError` with descriptive message | Mock connection failure |
 | Auth bypass | Local mode skips email/token checks | TestClient with `RUN_MODE=local` |
 | Auth enforcement | Cloud mode enforces email/token checks | TestClient with `RUN_MODE=cloud` |
 | Exception rename | `DatabaseConnectionError` handler returns 503 | TestClient |
-| Docker Compose | YAML structure has correct services, volumes, healthcheck | Parse YAML |
-| `.env.example` | Contains all required variables, comments, provider examples | File content assertions |
+| Docker Compose | YAML structure has correct services (backend, frontend, ollama, ollama-pull), volumes (sqlite-data, ollama-data), healthcheck, depends_on chain | Parse YAML |
+| `.env.example` | Contains all required variables (including `OLLAMA_BASE_URL`, `OLLAMA_MODEL`), comments, provider examples | File content assertions |
 | Dockerfile | Contains `RUN data/` or `mkdir data` | File content assertions |
 | Lazy imports | GCP modules not in `sys.modules` when `RUN_MODE=local` | Check `sys.modules` |
 | Frontend env | `NEXT_PUBLIC_RUN_MODE` controls page routing | Component tests with env override |
@@ -431,6 +504,8 @@ This feature requires both unit tests and property-based tests:
 | P7: RUN_MODE validation | `st.text().filter(lambda s: s not in ("cloud", "local"))` | `ValidationError` raised |
 | P8: Scenario state identity | Random scenario configs | `state_cloud == state_local` (all fields) |
 | P9: DB error → 503 | Trigger `DatabaseConnectionError` | Response status == 503, body matches |
+| P10: Ollama mapping uses OLLAMA_MODEL | `st.text(min_size=1)` for OLLAMA_MODEL × `st.sampled_from(scenario_model_ids)` | Result == `ollama/{OLLAMA_MODEL}` |
+| P11: Ollama no API keys | Unset all API key env vars, `LLM_PROVIDER=ollama` | No `ModelNotAvailableError` raised |
 
 ### Test File Organization
 
@@ -441,7 +516,7 @@ backend/tests/unit/
 ├── test_sqlite_client_properties.py    # Properties 1, 2, 3
 ├── test_model_router_local.py          # LiteLLM routing unit tests
 ├── test_model_mapping.py               # Mapping unit tests
-├── test_model_mapping_properties.py    # Properties 4, 5
+├── test_model_mapping_properties.py    # Properties 4, 5, 10, 11
 ├── test_auth_bypass.py                 # Auth gate unit tests
 ├── test_config_properties.py           # Property 7
 ├── test_scenario_compat_properties.py  # Property 8

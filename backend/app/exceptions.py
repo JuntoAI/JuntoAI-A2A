@@ -9,9 +9,13 @@ class SessionNotFoundError(Exception):
         super().__init__(f"Session {session_id} not found")
 
 
-class FirestoreConnectionError(Exception):
-    """Raised when the Firestore SDK connection fails."""
+class DatabaseConnectionError(Exception):
+    """Raised when the database connection fails (Firestore or SQLite)."""
 
     def __init__(self, message: str) -> None:
         self.message = message
         super().__init__(message)
+
+
+# Backward compat alias (deprecated)
+FirestoreConnectionError = DatabaseConnectionError

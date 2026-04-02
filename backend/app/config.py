@@ -1,5 +1,7 @@
 """Application configuration via environment variables."""
 
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,6 +12,15 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     CORS_ALLOWED_ORIGINS: str = "http://localhost:3000"
     GOOGLE_CLOUD_PROJECT: str = ""
+
+    # --- Local Battle Arena fields ---
+    RUN_MODE: Literal["cloud", "local"] = "local"
+    SQLITE_DB_PATH: str = "data/juntoai.db"
+    LLM_PROVIDER: str = "ollama"
+    LLM_MODEL_OVERRIDE: str = ""
+    MODEL_MAP: str = ""
+    OLLAMA_BASE_URL: str = "http://ollama:11434"
+    OLLAMA_MODEL: str = "llama3.1"
 
     @property
     def cors_origins_list(self) -> list[str]:

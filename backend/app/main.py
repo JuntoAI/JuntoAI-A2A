@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.exceptions import FirestoreConnectionError, SessionNotFoundError
+from app.exceptions import DatabaseConnectionError, SessionNotFoundError
 from app.routers.health import router as health_router
 from app.routers.models import router as models_router
 from app.routers.negotiation import router as negotiation_router
@@ -54,9 +54,9 @@ async def session_not_found_handler(request: Request, exc: SessionNotFoundError)
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
-@app.exception_handler(FirestoreConnectionError)
-async def firestore_connection_handler(
-    request: Request, exc: FirestoreConnectionError
+@app.exception_handler(DatabaseConnectionError)
+async def database_connection_handler(
+    request: Request, exc: DatabaseConnectionError
 ):
-    """Return 503 when Firestore is unavailable."""
+    """Return 503 when the database is unavailable."""
     return JSONResponse(status_code=503, content={"detail": "Database unavailable"})

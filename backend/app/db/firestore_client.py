@@ -2,7 +2,7 @@
 
 from google.cloud import firestore
 
-from app.exceptions import FirestoreConnectionError, SessionNotFoundError
+from app.exceptions import DatabaseConnectionError, SessionNotFoundError
 from app.models.negotiation import NegotiationStateModel
 
 
@@ -15,7 +15,7 @@ class FirestoreSessionClient:
         try:
             self._db = firestore.AsyncClient(project=project)
         except Exception as e:
-            raise FirestoreConnectionError(
+            raise DatabaseConnectionError(
                 f"Failed to initialize Firestore: {e}"
             ) from e
         self._collection = self._db.collection(self.COLLECTION)
