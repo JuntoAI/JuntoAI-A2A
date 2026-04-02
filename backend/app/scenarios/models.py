@@ -11,7 +11,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Canonical difficulty ordering — used by registry for sorting
-DIFFICULTY_ORDER = {"beginner": 0, "intermediate": 1, "advanced": 2}
+DIFFICULTY_ORDER = {"beginner": 0, "intermediate": 1, "advanced": 2, "fun": 3}
 
 
 class Budget(BaseModel):
@@ -91,7 +91,7 @@ class ArenaScenario(BaseModel):
     id: str = Field(..., min_length=1)
     name: str = Field(..., min_length=1)
     description: str = Field(..., min_length=1)
-    difficulty: Literal["beginner", "intermediate", "advanced"] = Field(
+    difficulty: Literal["beginner", "intermediate", "advanced", "fun"] = Field(
         default="intermediate",
         description="Scenario complexity level — controls dropdown ordering",
     )

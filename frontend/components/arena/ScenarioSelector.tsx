@@ -6,6 +6,7 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   beginner: "Beginner",
   intermediate: "Intermediate",
   advanced: "Advanced",
+  fun: "Fun",
 };
 
 export interface ScenarioSelectorProps {
