@@ -34,7 +34,7 @@
       "budget": { "min": 0, "max": 0, "target": 0 },
       "tone": "measured and policy-driven",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
-      "model_id": "gemini-2.5-flash",
+      "model_id": "gemini-3-flash-preview",
       "fallback_model_id": "gemini-2.5-flash"
     },
     {
@@ -51,7 +51,7 @@
       "budget": { "min": 0, "max": 0, "target": 0 },
       "tone": "passionate and data-driven",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     },
     {
       "role": "EnvOfficer",
@@ -86,7 +86,7 @@
       "budget": { "min": 60000000, "max": 85000000, "target": 75000000 },
       "tone": "analytical and risk-focused",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     }
   ],
   "toggles": [

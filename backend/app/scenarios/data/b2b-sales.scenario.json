@@ -17,7 +17,7 @@
       "budget": { "min": 65000, "max": 100000, "target": 85000 },
       "tone": "confident and strategic",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     },
     {
       "role": "Buyer",
@@ -50,7 +50,7 @@
       "budget": { "min": 0, "max": 0, "target": 0 },
       "tone": "rigorous and detail-oriented",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
-      "model_id": "gemini-2.5-flash",
+      "model_id": "gemini-3-flash-preview",
       "fallback_model_id": "gemini-2.5-flash"
     }
   ],

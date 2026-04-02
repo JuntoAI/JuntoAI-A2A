@@ -33,7 +33,7 @@
       "budget": { "min": 30000, "max": 48000, "target": 40000 },
       "tone": "pragmatic and transparent",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     }
   ],
   "toggles": [
