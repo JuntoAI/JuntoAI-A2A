@@ -8,6 +8,8 @@ export default function Footer() {
           <a href="https://juntoai.org/privacy-policy.html" target="_blank" rel="noopener noreferrer" className="hover:text-brand-blue transition-colors">Privacy Policy</a>
           <span className="hidden sm:inline">·</span>
           <a href="https://juntoai.org/terms-of-service.html" target="_blank" rel="noopener noreferrer" className="hover:text-brand-blue transition-colors">Terms of Service</a>
+          <span className="hidden sm:inline">·</span>
+          <a href="/release-notes" className="hover:text-brand-blue transition-colors">Release Notes</a>
         </div>
 
         <div className="flex items-center gap-3">
