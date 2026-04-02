@@ -467,7 +467,21 @@ def _update_state(
 
         global_warning_count = state.get("warning_count", 0)
 
-        if parsed_output.status == "WARNING":
+        effective_status = parsed_output.status
+
+        # Downgrade BLOCKED to WARNING if no prior warnings exist for this regulator.
+        # Regulators must warn before they can block (3 warnings = block).
+        role_warnings = agent_states.get(role, {}).get("warning_count", 0)
+        if effective_status == "BLOCKED" and role_warnings == 0:
+            logger.info(
+                "Regulator '%s' attempted BLOCKED with 0 prior warnings — downgrading to WARNING.",
+                role,
+            )
+            effective_status = "WARNING"
+            # Update the history entry to reflect the downgrade
+            history_entry["content"] = {**parsed_output.model_dump(), "status": effective_status}
+
+        if effective_status == "WARNING":
             global_warning_count += 1
             if role in agent_states:
                 agent_states[role]["warning_count"] = agent_states[role].get("warning_count", 0) + 1
@@ -475,9 +489,9 @@ def _update_state(
         delta["warning_count"] = global_warning_count
         delta["agent_states"] = agent_states
 
-        # Check for block conditions
+        # Check for block conditions: explicit BLOCKED (after at least 1 warning) or 3+ warnings
         role_warnings = agent_states.get(role, {}).get("warning_count", 0)
-        if parsed_output.status == "BLOCKED" or role_warnings >= 3:
+        if effective_status == "BLOCKED" or role_warnings >= 3:
             delta["deal_status"] = "Blocked"
 
     # Observer: only history entry, no other state changes

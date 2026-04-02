@@ -1,10 +1,18 @@
 import type { ThoughtEntry, MessageEntry } from "@/lib/glassBoxReducer";
 import { formatValue, type ValueFormat } from "@/lib/valueFormat";
 
+export interface TranscriptOutcome {
+  dealStatus: string;
+  finalSummary: Record<string, unknown> | null;
+  elapsedTimeMs: number;
+  tokensUsed?: number;
+}
+
 export function buildTranscript(
   thoughts: ThoughtEntry[],
   messages: MessageEntry[],
   valueFormat: ValueFormat = "currency",
+  outcome?: TranscriptOutcome,
 ): string {
   // Merge and sort by timestamp
   const entries = [
@@ -44,6 +52,27 @@ export function buildTranscript(
     lines.push("");
   }
 
+  // Outcome section
+  if (outcome) {
+    lines.push("=== Outcome ===");
+    lines.push(`Result: ${outcome.dealStatus}`);
+    if (outcome.finalSummary) {
+      const summary = outcome.finalSummary;
+      if (summary.reason) lines.push(`Reason: ${summary.reason}`);
+      if (summary.current_offer != null) {
+        lines.push(`Final Value: ${formatValue(Number(summary.current_offer), valueFormat)}`);
+      }
+      if (summary.turns_completed != null) lines.push(`Turns Completed: ${summary.turns_completed}`);
+      if (summary.total_warnings != null) lines.push(`Total Warnings: ${summary.total_warnings}`);
+    }
+    const elapsedSec = Math.round(outcome.elapsedTimeMs / 1000);
+    lines.push(`Time Elapsed: ${elapsedSec}s`);
+    if (outcome.tokensUsed != null) {
+      lines.push(`AI Tokens Used: ${outcome.tokensUsed.toLocaleString()}`);
+    }
+    lines.push("");
+  }
+
   return lines.join("\n");
 }
 
@@ -51,8 +80,9 @@ export function downloadTranscript(
   thoughts: ThoughtEntry[],
   messages: MessageEntry[],
   valueFormat: ValueFormat = "currency",
+  outcome?: TranscriptOutcome,
 ): void {
-  const text = buildTranscript(thoughts, messages, valueFormat);
+  const text = buildTranscript(thoughts, messages, valueFormat, outcome);
   const blob = new Blob([text], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

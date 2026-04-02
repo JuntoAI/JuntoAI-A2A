@@ -327,13 +327,28 @@ class TestUpdateStateRegulator:
         assert delta["warning_count"] == 0
         assert delta["agent_states"]["Regulator"]["warning_count"] == 0
 
-    def test_blocked_status_sets_deal_blocked(self):
+    def test_blocked_with_zero_warnings_downgrades_to_warning(self):
+        """BLOCKED with 0 prior warnings should be downgraded to WARNING, not block the deal."""
         parsed = RegulatorOutput(status="BLOCKED", reasoning="violation")
         agent_states = {
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(agent_states=agent_states, turn_order=["Buyer", "Regulator"])
+        delta = _update_state(parsed, "regulator", "Regulator", state)
+        assert "deal_status" not in delta  # Not blocked yet
+        assert delta["agent_states"]["Regulator"]["warning_count"] == 1
+        # History entry should reflect the downgraded status
+        assert delta["history"][-1]["content"]["status"] == "WARNING"
+
+    def test_blocked_with_prior_warnings_blocks_deal(self):
+        """BLOCKED with prior warnings should actually block the deal."""
+        parsed = RegulatorOutput(status="BLOCKED", reasoning="repeated violation")
+        agent_states = {
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 1},
+        }
+        state = _make_state(warning_count=1, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
         delta = _update_state(parsed, "regulator", "Regulator", state)
         assert delta["deal_status"] == "Blocked"
 

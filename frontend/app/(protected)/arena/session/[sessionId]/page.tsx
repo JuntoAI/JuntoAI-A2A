@@ -93,8 +93,15 @@ export default function GlassBoxPage() {
   }, [stop, dispatch, sessionId, state.currentOffer, state.turnNumber, state.regulatorStatuses]);
 
   const handleDownloadTranscript = useCallback(() => {
-    downloadTranscript(state.thoughts, state.messages, valueFormat);
-  }, [state.thoughts, state.messages, valueFormat]);
+    const elapsed = startTime ? Date.now() - startTime : 0;
+    const tokensUsed = state.finalSummary?.total_tokens_used as number | undefined;
+    downloadTranscript(state.thoughts, state.messages, valueFormat, {
+      dealStatus: state.dealStatus,
+      finalSummary: state.finalSummary,
+      elapsedTimeMs: elapsed,
+      tokensUsed,
+    });
+  }, [state.thoughts, state.messages, state.dealStatus, state.finalSummary, valueFormat, startTime]);
 
   // Invalid or missing sessionId
   if (!validSessionId) {
