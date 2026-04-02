@@ -208,6 +208,8 @@ export default function GlassBoxPage() {
             elapsedTimeMs={elapsedTimeMs}
             scenarioOutcomeReceipt={null}
             scenarioId={scenarioId}
+            valueFormat={valueFormat}
+            valueLabel={valueLabel}
           />
           <div className="flex justify-center">
             <button

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { formatValue, type ValueFormat } from "@/lib/valueFormat";
 
 export interface OutcomeReceiptProps {
   dealStatus: "Agreed" | "Blocked" | "Failed";
@@ -11,6 +12,8 @@ export interface OutcomeReceiptProps {
     process_label: string;
   } | null;
   scenarioId: string | null;
+  valueFormat?: ValueFormat;
+  valueLabel?: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -43,6 +46,8 @@ export default function OutcomeReceipt({
   elapsedTimeMs,
   scenarioOutcomeReceipt,
   scenarioId,
+  valueFormat = "currency",
+  valueLabel = "Price",
 }: OutcomeReceiptProps) {
   const router = useRouter();
   const config = STATUS_CONFIG[dealStatus];
@@ -75,7 +80,7 @@ export default function OutcomeReceipt({
               ) : null}
               <div className="flex flex-wrap gap-4 text-sm text-gray-700">
                 {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
-                  <span>Final Price: <span className="font-semibold">${Number(finalSummary.current_offer).toLocaleString()}</span></span>
+                  <span>Final {valueLabel}: <span className="font-semibold">{formatValue(Number(finalSummary.current_offer), valueFormat)}</span></span>
                 )}
                 {finalSummary.turns_completed != null && (
                   <span>Turns: {String(finalSummary.turns_completed)}</span>
@@ -101,7 +106,7 @@ export default function OutcomeReceipt({
               ) : null}
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                 {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
-                  <span>Last Offer: ${Number(finalSummary.current_offer).toLocaleString()}</span>
+                  <span>Last Offer: {formatValue(Number(finalSummary.current_offer), valueFormat)}</span>
                 )}
                 {finalSummary.total_warnings != null && (
                   <span>Total Warnings: {String(finalSummary.total_warnings)}</span>
@@ -119,7 +124,7 @@ export default function OutcomeReceipt({
               </p>
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                 {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
-                  <span>Last Offer: ${Number(finalSummary.current_offer).toLocaleString()}</span>
+                  <span>Last Offer: {formatValue(Number(finalSummary.current_offer), valueFormat)}</span>
                 )}
                 {finalSummary.total_warnings != null && Number(finalSummary.total_warnings) > 0 && (
                   <span>Warnings: {String(finalSummary.total_warnings)}</span>
@@ -145,7 +150,7 @@ export default function OutcomeReceipt({
             </p>
             {finalSummary.ai_tokens_used != null && Number(finalSummary.ai_tokens_used) > 0 && (
               <p className="text-sm font-medium text-gray-900">
-                AI Tokens Used: {Number(finalSummary.ai_tokens_used).toLocaleString()}
+                AI Tokens: {Number(finalSummary.ai_tokens_used).toLocaleString()} ({Math.max(1, Math.ceil(Number(finalSummary.ai_tokens_used) / 1000))} credits used)
               </p>
             )}
           </div>
