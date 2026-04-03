@@ -61,10 +61,12 @@ def _instantiate_model(
     if prefix == _GEMINI_FAMILY:
         # ChatGoogleGenerativeAI uses `model` (not `model_name`) and
         # auto-detects Vertex AI when `project` is provided.
+        # Using location='global' routes through Google's global endpoint
+        # for automatic region selection and best latency.
         kwargs: dict = {
             "model": model_id,
             "project": project,
-            "location": location,
+            "location": "global",
             "timeout": timeout,
         }
     elif prefix == _CLAUDE_FAMILY:
@@ -106,9 +108,9 @@ def get_model(
         GCP project.  Defaults to ``GOOGLE_CLOUD_PROJECT`` env var.
     location:
         Vertex AI region.  Defaults to ``VERTEX_AI_LOCATION`` env var
-        (or ``us-east5``).  All model families (Gemini, Claude) use the
-        same region by default since us-east5 has the broadest model
-        availability.  Override per-family via env vars if needed.
+        (or ``us-east5``).  Used for Claude/Anthropic models which require
+        a regional endpoint.  Gemini models always use the global endpoint
+        for automatic routing and best latency.
 
     Returns
     -------

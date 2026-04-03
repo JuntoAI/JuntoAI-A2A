@@ -68,7 +68,7 @@ class TestGetModelValid:
         kw = fam["gemini"].call_args.kwargs
         assert kw["model"] == "gemini-2.5-flash"
         assert kw["project"] == "proj"
-        assert kw["location"] == "us-central1"
+        assert kw["location"] == "global"  # Gemini always uses global endpoint
         assert "timeout" in kw
         assert isinstance(model, BaseChatModel)
 
@@ -190,9 +190,10 @@ class TestTimeoutConfig:
                 get_model("gemini-2.5-flash")
         kw = fam["gemini"].call_args.kwargs
         assert kw["project"] == "my-proj"
-        assert kw["location"] == "asia-east1"
+        assert kw["location"] == "global"  # Gemini ignores env location, always global
 
     def test_location_defaults_to_us_east5(self) -> None:
+        """Gemini uses global endpoint; Claude uses resolved location (us-east5 default)."""
         fam = _mock_families()
         env = {"GOOGLE_CLOUD_PROJECT": "p"}
         with patch.dict(os.environ, env, clear=False):
@@ -200,7 +201,18 @@ class TestTimeoutConfig:
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
                 get_model("gemini-2.5-flash")
-        assert fam["gemini"].call_args.kwargs["location"] == "us-east5"
+        assert fam["gemini"].call_args.kwargs["location"] == "global"
+
+    def test_claude_uses_regional_endpoint(self) -> None:
+        """Claude uses the resolved regional location, not global."""
+        fam = _mock_families()
+        env = {"GOOGLE_CLOUD_PROJECT": "p"}
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("VERTEX_AI_LOCATION", None)
+            os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
+            with patch.dict(_FAMILIES_PATH, fam):
+                get_model("claude-sonnet-4-6")
+        assert fam["claude"].call_args.kwargs["location"] == "us-east5"
 
 
 # -------------------------------------------------------------------
