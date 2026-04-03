@@ -590,14 +590,21 @@ async def stream_negotiation(
         )
 
     # 5. Acquire connection slot
-    acquired = await tracker.acquire(email)
-    if not acquired:
-        return JSONResponse(
-            status_code=429,
-            content={
-                "detail": "Concurrent SSE connection limit reached (max 3)"
-            },
-        )
+    # Reconnections (last_event_id present) get a free pass — they replace
+    # a dead connection whose release may not have fired yet on the server.
+    is_reconnect = last_event_id is not None
+    if not is_reconnect:
+        acquired = await tracker.acquire(email)
+        if not acquired:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "Concurrent SSE connection limit reached (max 3)"
+                },
+            )
+    else:
+        # Best-effort acquire for reconnects — proceed even if over limit
+        await tracker.acquire(email)
 
     # 5a. Check if this is a reconnect to a terminal session — replay and close
     if last_event_id is not None and await event_buffer.is_session_terminal(session_id):

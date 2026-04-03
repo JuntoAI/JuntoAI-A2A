@@ -85,12 +85,11 @@ graph LR
 
 ## 🚀 Quick Start
 
-Get the full stack running locally in under 5 minutes. No GCP credentials required.
+Get the full stack running locally in one command. No API keys, no `.env` file, no GCP credentials.
 
 **Prerequisites:**
 
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
-- At least one LLM API key: [OpenAI](https://platform.openai.com/api-keys), [Anthropic](https://console.anthropic.com/), or a local [Ollama](https://ollama.com/) instance
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) (v2.24+)
 
 **Steps:**
 
@@ -101,40 +100,23 @@ git clone https://github.com/Juntoai/a2a.git
 cd a2a
 ```
 
-2. Copy the environment template:
-
-```bash
-cp .env.example .env
-```
-
-3. Set your API key in `.env` (pick one):
-
-```bash
-# OpenAI
-LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-your-key-here
-
-# — OR — Anthropic
-LLM_PROVIDER=anthropic
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-
-# — OR — Ollama (no key needed, just a running Ollama instance)
-LLM_PROVIDER=ollama
-```
-
-4. Start the stack:
+2. Start the stack:
 
 ```bash
 docker compose up
 ```
 
-5. Open the Arena in your browser:
+3. Open [http://localhost:3000](http://localhost:3000)
 
-```bash
-open http://localhost:3000
-```
+That's it. Docker Compose spins up Ollama (auto-pulls `llama3.1`), the FastAPI backend, and the Next.js frontend. First run takes a few minutes for the model download (~4GB); subsequent runs are instant.
 
-> The default `RUN_MODE` is `local` — the stack uses SQLite and LiteLLM out of the box. No GCP credentials, no Firestore, no Vertex AI setup needed.
+> **Prefer OpenAI or Anthropic?** Copy the env template and add your key:
+>
+> ```bash
+> cp .env.example .env
+> # Edit .env: set LLM_PROVIDER=openai and OPENAI_API_KEY=sk-...
+> docker compose up
+> ```
 
 ## ⚔️ Local Battle Arena
 
@@ -155,7 +137,7 @@ The same scenario JSON files work in both modes without modification — only th
 
 ## ⚙️ Environment Configuration
 
-Every configurable value lives in a single `.env` file at the monorepo root. Copy `.env.example` to `.env` and adjust as needed.
+Every configurable value lives in a single `.env` file at the monorepo root. No `.env` file is needed for the default Ollama setup — copy `.env.example` to `.env` only when you want to override defaults.
 
 <details>
 <summary><strong>Full Environment Variable Reference</strong> (click to expand)</summary>
@@ -171,7 +153,7 @@ Every configurable value lives in a single `.env` file at the monorepo root. Cop
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `LLM_PROVIDER` | **Yes** | — | LLM backend: `openai`, `anthropic`, `ollama`, or `vertexai` |
+| `LLM_PROVIDER` | Optional | `ollama` | LLM backend: `openai`, `anthropic`, `ollama`, or `vertexai` |
 | `OPENAI_API_KEY` | Conditional | — | Required when `LLM_PROVIDER=openai` |
 | `ANTHROPIC_API_KEY` | Conditional | — | Required when `LLM_PROVIDER=anthropic` |
 | `LLM_MODEL_OVERRIDE` | Optional | — | Force every agent to use this single model (ignores scenario `model_id`) |
