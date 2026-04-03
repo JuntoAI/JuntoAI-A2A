@@ -23,6 +23,7 @@ steps:
       - --build-arg=NEXT_PUBLIC_FIREBASE_API_KEY=${_FIREBASE_API_KEY}
       - --build-arg=NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_PROJECT_ID}
       - --build-arg=NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
+      - --build-arg=NEXT_PUBLIC_RUN_MODE=cloud
     waitFor: ["-"]
 
   # --- Deploy new revisions with NO traffic (parallel after builds) ---
