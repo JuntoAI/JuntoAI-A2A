@@ -186,9 +186,28 @@ def _find_warned_negotiator(history: list[dict], regulator_index: int) -> str:
     return "Unknown"
 
 
+def _format_price_for_summary(price: float, value_format: str = "currency", value_label: str = "Price") -> str:
+    """Format a price value for participant summaries."""
+    if value_format == "time_from_22":
+        total_minutes = 22 * 60 + round(price)
+        hours24 = (total_minutes // 60) % 24
+        mins = total_minutes % 60
+        period = "PM" if hours24 >= 12 else "AM"
+        hours12 = 12 if hours24 == 0 else (hours24 - 12 if hours24 > 12 else hours24)
+        return f"{hours12}:{mins:02d} {period}"
+    elif value_format == "percent":
+        return f"{round(price)}%"
+    elif value_format == "number":
+        return f"{price:,.0f}"
+    else:
+        return f"${price:,.0f}"
+
+
 def _build_participant_summaries(
     history: list[dict],
     agent_states: dict[str, dict],
+    value_format: str = "currency",
+    value_label: str = "Price",
 ) -> list[dict]:
     """Build a 1-2 sentence summary per participant from the negotiation history.
 
@@ -227,7 +246,7 @@ def _build_participant_summaries(
             # Build a concise summary
             parts = [f"{name}"]
             if final_price and final_price > 0:
-                parts.append(f"ended at {final_price}")
+                parts.append(f"ended at {_format_price_for_summary(final_price, value_format, value_label)}")
             if last_msg:
                 # Take first sentence of last public message as their final stance
                 first_sentence = last_msg.split(".")[0].strip()
@@ -366,6 +385,32 @@ def _build_block_advice(history: list[dict], blocker: str, agent_states: dict[st
     return advice
 
 
+def _format_outcome_value(offer: float, state: dict) -> str:
+    """Format the final offer value using the scenario's value_format.
+
+    Falls back to currency formatting if no format is specified.
+    """
+    neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
+    value_format = neg_params.get("value_format", "currency")
+    value_label = neg_params.get("value_label", "Price")
+
+    if value_format == "time_from_22":
+        # Convert minutes-from-22:00 to human-readable time
+        total_minutes = 22 * 60 + round(offer)
+        hours24 = (total_minutes // 60) % 24
+        mins = total_minutes % 60
+        period = "PM" if hours24 >= 12 else "AM"
+        hours12 = 12 if hours24 == 0 else (hours24 - 12 if hours24 > 12 else hours24)
+        time_str = f"{hours12}:{mins:02d} {period}"
+        return f"All parties reached agreement — {value_label}: {time_str}"
+    elif value_format == "percent":
+        return f"All parties reached agreement at {round(offer)}%"
+    elif value_format == "number":
+        return f"All parties reached agreement — {value_label}: {offer:,.0f}"
+    else:
+        return f"All parties reached agreement at ${offer:,.0f}"
+
+
 def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: list[dict] | None = None):
     """Convert a LangGraph state snapshot into SSE events.
 
@@ -411,13 +456,16 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
                 # the accumulated_history from the streaming loop is used.
                 agent_states_data = state.get("agent_states", {})
                 if agent_states_data:
+                    neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
                     summary["participant_summaries"] = _build_participant_summaries(
                         accumulated_history, agent_states_data,
+                        value_format=neg_params.get("value_format", "currency"),
+                        value_label=neg_params.get("value_label", "Price"),
                     )
 
                 if deal_status == "Agreed":
                     offer = state.get("current_offer", 0)
-                    summary["outcome"] = f"All parties reached agreement at ${offer:,.0f}"
+                    summary["outcome"] = _format_outcome_value(offer, state)
 
                 elif deal_status == "Failed":
                     max_turns = state.get("max_turns", 0)
@@ -494,12 +542,15 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
             # Build per-agent summaries for all outcomes
             agent_states = state.get("agent_states", {})
             if agent_states:
+                neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
                 summary["participant_summaries"] = _build_participant_summaries(
                     history, agent_states,
+                    value_format=neg_params.get("value_format", "currency"),
+                    value_label=neg_params.get("value_label", "Price"),
                 )
 
             if deal_status == "Agreed":
-                summary["outcome"] = f"All parties reached agreement at ${state.get('current_offer', 0):,.0f}"
+                summary["outcome"] = _format_outcome_value(state.get("current_offer", 0), state)
 
             elif deal_status == "Blocked":
                 # Find which regulator blocked and why from history
