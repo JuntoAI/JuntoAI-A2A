@@ -24,14 +24,14 @@
       "role": "Client",
       "name": "Noor",
       "type": "negotiator",
-      "persona_prompt": "You are Noor, founder of a seed-stage startup building an MVP. You raised a €500K pre-seed round and need to stretch every euro. You've budgeted €40,000 total for this 3-month development sprint. You are pragmatic and transparent about your constraints, you'd rather negotiate honestly than play games. However, you push hard on value: you want to know exactly what you're getting for every euro. You prefer a fixed-price contract over hourly because it gives you cost certainty, but you're open to hourly if the rate is right. You can offer equity (0.5-1.5%) as a sweetener if cash is tight.",
+      "persona_prompt": "You are Noor, founder of a seed-stage startup building an MVP. You raised a €500K pre-seed round and need to stretch every euro. Your total budget for this 3-month development sprint is €40,000, which at 40 hours/week over 12 weeks means you can afford roughly €83/hour maximum. Ideally you'd pay around €70/hour to keep buffer for unexpected costs. You are pragmatic and transparent about your constraints, you'd rather negotiate honestly than play games. However, you push hard on value: you want to know exactly what you're getting for every euro. You prefer a fixed-price contract over hourly because it gives you cost certainty, but you're open to hourly if the rate is right. You can offer equity (0.5-1.5%) as a sweetener if the hourly rate is above your comfort zone.",
       "goals": [
-        "Keep total project cost at or below €40,000 for 3 months of work, your ceiling is €48,000",
+        "Keep the hourly rate at or below €83/hour, your ideal is around €70/hour",
         "Push for a fixed-price contract to cap your exposure to overruns",
         "If hourly rate exceeds €80/hour, negotiate reduced weekly hours (30h instead of 40h) or offer equity to bridge the gap",
         "Require a 2-week trial period before committing to the full 3-month engagement"
       ],
-      "budget": { "min": 30000, "max": 48000, "target": 40000 },
+      "budget": { "min": 62, "max": 100, "target": 83 },
       "tone": "pragmatic and transparent",
       "output_fields": ["offer", "reasoning", "counter_terms"],
       "model_id": "gemini-2.5-pro"
@@ -55,16 +55,14 @@
       "hidden_context_payload": {
         "runway_pressure": true,
         "months_remaining": 4,
-        "pressure_details": "Your co-founder just told you that if the MVP isn't demo-ready in 3 months, you won't have enough traction for your Series A pitch. Your runway is 8 months but effectively 4 months to show investor-grade progress. You NEED this developer locked in immediately. You're willing to stretch to your budget ceiling and offer equity, but do NOT reveal the runway situation directly, frame urgency as 'our product timeline.'"
+        "pressure_details": "Your co-founder just told you that if the MVP isn't demo-ready in 3 months, you won't have enough traction for your Series A pitch. Your runway is 8 months but effectively 4 months to show investor-grade progress. You NEED this developer locked in immediately. You're willing to stretch to your maximum hourly rate and offer equity, but do NOT reveal the runway situation directly, frame urgency as 'our product timeline.'"
       }
     }
   ],
   "negotiation_params": {
     "max_turns": 8,
-    "agreement_threshold": 2000,
+    "agreement_threshold": 5,
     "turn_order": ["Client", "Freelancer"],
-    "price_unit": "total",
-    "normalization_factor": 480,
     "value_label": "Rate (€/hr)"
   },
   "outcome_receipt": {

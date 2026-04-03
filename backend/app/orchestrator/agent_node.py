@@ -328,6 +328,68 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
     return system_message, user_message
 
 
+def _build_convergence_pressure(state: NegotiationState) -> str:
+    """Generate dynamic convergence pressure based on turn progress and gap.
+
+    Returns a prompt fragment that escalates urgency as the negotiation
+    approaches its turn limit. Also factors in the current gap between
+    negotiators to calibrate how aggressively to push for concessions.
+    """
+    turn_count = state.get("turn_count", 0)
+    max_turns = state.get("max_turns", 15)
+    turns_remaining = max_turns - turn_count
+
+    if max_turns <= 0 or turns_remaining > max_turns * 0.5:
+        # First half — no pressure, let agents establish positions
+        return ""
+
+    # Calculate the gap between negotiators for context
+    agent_states = state.get("agent_states", {})
+    prices = [
+        info.get("last_proposed_price", 0.0)
+        for info in agent_states.values()
+        if info.get("agent_type") == "negotiator" and info.get("last_proposed_price", 0.0) > 0
+    ]
+    gap_context = ""
+    if len(prices) >= 2:
+        gap = abs(max(prices) - min(prices))
+        threshold = state.get("agreement_threshold", 0)
+        if gap > 0 and threshold > 0:
+            gap_ratio = gap / threshold
+            if gap_ratio > 5:
+                gap_context = (
+                    " The gap between positions is still very large relative "
+                    "to what's needed for agreement."
+                )
+            elif gap_ratio > 2:
+                gap_context = (
+                    " The gap is narrowing but still significant. "
+                    "A bold move could break the deadlock."
+                )
+
+    # Final quarter — maximum pressure
+    if turns_remaining <= max(2, max_turns * 0.25):
+        return (
+            f"\nURGENT — FINAL TURNS: Only {turns_remaining} turn(s) remain. "
+            f"If no agreement is reached, BOTH sides walk away with nothing.{gap_context}"
+            "\n- Make your LARGEST concession yet. Move at least twice as far "
+            "as your previous move."
+            "\n- Drop secondary demands. Focus only on the 1 issue that matters most."
+            "\n- If the other party's last offer is within reach of your acceptable "
+            "range, seriously consider accepting with minor conditions."
+            "\n- A good deal now is better than no deal. Show flexibility."
+        )
+
+    # Second half — moderate pressure
+    return (
+        f"\nNOTE: {turns_remaining} turns remain out of {max_turns}. "
+        f"The negotiation is past the halfway point.{gap_context}"
+        "\n- Start making meaningful concessions. Small moves won't close the gap in time."
+        "\n- Identify the 1-2 issues you care most about and signal flexibility on everything else."
+        "\n- Look for creative package deals that give both sides a win."
+    )
+
+
 def _build_system_message(agent_config: dict[str, Any], state: NegotiationState) -> str:
     """Build the system message with persona, goals, budget, context, and rules."""
     agent_type: str = agent_config.get("type", "negotiator")
@@ -389,6 +451,10 @@ def _build_system_message(agent_config: dict[str, Any], state: NegotiationState)
             "\n- If you are stuck, introduce a new dimension (payment terms, milestones, guarantees) to create movement."
             "\n- Your proposed_price MUST be different from your last proposed_price."
         )
+
+        # Dynamic convergence pressure — escalates as turns run out
+        parts.append(_build_convergence_pressure(state))
+
     elif agent_type == "regulator":
         parts.append(
             "\nREGULATOR RULES — follow these strictly:"
@@ -407,6 +473,19 @@ def _build_system_message(agent_config: dict[str, Any], state: NegotiationState)
             parts.append(
                 f"\nCurrent warning count: {current_warnings} of 3. "
                 f"At 3 warnings the deal is automatically blocked."
+            )
+
+        # Regulator awareness of turn progress — encourage constructive
+        # guidance in late turns instead of pure enforcement
+        turn_count = state.get("turn_count", 0)
+        max_turns = state.get("max_turns", 15)
+        turns_remaining = max_turns - turn_count
+        if max_turns > 0 and turns_remaining <= max(2, max_turns * 0.25):
+            parts.append(
+                "\nNOTE: The negotiation is in its final turns. While you must "
+                "still enforce rules, consider offering constructive suggestions "
+                "for how the parties could bridge their remaining gap. A deal "
+                "that is imperfect but compliant is better than no deal at all."
             )
 
     return "\n".join(parts)

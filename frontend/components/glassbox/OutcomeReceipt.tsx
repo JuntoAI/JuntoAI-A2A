@@ -161,6 +161,31 @@ export default function OutcomeReceipt({
           )}
         </div>
 
+        {/* Per-agent argument summaries */}
+        {Array.isArray(finalSummary.participant_summaries) && (finalSummary.participant_summaries as Array<Record<string, unknown>>).length > 0 && (
+          <div className="border-t border-gray-200 pt-4 mb-6" data-testid="participant-summaries">
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
+              Participant Summary
+            </h3>
+            <div className="space-y-2">
+              {(finalSummary.participant_summaries as Array<Record<string, unknown>>).map((p, i) => (
+                <div key={i} className="flex items-start gap-2 text-sm">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                    p.agent_type === "regulator"
+                      ? "bg-red-100 text-red-700"
+                      : p.agent_type === "observer"
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {String(p.name)}
+                  </span>
+                  <span className="text-gray-700">{String(p.summary)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ROI Metrics */}
         <div className="border-t border-gray-200 pt-4 mb-6">
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">

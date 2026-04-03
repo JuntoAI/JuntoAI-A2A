@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 
-from app.db import get_firestore_client
-from app.db.firestore_client import FirestoreSessionClient
+from app.config import settings
+from app.db import get_session_store
+from app.db.base import SessionStore
 from app.middleware import get_event_buffer, get_sse_tracker
 from app.middleware.event_buffer import SSEEventBuffer
 from app.middleware.sse_limiter import SSEConnectionTracker
@@ -64,7 +65,7 @@ class StartNegotiationResponse(BaseModel):
 @router.post("/negotiation/start", response_model=StartNegotiationResponse)
 async def start_negotiation(
     body: StartNegotiationRequest,
-    db: FirestoreSessionClient = Depends(get_firestore_client),
+    db: SessionStore = Depends(get_session_store),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
 ):
     """Create a new negotiation session.
@@ -127,22 +128,46 @@ async def start_negotiation(
         model_overrides=filtered_model_overrides,
     )
 
-    # 6. Persist to Firestore (also stores owner_email for auth)
-    doc_data = state.model_dump()
-    doc_data["owner_email"] = body.email
-    doc_ref = db._collection.document(session_id)
-    await doc_ref.set(doc_data)
+    # 6. Persist session
+    if settings.RUN_MODE == "cloud":
+        # Cloud: store via Firestore internals (owner_email for auth)
+        doc_data = state.model_dump()
+        doc_data["owner_email"] = body.email
+        doc_ref = db._collection.document(session_id)  # type: ignore[attr-defined]
+        await doc_ref.set(doc_data)
+    else:
+        # Local: use the SessionStore protocol
+        await db.create_session(state)
 
     # 7. Return session info (tokens deducted after negotiation completes)
-    waitlist_ref = db._db.collection("waitlist").document(body.email.lower().strip())
-    waitlist_doc = await waitlist_ref.get()
-    tokens_remaining = waitlist_doc.to_dict().get("token_balance", 100) if waitlist_doc.exists else 100
+    if settings.RUN_MODE == "cloud":
+        waitlist_ref = db._db.collection("waitlist").document(body.email.lower().strip())  # type: ignore[attr-defined]
+        waitlist_doc = await waitlist_ref.get()
+        tokens_remaining = waitlist_doc.to_dict().get("token_balance", 100) if waitlist_doc.exists else 100
+    else:
+        tokens_remaining = 999  # unlimited in local mode
 
     return StartNegotiationResponse(
         session_id=session_id,
         tokens_remaining=tokens_remaining,
         max_turns=state.max_turns,
     )
+
+
+def _build_role_name_map(agent_states: dict[str, dict]) -> dict[str, str]:
+    """Build a role→display-name mapping from agent_states.
+
+    Falls back to the role key itself if no ``name`` field is present.
+    """
+    return {
+        role: info.get("name", role)
+        for role, info in agent_states.items()
+    }
+
+
+def _resolve_name(role: str, role_name_map: dict[str, str]) -> str:
+    """Resolve an internal role to its display name."""
+    return role_name_map.get(role, role)
 
 
 def _find_warned_negotiator(history: list[dict], regulator_index: int) -> str:
@@ -157,7 +182,106 @@ def _find_warned_negotiator(history: list[dict], regulator_index: int) -> str:
     return "Unknown"
 
 
-def _build_block_advice(history: list[dict], blocker: str) -> list[dict]:
+def _build_participant_summaries(
+    history: list[dict],
+    agent_states: dict[str, dict],
+) -> list[dict]:
+    """Build a 1-2 sentence summary per participant from the negotiation history.
+
+    For negotiators: captures their final position and core argument.
+    For regulators: captures their enforcement stance.
+    """
+    role_name_map = _build_role_name_map(agent_states)
+    # Collect last message per role (iterate forward, overwrite)
+    last_entry: dict[str, dict] = {}
+    first_entry: dict[str, dict] = {}
+    for entry in history:
+        role = entry.get("role", "")
+        if not role:
+            continue
+        if role not in first_entry:
+            first_entry[role] = entry
+        last_entry[role] = entry
+
+    summaries: list[dict] = []
+    for role, info in agent_states.items():
+        agent_type = info.get("agent_type", "negotiator")
+        name = _resolve_name(role, role_name_map)
+        last = last_entry.get(role)
+        first = first_entry.get(role)
+        if not last:
+            continue
+
+        content = last.get("content", {})
+
+        if agent_type == "negotiator":
+            # Extract final proposed price and core argument
+            final_price = content.get("proposed_price", 0)
+            # Use the first message for their opening stance
+            first_msg = (first or {}).get("content", {}).get("public_message", "")
+            last_msg = content.get("public_message", "")
+            # Build a concise summary
+            parts = [f"{name}"]
+            if final_price and final_price > 0:
+                parts.append(f"ended at {final_price}")
+            if last_msg:
+                # Take first sentence of last public message as their final stance
+                first_sentence = last_msg.split(".")[0].strip()
+                if len(first_sentence) > 150:
+                    first_sentence = first_sentence[:147] + "..."
+                parts.append(first_sentence)
+            elif first_msg:
+                first_sentence = first_msg.split(".")[0].strip()
+                if len(first_sentence) > 150:
+                    first_sentence = first_sentence[:147] + "..."
+                parts.append(first_sentence)
+
+            summaries.append({
+                "role": role,
+                "name": name,
+                "agent_type": agent_type,
+                "summary": ". ".join(parts[1:]) if len(parts) > 1 else f"Participated as {name}",
+            })
+
+        elif agent_type == "regulator":
+            warning_count = info.get("warning_count", 0)
+            status = content.get("status", "")
+            reasoning = content.get("reasoning", "") or content.get("public_message", "")
+            first_sentence = reasoning.split(".")[0].strip() if reasoning else ""
+            if len(first_sentence) > 150:
+                first_sentence = first_sentence[:147] + "..."
+
+            summary_text = ""
+            if status == "BLOCKED":
+                summary_text = f"Blocked the deal after issuing {warning_count} warning(s). {first_sentence}"
+            elif warning_count > 0:
+                summary_text = f"Issued {warning_count} warning(s). {first_sentence}"
+            else:
+                summary_text = first_sentence or f"Monitored the negotiation as {name}"
+
+            summaries.append({
+                "role": role,
+                "name": name,
+                "agent_type": agent_type,
+                "summary": summary_text.strip(),
+            })
+
+        elif agent_type == "observer":
+            observation = content.get("observation", "") or content.get("public_message", "")
+            first_sentence = observation.split(".")[0].strip() if observation else ""
+            if len(first_sentence) > 150:
+                first_sentence = first_sentence[:147] + "..."
+            summaries.append({
+                "role": role,
+                "name": name,
+                "agent_type": agent_type,
+                "summary": first_sentence or f"Observed as {name}",
+            })
+
+    return summaries
+
+
+def _build_block_advice(history: list[dict], blocker: str, agent_states: dict[str, dict] | None = None) -> list[dict]:
     """Build actionable advice from regulator warnings that led to a block.
 
     Returns a list of advice objects, each containing:
@@ -166,6 +290,9 @@ def _build_block_advice(history: list[dict], blocker: str) -> list[dict]:
     - ``suggested_prompt``: a ready-to-use custom_prompts snippet (≤500 chars)
       the user can paste into the "Advanced Options" panel when re-running
     """
+    # Build role→name map for display-friendly labels
+    role_name_map = _build_role_name_map(agent_states) if agent_states else {}
+
     # Collect (warned_agent_role, warning_reasoning) pairs.
     # Include both WARNING and BLOCKED entries — a BLOCKED entry is the
     # final escalation and contains the most complete reasoning about what
@@ -192,8 +319,9 @@ def _build_block_advice(history: list[dict], blocker: str) -> list[dict]:
             if entry.get("agent_type") == "negotiator":
                 fallback_role = entry.get("role", "Unknown")
                 break
+        display_name = _resolve_name(fallback_role, role_name_map)
         return [{
-            "agent_role": fallback_role,
+            "agent_role": display_name,
             "issue": f"{blocker} blocked the deal after repeated warnings.",
             "suggested_prompt": (
                 "Focus on collaborative problem-solving. If the mediator "
@@ -209,6 +337,7 @@ def _build_block_advice(history: list[dict], blocker: str) -> list[dict]:
 
     advice: list[dict] = []
     for role, reasons in by_role.items():
+        display_name = _resolve_name(role, role_name_map)
         # Summarize the pattern from the first two warnings (keeps it concise)
         issue_summary = reasons[0][:200]
         if len(reasons) > 1:
@@ -225,7 +354,7 @@ def _build_block_advice(history: list[dict], blocker: str) -> list[dict]:
         )
 
         advice.append({
-            "agent_role": role,
+            "agent_role": display_name,
             "issue": issue_summary,
             "suggested_prompt": prompt,
         })
@@ -295,6 +424,13 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
                 "ai_tokens_used": state.get("total_tokens_used", 0),
             }
 
+            # Build per-agent summaries for all outcomes
+            agent_states = state.get("agent_states", {})
+            if agent_states:
+                summary["participant_summaries"] = _build_participant_summaries(
+                    history, agent_states,
+                )
+
             if deal_status == "Agreed":
                 summary["outcome"] = f"All parties reached agreement at ${state.get('current_offer', 0):,.0f}"
 
@@ -313,7 +449,7 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
                 summary["reason"] = block_reason or f"{blocker} issued 3 warnings — deal terminated"
 
                 # Build actionable advice from warning history
-                summary["advice"] = _build_block_advice(history, blocker)
+                summary["advice"] = _build_block_advice(history, blocker, agent_states)
 
             elif deal_status == "Failed":
                 max_turns = state.get("max_turns", 0)
@@ -347,7 +483,7 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
 async def stream_negotiation(
     session_id: str,
     email: str = Query(...),
-    db: FirestoreSessionClient = Depends(get_firestore_client),
+    db: SessionStore = Depends(get_session_store),
     tracker: SSEConnectionTracker = Depends(get_sse_tracker),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
     event_buffer: SSEEventBuffer = Depends(get_event_buffer),
@@ -364,13 +500,14 @@ async def stream_negotiation(
     # 1. Session lookup — raises SessionNotFoundError → 404 via exception handler
     raw_doc = await db.get_session_doc(session_id)
 
-    # 2. Email ownership check
-    owner_email = raw_doc.get("owner_email")
-    if owner_email is not None and owner_email != email:
-        return JSONResponse(
-            status_code=403,
-            content={"detail": "Email does not match session owner"},
-        )
+    # 2. Email ownership check (cloud mode only)
+    if settings.RUN_MODE == "cloud":
+        owner_email = raw_doc.get("owner_email")
+        if owner_email is not None and owner_email != email:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Email does not match session owner"},
+            )
 
     # 3. Build state model (extra="ignore" drops owner_email, created_at, etc.)
     state = NegotiationStateModel(**raw_doc)
@@ -469,12 +606,12 @@ async def stream_negotiation(
             yield format_sse_event(err_event, event_id=eid)
         finally:
             await tracker.release(email)
-            # Deduct AI tokens from user's balance
-            if ai_tokens_used > 0:
+            # Deduct AI tokens from user's balance (cloud mode only)
+            if settings.RUN_MODE == "cloud" and ai_tokens_used > 0:
                 try:
                     # Scale: 1 user token per 1000 AI tokens (rounded up)
                     user_tokens_cost = max(1, (ai_tokens_used + 999) // 1000)
-                    wl_ref = db._db.collection("waitlist").document(email.lower().strip())
+                    wl_ref = db._db.collection("waitlist").document(email.lower().strip())  # type: ignore[attr-defined]
                     wl_doc = await wl_ref.get()
                     if wl_doc.exists:
                         balance = wl_doc.to_dict().get("token_balance", 0)
