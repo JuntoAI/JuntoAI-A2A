@@ -236,7 +236,8 @@ class TestP5RegulatorStateUpdate:
         if effective_status == "BLOCKED" and old_role == 0:
             effective_status = "WARNING"
 
-        if effective_status == "WARNING":
+        if effective_status in ("WARNING", "BLOCKED"):
+            # Both WARNING and BLOCKED increment the warning tally
             assert delta["warning_count"] == old_global + 1
             assert delta["agent_states"][role]["warning_count"] == old_role + 1
         else:

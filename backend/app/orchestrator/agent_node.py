@@ -374,7 +374,18 @@ def _build_system_message(agent_config: dict[str, Any], state: NegotiationState)
             "\n- If a party says 'we comply' without specifics, issue a WARNING demanding documentation."
             "\n- Track unresolved items across turns. Do not let parties ignore your previous warnings."
             "\n- Vary your analysis each turn. Raise new concerns, don't just repeat old ones."
+            "\n- You may only issue ONE status per response: CLEAR, WARNING, or BLOCKED."
+            "\n- Do NOT describe multiple warnings in a single response. If you see multiple issues, pick the most severe one."
+            "\n- Use BLOCKED only when you have already issued warnings on prior turns and the party has not corrected course."
         )
+        # Tell the regulator how many warnings have been issued so far
+        # so it can calibrate its response accurately.
+        current_warnings = state.get("warning_count", 0)
+        if current_warnings > 0:
+            parts.append(
+                f"\nCurrent warning count: {current_warnings} of 3. "
+                f"At 3 warnings the deal is automatically blocked."
+            )
 
     return "\n".join(parts)
 
@@ -559,7 +570,11 @@ def _update_state(
             # Update the history entry to reflect the downgrade
             history_entry["content"] = {**parsed_output.model_dump(), "status": effective_status}
 
-        if effective_status == "WARNING":
+        if effective_status in ("WARNING", "BLOCKED"):
+            # Count both WARNING and BLOCKED toward the warning tally.
+            # A BLOCKED response is the final escalation — it still
+            # represents a warning event and must be reflected in the
+            # total so the UI/transcript shows the correct count.
             global_warning_count += 1
             if role in agent_states:
                 agent_states[role]["warning_count"] = agent_states[role].get("warning_count", 0) + 1

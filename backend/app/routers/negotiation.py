@@ -145,6 +145,18 @@ async def start_negotiation(
     )
 
 
+def _find_warned_negotiator(history: list[dict], regulator_index: int) -> str:
+    """Walk backward from a regulator entry to find the most recent negotiator.
+
+    Looks past other non-negotiator entries (observers, other regulators)
+    that may sit between the negotiator and the regulator in history.
+    """
+    for j in range(regulator_index - 1, -1, -1):
+        if history[j].get("agent_type") == "negotiator":
+            return history[j].get("role", "Unknown")
+    return "Unknown"
+
+
 def _build_block_advice(history: list[dict], blocker: str) -> list[dict]:
     """Build actionable advice from regulator warnings that led to a block.
 
@@ -154,26 +166,34 @@ def _build_block_advice(history: list[dict], blocker: str) -> list[dict]:
     - ``suggested_prompt``: a ready-to-use custom_prompts snippet (≤500 chars)
       the user can paste into the "Advanced Options" panel when re-running
     """
-    # Collect (warned_agent_role, warning_reasoning) pairs
+    # Collect (warned_agent_role, warning_reasoning) pairs.
+    # Include both WARNING and BLOCKED entries — a BLOCKED entry is the
+    # final escalation and contains the most complete reasoning about what
+    # went wrong.
     flagged: list[tuple[str, str]] = []
     for i, entry in enumerate(history):
         if entry.get("agent_type") != "regulator":
             continue
         content = entry.get("content", {})
-        if content.get("status") != "WARNING":
+        status = content.get("status")
+        if status not in ("WARNING", "BLOCKED"):
             continue
         reasoning = content.get("reasoning", "") or content.get("public_message", "")
-        # The agent that spoke right before this warning is the one being flagged
-        warned_role = "Unknown"
-        if i > 0:
-            prev = history[i - 1]
-            if prev.get("agent_type") == "negotiator":
-                warned_role = prev.get("role", "Unknown")
+        # Walk backward to find the negotiator this warning targets
+        warned_role = _find_warned_negotiator(history, i)
         flagged.append((warned_role, reasoning))
 
     if not flagged:
+        # Last resort: no WARNING/BLOCKED entries found in history at all.
+        # Find the last negotiator who spoke before the block as the most
+        # likely agent to adjust.
+        fallback_role = "Unknown"
+        for entry in reversed(history):
+            if entry.get("agent_type") == "negotiator":
+                fallback_role = entry.get("role", "Unknown")
+                break
         return [{
-            "agent_role": "Unknown",
+            "agent_role": fallback_role,
             "issue": f"{blocker} blocked the deal after repeated warnings.",
             "suggested_prompt": (
                 "Focus on collaborative problem-solving. If the mediator "
