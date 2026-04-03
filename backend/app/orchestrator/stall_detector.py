@@ -85,15 +85,29 @@ def _get_prices_by_role(
     """Group proposed prices by agent role.
 
     When ``structured_memory_enabled`` is True, reads ``my_offers``
-    directly from ``agent_memories`` instead of re-parsing history.
+    directly from ``agent_memories`` for roles listed in
+    ``structured_memory_roles``, instead of re-parsing history.
     """
-    if state.get("structured_memory_enabled", False):
+    memory_roles = set(state.get("structured_memory_roles", [])) if state.get("structured_memory_enabled", False) else set()
+
+    if memory_roles:
         prices: dict[str, list[float]] = {}
         agent_memories = state.get("agent_memories", {})
-        for role, memory in agent_memories.items():
+        for role in memory_roles:
+            memory = agent_memories.get(role, {})
             offers = memory.get("my_offers", [])
             if offers:
                 prices[role] = list(offers)
+        # For roles NOT in memory_roles, fall back to history parsing
+        history = state.get("history", [])
+        for entry in _get_negotiator_history(history):
+            role = entry.get("role", "")
+            if role in memory_roles:
+                continue  # already handled via agent_memories
+            content = entry.get("content", {})
+            price = content.get("proposed_price", 0.0)
+            if price > 0:
+                prices.setdefault(role, []).append(price)
         return prices
 
     # Fallback: parse from history (original behavior)

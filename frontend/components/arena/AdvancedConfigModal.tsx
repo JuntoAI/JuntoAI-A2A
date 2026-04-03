@@ -11,7 +11,8 @@ export interface AdvancedConfigModalProps {
   availableModels: ModelInfo[];
   initialCustomPrompt: string;
   initialModelOverride: string | null;
-  onSave: (customPrompt: string, modelOverride: string | null) => void;
+  initialStructuredMemory: boolean;
+  onSave: (customPrompt: string, modelOverride: string | null, structuredMemory: boolean) => void;
   onCancel: () => void;
 }
 
@@ -25,6 +26,7 @@ export function AdvancedConfigModal({
   availableModels,
   initialCustomPrompt,
   initialModelOverride,
+  initialStructuredMemory,
   onSave,
   onCancel,
 }: AdvancedConfigModalProps) {
@@ -32,6 +34,7 @@ export function AdvancedConfigModal({
   const [selectedModelId, setSelectedModelId] = useState<string>(
     initialModelOverride ?? defaultModelId,
   );
+  const [structuredMemory, setStructuredMemory] = useState(initialStructuredMemory);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -41,8 +44,9 @@ export function AdvancedConfigModal({
     if (isOpen) {
       setCustomPrompt(initialCustomPrompt);
       setSelectedModelId(initialModelOverride ?? defaultModelId);
+      setStructuredMemory(initialStructuredMemory);
     }
-  }, [isOpen, initialCustomPrompt, initialModelOverride, defaultModelId]);
+  }, [isOpen, initialCustomPrompt, initialModelOverride, defaultModelId, initialStructuredMemory]);
 
   // Focus textarea when modal opens
   useEffect(() => {
@@ -121,8 +125,8 @@ export function AdvancedConfigModal({
   const handleSave = useCallback(() => {
     const modelOverride =
       selectedModelId === defaultModelId ? null : selectedModelId;
-    onSave(customPrompt, modelOverride);
-  }, [customPrompt, selectedModelId, defaultModelId, onSave]);
+    onSave(customPrompt, modelOverride, structuredMemory);
+  }, [customPrompt, selectedModelId, defaultModelId, onSave, structuredMemory]);
 
   // Build sorted model options: default first, then rest
   const sortedModels = buildSortedModels(availableModels, defaultModelId);
@@ -177,7 +181,7 @@ export function AdvancedConfigModal({
         </div>
 
         {/* Model Selector */}
-        <div className="mb-6">
+        <div className="mb-5">
           <label
             htmlFor="model-selector"
             className="mb-1.5 block text-sm font-medium text-gray-700"
@@ -196,6 +200,28 @@ export function AdvancedConfigModal({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Structured Memory */}
+        <div className="mb-6">
+          <label
+            htmlFor="structured-memory-toggle"
+            className="flex cursor-pointer items-center gap-3 text-sm text-gray-700"
+          >
+            <input
+              id="structured-memory-toggle"
+              type="checkbox"
+              checked={structuredMemory}
+              onChange={(e) => setStructuredMemory(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
+            />
+            <div>
+              <span className="font-medium">Structured Agent Memory</span>
+              <p className="mt-0.5 text-xs text-gray-500">
+                This agent maintains structured recall of offers, concessions, and tactics instead of replaying full history each turn
+              </p>
+            </div>
+          </label>
         </div>
 
         {/* Actions */}

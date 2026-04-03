@@ -83,10 +83,34 @@ def _dispatcher(state: NegotiationState) -> dict[str, Any]:
         return {}
 
     if state["turn_count"] >= state["max_turns"]:
-        return {"deal_status": "Failed"}
+        return {
+            "deal_status": "Failed",
+            "current_offer": state["current_offer"],
+            "turn_count": state["turn_count"],
+            "warning_count": state["warning_count"],
+            "total_tokens_used": state.get("total_tokens_used", 0),
+            "agent_states": state["agent_states"],
+            "max_turns": state["max_turns"],
+        }
 
     if _check_agreement(state):
-        return {"deal_status": "Agreed"}
+        # Return fields needed by _snapshot_to_events to build a rich
+        # summary (participant_summaries, outcome text, etc.).  The
+        # dispatcher delta is the only snapshot for agreement — agent
+        # nodes don't set deal_status to "Agreed" — so we must carry
+        # the data forward here.  ``history`` uses Annotated[list, add]
+        # so we cannot include it (LangGraph would append a duplicate);
+        # instead we pass ``agent_states`` which is sufficient for
+        # _build_participant_summaries when combined with the full
+        # history available via the accumulated-state path.
+        return {
+            "deal_status": "Agreed",
+            "current_offer": state["current_offer"],
+            "turn_count": state["turn_count"],
+            "warning_count": state["warning_count"],
+            "total_tokens_used": state.get("total_tokens_used", 0),
+            "agent_states": state["agent_states"],
+        }
 
     # Stall detection — catch loops before max_turns
     diagnosis = detect_stall(state)
@@ -100,6 +124,12 @@ def _dispatcher(state: NegotiationState) -> dict[str, Any]:
         return {
             "deal_status": "Failed",
             "stall_diagnosis": diagnosis.to_dict(),
+            "current_offer": state["current_offer"],
+            "turn_count": state["turn_count"],
+            "warning_count": state["warning_count"],
+            "total_tokens_used": state.get("total_tokens_used", 0),
+            "agent_states": state["agent_states"],
+            "max_turns": state["max_turns"],
         }
 
     return {}

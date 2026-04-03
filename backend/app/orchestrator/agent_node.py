@@ -289,7 +289,7 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
 
     history = state.get("history", [])
 
-    if state.get("structured_memory_enabled", False):
+    if state.get("structured_memory_enabled", False) and role in state.get("structured_memory_roles", []):
         # Structured memory mode: labeled memory fields + sliding window
         agent_memories = state.get("agent_memories", {})
         raw_mem = agent_memories.get(role, {})
@@ -699,7 +699,7 @@ def _update_state(
         delta["agent_states"] = agent_states
 
         # --- Structured memory extraction ---
-        if state.get("structured_memory_enabled", False):
+        if state.get("structured_memory_enabled", False) and role in state.get("structured_memory_roles", []):
             raw_mem = state.get("agent_memories", {}).get(role, AgentMemory().model_dump())
             try:
                 memory = AgentMemory(**raw_mem)

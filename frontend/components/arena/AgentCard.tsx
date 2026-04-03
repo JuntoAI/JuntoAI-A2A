@@ -21,6 +21,7 @@ export interface AgentCardProps {
   index: number;
   hasCustomPrompt?: boolean;
   modelOverride?: string | null;
+  hasStructuredMemory?: boolean;
   onAdvancedConfig?: () => void;
 }
 
@@ -32,6 +33,7 @@ export function AgentCard({
   index,
   hasCustomPrompt = false,
   modelOverride = null,
+  hasStructuredMemory = false,
   onAdvancedConfig = () => {},
 }: AgentCardProps) {
   const color = AGENT_COLORS[index % AGENT_COLORS.length];
@@ -62,6 +64,11 @@ export function AgentCard({
           <span className="ml-1 text-blue-500">(override)</span>
         )}
       </p>
+      {hasStructuredMemory && (
+        <p className="mt-1 text-xs text-green-600">
+          ✦ Structured Memory
+        </p>
+      )}
       <button
         type="button"
         onClick={onAdvancedConfig}

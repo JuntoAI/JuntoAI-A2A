@@ -45,6 +45,7 @@ class StartNegotiationRequest(BaseModel):
     custom_prompts: dict[str, str] = Field(default_factory=dict)
     model_overrides: dict[str, str] = Field(default_factory=dict)
     structured_memory_enabled: bool = Field(default=False)
+    structured_memory_roles: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_custom_prompt_lengths(self) -> "StartNegotiationRequest":
@@ -128,6 +129,7 @@ async def start_negotiation(
         custom_prompts=filtered_custom_prompts,
         model_overrides=filtered_model_overrides,
         structured_memory_enabled=body.structured_memory_enabled,
+        structured_memory_roles=body.structured_memory_roles,
     )
 
     # 6. Persist session
@@ -364,7 +366,7 @@ def _build_block_advice(history: list[dict], blocker: str, agent_states: dict[st
     return advice
 
 
-def _snapshot_to_events(snapshot: dict, session_id: str):
+def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: list[dict] | None = None):
     """Convert a LangGraph state snapshot into SSE events.
 
     Each snapshot is keyed by node name. We extract the latest history
@@ -373,14 +375,24 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
     Dispatcher snapshots may contain a terminal ``deal_status`` without
     any ``history`` entries (the dispatcher only sets status flags).
     We must still emit a ``NegotiationCompleteEvent`` in that case.
+
+    Parameters
+    ----------
+    accumulated_history:
+        Full negotiation history accumulated across all prior snapshots.
+        Used by the dispatcher early-exit path to build participant
+        summaries when the delta itself has no history.
     """
+    if accumulated_history is None:
+        accumulated_history = []
     events = []
     for _node_name, state in snapshot.items():
         if not isinstance(state, dict):
             continue
 
         # Handle dispatcher snapshots that set a terminal deal_status
-        # but contain no history entries (e.g. max_turns reached).
+        # but contain no history entries (e.g. max_turns reached,
+        # or agreement detected by the dispatcher).
         history = state.get("history", [])
         if not history:
             deal_status = state.get("deal_status", "")
@@ -391,7 +403,23 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
                     "total_warnings": state.get("warning_count", 0),
                     "ai_tokens_used": state.get("total_tokens_used", 0),
                 }
-                if deal_status == "Failed":
+
+                # Build per-agent summaries when agent_states is available
+                # (the dispatcher now forwards agent_states for Agreed).
+                # Note: history is empty in the delta, so summaries will
+                # use agent_states metadata only.  For richer summaries
+                # the accumulated_history from the streaming loop is used.
+                agent_states_data = state.get("agent_states", {})
+                if agent_states_data:
+                    summary["participant_summaries"] = _build_participant_summaries(
+                        accumulated_history, agent_states_data,
+                    )
+
+                if deal_status == "Agreed":
+                    offer = state.get("current_offer", 0)
+                    summary["outcome"] = f"All parties reached agreement at ${offer:,.0f}"
+
+                elif deal_status == "Failed":
                     max_turns = state.get("max_turns", 0)
                     stall = state.get("stall_diagnosis")
                     if stall and isinstance(stall, dict):
@@ -597,6 +625,7 @@ async def stream_negotiation(
         custom_prompts=state.custom_prompts,
         model_overrides=state.model_overrides,
         structured_memory_enabled=state.structured_memory_enabled,
+        structured_memory_roles=state.structured_memory_roles,
     )
 
     # 7. Build the async event stream generator
@@ -612,8 +641,13 @@ async def stream_negotiation(
 
         try:
             async with asyncio.timeout(timeout):
+                accumulated_history: list[dict] = []
                 async for snapshot in run_negotiation(initial_state, scenario_config):
-                    events = _snapshot_to_events(snapshot, session_id)
+                    # Accumulate history entries from each snapshot delta
+                    for _node, s in snapshot.items():
+                        if isinstance(s, dict):
+                            accumulated_history.extend(s.get("history", []))
+                    events = _snapshot_to_events(snapshot, session_id, accumulated_history)
                     # Track tokens from snapshot state
                     for _node, s in snapshot.items():
                         if isinstance(s, dict):

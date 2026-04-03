@@ -115,14 +115,21 @@ export async function startNegotiation(
   activeToggles: string[],
   customPrompts?: Record<string, string>,
   modelOverrides?: Record<string, string>,
-  structuredMemoryEnabled?: boolean,
+  structuredMemoryRoles?: string[],
 ): Promise<StartNegotiationResponse> {
   const body: Record<string, unknown> = {
     email,
     scenario_id: scenarioId,
     active_toggles: activeToggles,
-    structured_memory_enabled: structuredMemoryEnabled ?? false,
   };
+
+  if (structuredMemoryRoles && structuredMemoryRoles.length > 0) {
+    body.structured_memory_enabled = true;
+    body.structured_memory_roles = structuredMemoryRoles;
+  } else {
+    body.structured_memory_enabled = false;
+    body.structured_memory_roles = [];
+  }
 
   if (customPrompts && Object.keys(customPrompts).length > 0) {
     body.custom_prompts = customPrompts;

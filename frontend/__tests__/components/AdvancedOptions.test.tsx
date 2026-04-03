@@ -63,14 +63,14 @@ const mockDetail: api.ArenaScenario = {
   agents: [
     {
       name: "Recruiter",
-      role: "negotiator",
+      role: "Recruiter",
       goals: ["Hire talent"],
       model_id: "gemini-3-flash-preview",
       type: "negotiator",
     },
     {
       name: "Candidate",
-      role: "negotiator",
+      role: "Candidate",
       goals: ["Get best offer"],
       model_id: "claude-3.5-sonnet",
       type: "negotiator",
@@ -99,15 +99,37 @@ async function selectScenario(scenarioId = "talent_war") {
     });
   });
   await waitFor(() => {
-    expect(screen.getByText("Recruiter")).toBeInTheDocument();
+    // Wait for agent cards to render — look for the heading
+    expect(screen.getByRole("heading", { name: "Agents" })).toBeInTheDocument();
+  });
+}
+
+/** Open the Advanced Config modal for a given agent */
+async function openAdvancedConfig(agentName: string) {
+  // Find all "Advanced Config" buttons and click the one inside the card
+  // that contains the agent name as a heading
+  const buttons = screen.getAllByRole("button", { name: /Advanced Config/i });
+  // Find the button whose parent card contains the agent name heading
+  let targetBtn: HTMLElement | null = null;
+  for (const btn of buttons) {
+    const card = btn.closest("div[style]");
+    if (card && card.querySelector("h3")?.textContent === agentName) {
+      targetBtn = btn;
+      break;
+    }
+  }
+  expect(targetBtn).not.toBeNull();
+  fireEvent.click(targetBtn!);
+  await waitFor(() => {
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 }
 
 // ---------------------------------------------------------------------------
-// Tests — Advanced Options Section (Req 3.2, 3.4, 3.5, 4.1)
+// Tests — Per-Agent Structured Memory in Advanced Config Modal
 // ---------------------------------------------------------------------------
 
-describe("Advanced Options Section", () => {
+describe("Per-Agent Structured Memory Toggle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSessionState = {
@@ -125,43 +147,24 @@ describe("Advanced Options Section", () => {
     vi.mocked(api.fetchAvailableModels).mockResolvedValue([]);
   });
 
-  // Req 3.2: Section renders collapsed by default
-  it("renders Advanced Options collapsed by default — toggle not visible", async () => {
+  it("shows structured memory toggle inside Advanced Config modal", async () => {
     render(<ArenaPage />);
     await selectScenario();
+    await openAdvancedConfig("Recruiter");
 
-    // The section header should be present
-    expect(screen.getByText("Advanced Options")).toBeInTheDocument();
-
-    // The toggle checkbox should NOT be visible when collapsed
-    expect(screen.queryByLabelText(/Structured Agent Memory/i)).not.toBeInTheDocument();
-  });
-
-  // Req 3.2: Clicking expands the section and shows the toggle
-  it("expands section on click and shows the structured memory toggle", async () => {
-    render(<ArenaPage />);
-    await selectScenario();
-
-    // Click to expand
-    fireEvent.click(screen.getByText("Advanced Options"));
-
-    // Toggle should now be visible
     expect(screen.getByLabelText(/Structured Agent Memory/i)).toBeInTheDocument();
   });
 
-  // Req 3.4: Toggle defaults to off
-  it("defaults the structured memory toggle to off (unchecked)", async () => {
+  it("defaults the structured memory toggle to off in the modal", async () => {
     render(<ArenaPage />);
     await selectScenario();
-
-    fireEvent.click(screen.getByText("Advanced Options"));
+    await openAdvancedConfig("Recruiter");
 
     const toggle = screen.getByLabelText(/Structured Agent Memory/i);
     expect(toggle).not.toBeChecked();
   });
 
-  // Req 4.1: startNegotiation called with structured_memory_enabled=true
-  it("passes structured_memory_enabled=true when toggle is on", async () => {
+  it("passes structured_memory_roles for enabled agents only", async () => {
     vi.mocked(api.startNegotiation).mockResolvedValue({
       session_id: "sess-mem-1",
       tokens_remaining: 40,
@@ -171,9 +174,10 @@ describe("Advanced Options Section", () => {
     render(<ArenaPage />);
     await selectScenario();
 
-    // Expand and enable the toggle
-    fireEvent.click(screen.getByText("Advanced Options"));
+    // Open Recruiter's Advanced Config and enable structured memory
+    await openAdvancedConfig("Recruiter");
     fireEvent.click(screen.getByLabelText(/Structured Agent Memory/i));
+    fireEvent.click(screen.getByRole("button", { name: /Save/i }));
 
     // Start negotiation
     await act(async () => {
@@ -187,22 +191,33 @@ describe("Advanced Options Section", () => {
         [],
         undefined,
         undefined,
-        true,
+        ["Recruiter"],  // Only the Recruiter's role
       );
     });
   });
 
-  // Req 3.5: Toggle resets on scenario change
-  it("resets structured memory toggle to off when switching scenarios", async () => {
+  it("does not include Advanced Options section on the page", async () => {
     render(<ArenaPage />);
     await selectScenario();
 
-    // Expand and enable the toggle
-    fireEvent.click(screen.getByText("Advanced Options"));
-    fireEvent.click(screen.getByLabelText(/Structured Agent Memory/i));
-    expect(screen.getByLabelText(/Structured Agent Memory/i)).toBeChecked();
+    // The old global "Advanced Options" section should no longer exist
+    expect(screen.queryByText("Advanced Options")).not.toBeInTheDocument();
+  });
 
-    // Switch to a different scenario
+  it("resets structured memory on scenario change", async () => {
+    render(<ArenaPage />);
+    await selectScenario();
+
+    // Enable memory for Recruiter
+    await openAdvancedConfig("Recruiter");
+    fireEvent.click(screen.getByLabelText(/Structured Agent Memory/i));
+    fireEvent.click(screen.getByRole("button", { name: /Save/i }));
+
+    // Verify indicator shows on the Recruiter card only
+    const memoryIndicators = screen.getAllByText("✦ Structured Memory");
+    expect(memoryIndicators).toHaveLength(1);
+
+    // Switch scenario
     const detail2: api.ArenaScenario = {
       ...mockDetail,
       id: "ma_buyout",
@@ -220,15 +235,7 @@ describe("Advanced Options Section", () => {
       expect(screen.getByText("Due Diligence")).toBeInTheDocument();
     });
 
-    // The section may still be expanded from before, or collapsed.
-    // Ensure it's expanded so we can inspect the toggle.
-    const advancedBtn = screen.getByRole("button", { name: /Advanced Options/ });
-    if (advancedBtn.getAttribute("aria-expanded") !== "true") {
-      fireEvent.click(advancedBtn);
-    }
-
-    // Toggle should be reset to off
-    const toggle = screen.getByLabelText(/Structured Agent Memory/i);
-    expect(toggle).not.toBeChecked();
+    // Memory indicator should be gone after scenario change
+    expect(screen.queryByText("✦ Structured Memory")).not.toBeInTheDocument();
   });
 });

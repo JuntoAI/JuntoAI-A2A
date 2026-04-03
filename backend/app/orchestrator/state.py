@@ -35,6 +35,7 @@ class NegotiationState(TypedDict):
     custom_prompts: dict[str, str]
     model_overrides: dict[str, str]
     structured_memory_enabled: bool
+    structured_memory_roles: list[str]
     agent_memories: dict[str, dict[str, Any]]
 
 
@@ -46,6 +47,7 @@ def create_initial_state(
     custom_prompts: dict[str, str] | None = None,
     model_overrides: dict[str, str] | None = None,
     structured_memory_enabled: bool = False,
+    structured_memory_roles: list[str] | None = None,
 ) -> NegotiationState:
     """Build the initial NegotiationState from a scenario config dict.
 
@@ -81,9 +83,17 @@ def create_initial_state(
             "warning_count": 0,
         }
 
+    # Resolve which roles have structured memory enabled.
+    # Legacy callers may pass structured_memory_enabled=True (global flag)
+    # which enables memory for ALL agents. New callers pass
+    # structured_memory_roles with specific role names.
+    effective_roles: list[str] = list(structured_memory_roles or [])
+    if structured_memory_enabled and not effective_roles:
+        effective_roles = [a["role"] for a in agents]
+
     agent_memories: dict[str, dict[str, Any]] = {}
-    if structured_memory_enabled:
-        for a in agents:
+    for a in agents:
+        if a["role"] in effective_roles:
             agent_memories[a["role"]] = AgentMemory().model_dump()
 
     return NegotiationState(
@@ -107,6 +117,7 @@ def create_initial_state(
         stall_diagnosis=None,
         custom_prompts=custom_prompts or {},
         model_overrides=model_overrides or {},
-        structured_memory_enabled=structured_memory_enabled,
+        structured_memory_enabled=bool(effective_roles),
+        structured_memory_roles=effective_roles,
         agent_memories=agent_memories,
     )

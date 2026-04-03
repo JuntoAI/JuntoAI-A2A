@@ -143,6 +143,7 @@ describe("startNegotiation", () => {
           scenario_id: "talent_war",
           active_toggles: ["competing_offer"],
           structured_memory_enabled: false,
+          structured_memory_roles: [],
         }),
       },
     );
@@ -192,6 +193,7 @@ describe("startNegotiation", () => {
           scenario_id: "ma_buyout",
           active_toggles: [],
           structured_memory_enabled: false,
+          structured_memory_roles: [],
         }),
       },
     );

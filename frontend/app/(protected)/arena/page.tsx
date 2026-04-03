@@ -19,7 +19,6 @@ import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
 import { AdvancedConfigModal } from "@/components/arena/AdvancedConfigModal";
 import { Spinner } from "@/components/ui/Spinner";
-import { ChevronDown, ChevronUp } from "lucide-react";
 
 function ArenaPageContent() {
   const router = useRouter();
@@ -39,13 +38,10 @@ function ArenaPageContent() {
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Advanced options state
-  const [structuredMemoryEnabled, setStructuredMemoryEnabled] = useState(false);
-  const [advancedOptionsOpen, setAdvancedOptionsOpen] = useState(false);
-
   // Advanced config state
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
   const [modelOverrides, setModelOverrides] = useState<Record<string, string>>({});
+  const [structuredMemoryRoles, setStructuredMemoryRoles] = useState<Record<string, boolean>>({});
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
   const [advancedConfigAgent, setAdvancedConfigAgent] = useState<{
     name: string;
@@ -109,6 +105,7 @@ function ArenaPageContent() {
   useEffect(() => {
     setCustomPrompts({});
     setModelOverrides({});
+    setStructuredMemoryRoles({});
   }, [selectedScenarioId]);
 
   // Fetch scenario detail on selection
@@ -116,7 +113,7 @@ function ArenaPageContent() {
     setSelectedScenarioId(scenarioId);
     setScenarioDetail(null);
     setActiveToggles([]);
-    setStructuredMemoryEnabled(false);
+    setStructuredMemoryRoles({});
     setError(null);
     setIsLoadingDetail(true);
     try {
@@ -165,7 +162,7 @@ function ArenaPageContent() {
         activeToggles,
         Object.keys(filteredPrompts).length > 0 ? filteredPrompts : undefined,
         Object.keys(filteredOverrides).length > 0 ? filteredOverrides : undefined,
-        structuredMemoryEnabled,
+        Object.keys(structuredMemoryRoles).filter((r) => structuredMemoryRoles[r]),
       );
       updateTokenBalance(result.tokens_remaining);
       router.push(
@@ -189,7 +186,7 @@ function ArenaPageContent() {
     activeToggles,
     customPrompts,
     modelOverrides,
-    structuredMemoryEnabled,
+    structuredMemoryRoles,
     updateTokenBalance,
     router,
   ]);
@@ -243,6 +240,7 @@ function ArenaPageContent() {
                   index={i}
                   hasCustomPrompt={!!customPrompts[agent.role]?.trim()}
                   modelOverride={modelOverrides[agent.role] ?? null}
+                  hasStructuredMemory={structuredMemoryRoles[agent.role] ?? false}
                   onAdvancedConfig={() =>
                     setAdvancedConfigAgent({
                       name: agent.name,
@@ -278,44 +276,6 @@ function ArenaPageContent() {
             </section>
           )}
 
-          {/* Advanced Options */}
-          <section>
-            <button
-              type="button"
-              onClick={() => setAdvancedOptionsOpen((prev) => !prev)}
-              className="flex w-full items-center gap-2 text-lg font-semibold text-gray-800"
-              aria-expanded={advancedOptionsOpen}
-            >
-              Advanced Options
-              {advancedOptionsOpen ? (
-                <ChevronUp className="h-5 w-5 text-gray-500" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-gray-500" />
-              )}
-            </button>
-            {advancedOptionsOpen && (
-              <div className="mt-3 space-y-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <label
-                  htmlFor="structured-memory-toggle"
-                  className="flex cursor-pointer items-center gap-3 text-sm text-gray-700"
-                >
-                  <input
-                    id="structured-memory-toggle"
-                    type="checkbox"
-                    checked={structuredMemoryEnabled}
-                    onChange={(e) => setStructuredMemoryEnabled(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue"
-                  />
-                  <div>
-                    <span className="font-medium">Structured Agent Memory</span>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      Agents maintain structured recall of offers, concessions, and tactics instead of replaying full history each turn
-                    </p>
-                  </div>
-                </label>
-              </div>
-            )}
-          </section>
         </>
       )}
 
@@ -343,7 +303,8 @@ function ArenaPageContent() {
           availableModels={availableModels}
           initialCustomPrompt={customPrompts[advancedConfigAgent.role] ?? ""}
           initialModelOverride={modelOverrides[advancedConfigAgent.role] ?? null}
-          onSave={(customPrompt, modelOverride) => {
+          initialStructuredMemory={structuredMemoryRoles[advancedConfigAgent.role] ?? false}
+          onSave={(customPrompt, modelOverride, structuredMemory) => {
             const role = advancedConfigAgent.role;
             setCustomPrompts((prev) => {
               const next = { ...prev };
@@ -363,6 +324,10 @@ function ArenaPageContent() {
               }
               return next;
             });
+            setStructuredMemoryRoles((prev) => ({
+              ...prev,
+              [role]: structuredMemory,
+            }));
             setAdvancedConfigAgent(null);
           }}
           onCancel={() => setAdvancedConfigAgent(null)}

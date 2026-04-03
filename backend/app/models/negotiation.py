@@ -36,4 +36,5 @@ class NegotiationStateModel(BaseModel):
     custom_prompts: dict[str, str] = Field(default_factory=dict)
     model_overrides: dict[str, str] = Field(default_factory=dict)
     structured_memory_enabled: bool = Field(default=False)
+    structured_memory_roles: list[str] = Field(default_factory=list)
     agent_memories: dict[str, dict[str, Any]] = Field(default_factory=dict)
