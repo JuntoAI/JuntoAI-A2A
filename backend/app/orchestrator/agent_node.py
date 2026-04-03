@@ -21,6 +21,28 @@ from app.orchestrator.state import NegotiationState
 
 logger = logging.getLogger(__name__)
 
+
+def _extract_text_from_content(content: Any) -> str:
+    """Extract plain text from an LLM response content field.
+
+    LangChain models return ``content`` as either a plain string or a list
+    of content blocks (e.g. ``[{'type': 'text', 'text': '...'}]`` for
+    Anthropic/Claude via Vertex AI).  This helper normalises both forms
+    into a single string.
+    """
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "text":
+                parts.append(block.get("text", ""))
+            elif isinstance(block, str):
+                parts.append(block)
+        if parts:
+            return "\n".join(parts)
+    return str(content)
+
 # Maps agent type → Pydantic output model class
 _OUTPUT_MODEL_MAP: dict[str, type] = {
     "negotiator": NegotiatorOutput,
@@ -157,7 +179,7 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
 
         # 4. Invoke LLM
         response: AIMessage = model.invoke(messages)
-        response_text = response.content if isinstance(response.content, str) else str(response.content)
+        response_text = _extract_text_from_content(response.content)
 
         # Track token usage
         tokens_used = 0
@@ -186,7 +208,7 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
             messages.append(HumanMessage(content="Your previous response was not valid JSON. Please respond with ONLY valid JSON matching the schema."))
             try:
                 response = model.invoke(messages)
-                response_text = response.content if isinstance(response.content, str) else str(response.content)
+                response_text = _extract_text_from_content(response.content)
                 logger.debug(
                     "Retry LLM response for agent '%s': %s",
                     agent_name, response_text[:500],
