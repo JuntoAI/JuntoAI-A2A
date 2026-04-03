@@ -6,6 +6,17 @@ Each entry corresponds to a completed spec — shipped when the last task was fi
 
 ---
 
+## Structured Agent Memory (Spec 100) — 2026-04-03
+
+- Per-agent `AgentMemory` Pydantic V2 model: typed fields for offer history, concessions, open items, tactics, red lines, compliance status, and turn count
+- Memory-aware prompt builder: structured memory + sliding window of last 3 messages replaces full history transcript when enabled
+- Deterministic memory extraction in `_update_state`: appends offers, tracks opposing offers, increments turn count — no extra LLM calls
+- Stall detector reads `my_offers` directly from `agent_memories` when enabled, bypassing full history re-parsing
+- `structured_memory_enabled` flag threaded through `NegotiationState`, `NegotiationStateModel`, `StartNegotiationRequest`, and Firestore persistence
+- Collapsible "Advanced Options" section on Arena Selector with labeled toggle for structured agent memory
+- Full backward compatibility: disabled by default, missing fields default to `False`/`{}`, existing sessions unaffected
+- Property tests: AgentMemory round-trip, JSON serializability, state initialization, converter round-trip, prompt format, memory extraction, opposing offer capture, stall detector equivalence
+
 ## A2A Local Battle Arena (Spec 080) — 2026-04-03
 
 - Dual-mode architecture: single `RUN_MODE` env var switches between cloud (GCP) and local (Docker) with zero code changes

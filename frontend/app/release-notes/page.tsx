@@ -9,6 +9,21 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Structured Agent Memory",
+    specId: "100",
+    date: "2026-04-03",
+    items: [
+      "Per-agent AgentMemory Pydantic V2 model with typed fields for offers, concessions, tactics, red lines, and compliance",
+      "Memory-aware prompt builder: structured memory + sliding window of last 3 messages replaces full history",
+      "Deterministic memory extraction after each turn — no extra LLM calls",
+      "Stall detector reads my_offers directly from agent_memories when enabled",
+      "structured_memory_enabled flag threaded through NegotiationState, Firestore persistence, and API layer",
+      "Collapsible Advanced Options section on Arena Selector with structured memory toggle",
+      "Full backward compatibility: disabled by default, missing fields default safely, existing sessions unaffected",
+      "Property tests: round-trip serialization, prompt format, memory extraction, stall detector equivalence",
+    ],
+  },
+  {
     title: "A2A Local Battle Arena",
     specId: "080",
     date: "2026-04-03",
