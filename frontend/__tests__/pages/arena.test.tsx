@@ -244,6 +244,7 @@ describe("Arena Control Panel Page", () => {
         ["competing_offer"],
         undefined,
         undefined,
+        false,
       );
     });
 

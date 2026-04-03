@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from app.orchestrator import model_router
 from app.orchestrator.exceptions import AgentOutputParseError
-from app.orchestrator.outputs import NegotiatorOutput, ObserverOutput, RegulatorOutput
+from app.orchestrator.outputs import AgentMemory, NegotiatorOutput, ObserverOutput, RegulatorOutput
 from app.orchestrator.state import NegotiationState
 
 logger = logging.getLogger(__name__)
@@ -288,16 +288,65 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
     user_parts: list[str] = []
 
     history = state.get("history", [])
-    if history:
-        user_parts.append("Negotiation history so far:")
-        for entry in history:
-            entry_role = entry.get("role", "unknown")
-            content = entry.get("content", {})
-            if isinstance(content, dict):
-                display = content.get("public_message") or content.get("reasoning") or content.get("observation") or str(content)
-            else:
-                display = str(content)
-            user_parts.append(f"  [{entry_role}]: {display}")
+
+    if state.get("structured_memory_enabled", False):
+        # Structured memory mode: labeled memory fields + sliding window
+        agent_memories = state.get("agent_memories", {})
+        raw_mem = agent_memories.get(role, {})
+        try:
+            memory = AgentMemory(**raw_mem)
+        except Exception:
+            logger.warning("Failed to reconstruct AgentMemory for '%s', using fresh.", role)
+            memory = AgentMemory()
+
+        # Labeled memory sections (only non-empty fields)
+        _memory_labels: list[tuple[str, str]] = [
+            ("my_offers", "Your previous offers:"),
+            ("their_offers", "Their previous offers:"),
+            ("concessions_made", "Concessions you made:"),
+            ("concessions_received", "Concessions you received:"),
+            ("open_items", "Open items remaining:"),
+            ("tactics_used", "Tactics you have used:"),
+            ("red_lines_stated", "Red lines you stated:"),
+        ]
+        mem_parts: list[str] = []
+        for field_name, label in _memory_labels:
+            value = getattr(memory, field_name)
+            if value:
+                mem_parts.append(f"  {label} {value}")
+        if memory.compliance_status:
+            mem_parts.append(f"  Compliance status: {memory.compliance_status}")
+        if memory.turn_count > 0:
+            mem_parts.append(f"  Your memory turn count: {memory.turn_count}")
+
+        if mem_parts:
+            user_parts.append("Structured memory:")
+            user_parts.extend(mem_parts)
+
+        # Sliding window: last 3 history entries (or all if fewer)
+        window = history[-3:] if history else []
+        if window:
+            user_parts.append("Recent negotiation messages:")
+            for entry in window:
+                entry_role = entry.get("role", "unknown")
+                content = entry.get("content", {})
+                if isinstance(content, dict):
+                    display = content.get("public_message") or content.get("reasoning") or content.get("observation") or str(content)
+                else:
+                    display = str(content)
+                user_parts.append(f"  [{entry_role}]: {display}")
+    else:
+        # Full history mode (default / backward compatible)
+        if history:
+            user_parts.append("Negotiation history so far:")
+            for entry in history:
+                entry_role = entry.get("role", "unknown")
+                content = entry.get("content", {})
+                if isinstance(content, dict):
+                    display = content.get("public_message") or content.get("reasoning") or content.get("observation") or str(content)
+                else:
+                    display = str(content)
+                user_parts.append(f"  [{entry_role}]: {display}")
 
     current_offer = state.get("current_offer", 0.0)
     neg_params = state.get("scenario_config", {}).get("negotiation_params", {})
@@ -648,6 +697,32 @@ def _update_state(
         if proposed > 0:
             delta["current_offer"] = proposed
         delta["agent_states"] = agent_states
+
+        # --- Structured memory extraction ---
+        if state.get("structured_memory_enabled", False):
+            raw_mem = state.get("agent_memories", {}).get(role, AgentMemory().model_dump())
+            try:
+                memory = AgentMemory(**raw_mem)
+            except Exception:
+                logger.warning("Failed to reconstruct AgentMemory for '%s', using fresh.", role)
+                memory = AgentMemory()
+
+            memory.my_offers.append(proposed)
+            memory.turn_count += 1
+
+            # Find last opposing negotiator's proposed_price from history
+            history = state.get("history", [])
+            for entry in reversed(history):
+                if entry.get("agent_type") == "negotiator" and entry.get("role") != role:
+                    opposing_price = entry.get("content", {}).get("proposed_price")
+                    if opposing_price is not None:
+                        memory.their_offers.append(opposing_price)
+                    break
+
+            # Store updated memory in the delta
+            updated_memories = dict(state.get("agent_memories", {}))
+            updated_memories[role] = memory.model_dump()
+            delta["agent_memories"] = updated_memories
 
     elif agent_type == "regulator":
         assert isinstance(parsed_output, RegulatorOutput)

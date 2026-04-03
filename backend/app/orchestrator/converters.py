@@ -27,6 +27,8 @@ def to_pydantic(state: NegotiationState) -> NegotiationStateModel:
         agent_states=state["agent_states"],
         active_toggles=state["active_toggles"],
         total_tokens_used=state.get("total_tokens_used", 0),
+        structured_memory_enabled=state.get("structured_memory_enabled", False),
+        agent_memories=state.get("agent_memories", {}),
     )
 
 
@@ -55,4 +57,6 @@ def from_pydantic(model: NegotiationStateModel) -> NegotiationState:
         active_toggles=model.active_toggles,
         total_tokens_used=model.total_tokens_used,
         stall_diagnosis=None,
+        structured_memory_enabled=model.structured_memory_enabled,
+        agent_memories=model.agent_memories,
     )

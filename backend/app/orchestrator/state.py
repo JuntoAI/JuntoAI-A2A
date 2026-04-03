@@ -3,6 +3,8 @@
 from operator import add
 from typing import Annotated, Any, TypedDict
 
+from app.orchestrator.outputs import AgentMemory
+
 
 class NegotiationState(TypedDict):
     """LangGraph runtime state for a negotiation session.
@@ -32,6 +34,8 @@ class NegotiationState(TypedDict):
     stall_diagnosis: dict[str, Any] | None
     custom_prompts: dict[str, str]
     model_overrides: dict[str, str]
+    structured_memory_enabled: bool
+    agent_memories: dict[str, dict[str, Any]]
 
 
 def create_initial_state(
@@ -41,6 +45,7 @@ def create_initial_state(
     hidden_context: dict[str, Any] | None = None,
     custom_prompts: dict[str, str] | None = None,
     model_overrides: dict[str, str] | None = None,
+    structured_memory_enabled: bool = False,
 ) -> NegotiationState:
     """Build the initial NegotiationState from a scenario config dict.
 
@@ -76,6 +81,11 @@ def create_initial_state(
             "warning_count": 0,
         }
 
+    agent_memories: dict[str, dict[str, Any]] = {}
+    if structured_memory_enabled:
+        for a in agents:
+            agent_memories[a["role"]] = AgentMemory().model_dump()
+
     return NegotiationState(
         session_id=session_id,
         scenario_id=scenario_config["id"],
@@ -97,4 +107,6 @@ def create_initial_state(
         stall_diagnosis=None,
         custom_prompts=custom_prompts or {},
         model_overrides=model_overrides or {},
+        structured_memory_enabled=structured_memory_enabled,
+        agent_memories=agent_memories,
     )

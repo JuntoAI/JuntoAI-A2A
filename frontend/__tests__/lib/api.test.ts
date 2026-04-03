@@ -142,6 +142,7 @@ describe("startNegotiation", () => {
           email: "user@test.com",
           scenario_id: "talent_war",
           active_toggles: ["competing_offer"],
+          structured_memory_enabled: false,
         }),
       },
     );
@@ -190,6 +191,7 @@ describe("startNegotiation", () => {
           email: "a@b.com",
           scenario_id: "ma_buyout",
           active_toggles: [],
+          structured_memory_enabled: false,
         }),
       },
     );

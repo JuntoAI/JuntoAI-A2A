@@ -19,6 +19,8 @@ steps:
         cat > /workspace/backend-env.yaml <<EOF
         CORS_ALLOWED_ORIGINS: "https://a2a.juntoai.org,https://${_FRONTEND_SERVICE}-141882351618.${_REGION}.run.app"
         GOOGLE_CLOUD_PROJECT: "${_PROJECT_ID}"
+        VERTEX_AI_LOCATION: "${_REGION}"
+        RUN_MODE: "cloud"
         EOF
     waitFor: ["-"]
 

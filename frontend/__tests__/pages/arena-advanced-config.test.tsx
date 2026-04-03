@@ -213,6 +213,7 @@ describe("Arena Page — Advanced Config State Management", () => {
           [],
           undefined,
           undefined,
+          false,
         );
       });
     });
@@ -258,6 +259,7 @@ describe("Arena Page — Advanced Config State Management", () => {
           [],
           undefined,
           undefined,
+          false,
         );
       });
 
@@ -300,6 +302,7 @@ describe("Arena Page — Advanced Config State Management", () => {
           [],
           undefined,
           undefined,
+          false,
         );
       });
 

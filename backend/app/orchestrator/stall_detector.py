@@ -80,10 +80,25 @@ def _get_negotiator_history(
 
 
 def _get_prices_by_role(
-    history: list[dict[str, Any]],
+    state: dict[str, Any],
 ) -> dict[str, list[float]]:
-    """Group proposed prices by agent role."""
-    prices: dict[str, list[float]] = {}
+    """Group proposed prices by agent role.
+
+    When ``structured_memory_enabled`` is True, reads ``my_offers``
+    directly from ``agent_memories`` instead of re-parsing history.
+    """
+    if state.get("structured_memory_enabled", False):
+        prices: dict[str, list[float]] = {}
+        agent_memories = state.get("agent_memories", {})
+        for role, memory in agent_memories.items():
+            offers = memory.get("my_offers", [])
+            if offers:
+                prices[role] = list(offers)
+        return prices
+
+    # Fallback: parse from history (original behavior)
+    history = state.get("history", [])
+    prices = {}
     for entry in _get_negotiator_history(history):
         role = entry.get("role", "")
         content = entry.get("content", {})
@@ -98,8 +113,7 @@ def _check_price_ping_pong(state: dict[str, Any]) -> StallDiagnosis:
 
     Pattern: A proposes X, B proposes Y, A proposes X again, B proposes Y again.
     """
-    history = state.get("history", [])
-    prices_by_role = _get_prices_by_role(history)
+    prices_by_role = _get_prices_by_role(state)
 
     if len(prices_by_role) < 2:
         return StallDiagnosis()
@@ -260,8 +274,7 @@ def _check_instant_convergence(state: dict[str, Any]) -> StallDiagnosis:
         # Only relevant in early turns
         return StallDiagnosis()
 
-    history = state.get("history", [])
-    prices_by_role = _get_prices_by_role(history)
+    prices_by_role = _get_prices_by_role(state)
 
     if len(prices_by_role) < 2:
         return StallDiagnosis()

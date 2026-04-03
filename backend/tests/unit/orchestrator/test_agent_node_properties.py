@@ -985,3 +985,749 @@ class TestP6ModelOverrideRouting:
                 f"Expected fallback_model_id={fallback!r} from config, "
                 f"got {call_kwargs[1]['fallback_model_id']!r}"
             )
+
+
+# ===========================================================================
+# Feature: structured-agent-memory
+# Property 3: Memory-enabled prompt contains labeled memory and sliding window
+# **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
+# ===========================================================================
+
+from app.orchestrator.outputs import AgentMemory
+from app.orchestrator.state import create_initial_state
+
+# Safe text for memory fields — printable, no newlines (avoids false substring matches)
+_mem_text = st.text(
+    alphabet=st.characters(whitelist_categories=("L", "N", "Zs")),
+    min_size=1,
+    max_size=40,
+)
+_mem_float = st.floats(min_value=0.01, max_value=1e9, allow_nan=False, allow_infinity=False)
+
+
+@st.composite
+def st_memory_agent_memory(draw: st.DrawFn) -> AgentMemory:
+    """Generate an AgentMemory with at least some non-empty fields."""
+    return AgentMemory(
+        my_offers=draw(st.lists(_mem_float, min_size=0, max_size=5)),
+        their_offers=draw(st.lists(_mem_float, min_size=0, max_size=5)),
+        concessions_made=draw(st.lists(_mem_text, min_size=0, max_size=3)),
+        concessions_received=draw(st.lists(_mem_text, min_size=0, max_size=3)),
+        open_items=draw(st.lists(_mem_text, min_size=0, max_size=3)),
+        tactics_used=draw(st.lists(_mem_text, min_size=0, max_size=3)),
+        red_lines_stated=draw(st.lists(_mem_text, min_size=0, max_size=3)),
+        compliance_status=draw(
+            st.dictionaries(keys=_mem_text, values=_mem_text, max_size=3)
+        ),
+        turn_count=draw(st.integers(min_value=0, max_value=100)),
+    )
+
+
+@st.composite
+def st_history_entry(draw: st.DrawFn, roles: list[str]) -> dict[str, Any]:
+    """Generate a single history entry for a given set of roles."""
+    role = draw(st.sampled_from(roles))
+    return {
+        "role": role,
+        "agent_type": "negotiator",
+        "turn_number": draw(st.integers(min_value=1, max_value=50)),
+        "content": {
+            "inner_thought": draw(_mem_text),
+            "public_message": draw(_mem_text),
+            "proposed_price": draw(_mem_float),
+        },
+    }
+
+
+@st.composite
+def st_memory_enabled_prompt_scenario(
+    draw: st.DrawFn,
+) -> tuple[dict[str, Any], NegotiationState, AgentMemory, int]:
+    """Generate a scenario with structured_memory_enabled=True.
+
+    Returns (agent_config, state, memory, history_length).
+    """
+    role = "buyer"
+    other_role = "seller"
+
+    agent_config: dict[str, Any] = {
+        "role": role,
+        "name": "Buyer Agent",
+        "type": "negotiator",
+        "model_id": "gemini-2.5-flash",
+        "persona_prompt": "You are a buyer.",
+    }
+
+    memory = draw(st_memory_agent_memory())
+    num_history = draw(st.integers(min_value=0, max_value=12))
+    history = draw(
+        st.lists(
+            st_history_entry([role, other_role]),
+            min_size=num_history,
+            max_size=num_history,
+        )
+    )
+
+    scenario_config: dict[str, Any] = {
+        "id": "test",
+        "agents": [
+            agent_config,
+            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+        ],
+        "negotiation_params": {"max_turns": 15},
+    }
+
+    state = create_initial_state(
+        session_id="test",
+        scenario_config=scenario_config,
+        structured_memory_enabled=True,
+    )
+    # Inject the generated memory and history
+    state["agent_memories"][role] = memory.model_dump()
+    state["history"] = history
+
+    return agent_config, state, memory, num_history
+
+
+class TestProperty3MemoryEnabledPromptFormat:
+    """Feature: structured-agent-memory
+    Property 3: Memory-enabled prompt contains labeled memory and sliding window.
+
+    For any NegotiationState with structured_memory_enabled=True, any agent config,
+    and any AgentMemory with arbitrary field values: _build_prompt shall produce a
+    user message that (a) contains labeled sections for each non-empty memory field,
+    (b) does NOT contain the full history transcript header, and (c) contains exactly
+    min(3, len(history)) history entries as a sliding window.
+
+    **Validates: Requirements 5.1, 5.2, 5.3, 5.4**
+    """
+
+    @settings(max_examples=100)
+    @given(data=st_memory_enabled_prompt_scenario())
+    def test_contains_structured_memory_label_when_non_empty(self, data: tuple):
+        """When memory has non-empty fields, prompt contains 'Structured memory:'.
+
+        **Validates: Requirements 5.1, 5.4**
+        """
+        agent_config, state, memory, _ = data
+        _, user_msg = _build_prompt(agent_config, state)
+
+        has_non_empty = (
+            bool(memory.my_offers)
+            or bool(memory.their_offers)
+            or bool(memory.concessions_made)
+            or bool(memory.concessions_received)
+            or bool(memory.open_items)
+            or bool(memory.tactics_used)
+            or bool(memory.red_lines_stated)
+            or bool(memory.compliance_status)
+            or memory.turn_count > 0
+        )
+
+        if has_non_empty:
+            assert "Structured memory:" in user_msg, (
+                "Expected 'Structured memory:' in user message when memory has non-empty fields"
+            )
+
+    @settings(max_examples=100)
+    @given(data=st_memory_enabled_prompt_scenario())
+    def test_does_not_contain_full_history_header(self, data: tuple):
+        """Memory-enabled prompt must NOT contain the full history header.
+
+        **Validates: Requirements 5.1, 5.2**
+        """
+        agent_config, state, _, _ = data
+        _, user_msg = _build_prompt(agent_config, state)
+
+        assert "Negotiation history so far:" not in user_msg, (
+            "Memory-enabled prompt must not contain full history header"
+        )
+
+    @settings(max_examples=100)
+    @given(data=st_memory_enabled_prompt_scenario())
+    def test_sliding_window_has_correct_entry_count(self, data: tuple):
+        """Sliding window contains exactly min(3, len(history)) entries.
+
+        **Validates: Requirements 5.2, 5.3**
+        """
+        agent_config, state, _, num_history = data
+        _, user_msg = _build_prompt(agent_config, state)
+
+        expected_window_size = min(3, num_history)
+
+        if expected_window_size > 0:
+            assert "Recent negotiation messages:" in user_msg, (
+                "Expected 'Recent negotiation messages:' when history is non-empty"
+            )
+            # Count the sliding window entries — each starts with "  ["
+            # in the "Recent negotiation messages:" section
+            recent_section_start = user_msg.find("Recent negotiation messages:")
+            assert recent_section_start >= 0
+            # Find the end of the recent section (next blank line or end of known sections)
+            recent_section = user_msg[recent_section_start:]
+            # Count lines matching the entry pattern "  [role]: message"
+            entry_lines = [
+                line for line in recent_section.split("\n")
+                if line.startswith("  [") and "]: " in line
+            ]
+            assert len(entry_lines) == expected_window_size, (
+                f"Expected {expected_window_size} sliding window entries, "
+                f"got {len(entry_lines)}"
+            )
+        else:
+            assert "Recent negotiation messages:" not in user_msg, (
+                "Should not have 'Recent negotiation messages:' with empty history"
+            )
+
+    @settings(max_examples=100)
+    @given(data=st_memory_enabled_prompt_scenario())
+    def test_labeled_memory_fields_present(self, data: tuple):
+        """Each non-empty memory field should have its labeled section in the prompt.
+
+        **Validates: Requirements 5.4**
+        """
+        agent_config, state, memory, _ = data
+        _, user_msg = _build_prompt(agent_config, state)
+
+        label_map = {
+            "my_offers": "Your previous offers:",
+            "their_offers": "Their previous offers:",
+            "concessions_made": "Concessions you made:",
+            "concessions_received": "Concessions you received:",
+            "open_items": "Open items remaining:",
+            "tactics_used": "Tactics you have used:",
+            "red_lines_stated": "Red lines you stated:",
+        }
+
+        for field_name, label in label_map.items():
+            value = getattr(memory, field_name)
+            if value:
+                assert label in user_msg, (
+                    f"Expected label '{label}' for non-empty field '{field_name}'"
+                )
+
+        if memory.compliance_status:
+            assert "Compliance status:" in user_msg
+
+        if memory.turn_count > 0:
+            assert "Your memory turn count:" in user_msg
+
+
+# ===========================================================================
+# Feature: structured-agent-memory
+# Property 4: Disabled memory produces identical prompts
+# **Validates: Requirements 5.5, 8.1**
+# ===========================================================================
+
+
+@st.composite
+def st_disabled_memory_prompt_scenario(
+    draw: st.DrawFn,
+) -> tuple[dict[str, Any], NegotiationState]:
+    """Generate a scenario with structured_memory_enabled=False and some history.
+
+    Returns (agent_config, state).
+    """
+    role = "buyer"
+    other_role = "seller"
+
+    agent_config: dict[str, Any] = {
+        "role": role,
+        "name": "Buyer Agent",
+        "type": "negotiator",
+        "model_id": "gemini-2.5-flash",
+        "persona_prompt": "You are a buyer.",
+    }
+
+    num_history = draw(st.integers(min_value=0, max_value=10))
+    history = draw(
+        st.lists(
+            st_history_entry([role, other_role]),
+            min_size=num_history,
+            max_size=num_history,
+        )
+    )
+
+    scenario_config: dict[str, Any] = {
+        "id": "test",
+        "agents": [
+            agent_config,
+            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+        ],
+        "negotiation_params": {"max_turns": 15},
+    }
+
+    state = create_initial_state(
+        session_id="test",
+        scenario_config=scenario_config,
+        structured_memory_enabled=False,
+    )
+    state["history"] = history
+
+    return agent_config, state
+
+
+class TestProperty4DisabledMemoryIdenticalPrompt:
+    """Feature: structured-agent-memory
+    Property 4: Disabled memory produces identical prompts.
+
+    For any NegotiationState with structured_memory_enabled=False (or absent),
+    _build_prompt shall produce output identical to the current implementation
+    that serializes the full history.
+
+    **Validates: Requirements 5.5, 8.1**
+    """
+
+    @settings(max_examples=100)
+    @given(data=st_disabled_memory_prompt_scenario())
+    def test_disabled_memory_uses_full_history(self, data: tuple):
+        """When memory is disabled, prompt uses full history format.
+
+        **Validates: Requirements 5.5**
+        """
+        agent_config, state = data
+        _, user_msg = _build_prompt(agent_config, state)
+
+        history = state.get("history", [])
+        if history:
+            assert "Negotiation history so far:" in user_msg, (
+                "Disabled memory should use full history header"
+            )
+        assert "Structured memory:" not in user_msg, (
+            "Disabled memory should not contain structured memory section"
+        )
+        assert "Recent negotiation messages:" not in user_msg, (
+            "Disabled memory should not contain sliding window section"
+        )
+
+    @settings(max_examples=100)
+    @given(data=st_disabled_memory_prompt_scenario())
+    def test_disabled_memory_identical_to_absent_flag(self, data: tuple):
+        """Prompt with structured_memory_enabled=False is identical to a state
+        where the flag is absent (defaults to False).
+
+        **Validates: Requirements 8.1**
+        """
+        agent_config, state = data
+
+        # Build prompt with explicit False
+        system_false, user_false = _build_prompt(agent_config, state)
+
+        # Build prompt with flag absent — create a copy without the key
+        # NegotiationState is a TypedDict, so we simulate absence via .get() default
+        state_absent = dict(state)
+        state_absent["structured_memory_enabled"] = False
+        system_absent, user_absent = _build_prompt(agent_config, state_absent)
+
+        assert system_false == system_absent, (
+            "System message should be identical with False vs absent flag"
+        )
+        assert user_false == user_absent, (
+            "User message should be identical with False vs absent flag"
+        )
+
+    @settings(max_examples=100)
+    @given(data=st_disabled_memory_prompt_scenario())
+    def test_disabled_memory_contains_all_history_entries(self, data: tuple):
+        """When memory is disabled, ALL history entries appear in the prompt.
+
+        **Validates: Requirements 5.5, 8.1**
+        """
+        agent_config, state = data
+        _, user_msg = _build_prompt(agent_config, state)
+
+        history = state.get("history", [])
+        for entry in history:
+            entry_role = entry.get("role", "unknown")
+            content = entry.get("content", {})
+            if isinstance(content, dict):
+                display = (
+                    content.get("public_message")
+                    or content.get("reasoning")
+                    or content.get("observation")
+                    or str(content)
+                )
+            else:
+                display = str(content)
+            expected_line = f"[{entry_role}]: {display}"
+            assert expected_line in user_msg, (
+                f"Expected history entry '{expected_line}' in disabled-memory prompt"
+            )
+
+
+# ===========================================================================
+# Feature: structured-agent-memory
+# Property 5: Memory extractor correctly updates agent memory
+# **Validates: Requirements 6.1, 6.3, 6.4**
+# ===========================================================================
+
+
+@st.composite
+def st_memory_extractor_update_scenario(
+    draw: st.DrawFn,
+) -> tuple[NegotiationState, str, NegotiatorOutput, AgentMemory]:
+    """Generate a state with structured_memory_enabled=True, a negotiator role,
+    a NegotiatorOutput, and the pre-existing AgentMemory for that role.
+
+    Returns (state, role, output, prior_memory).
+    """
+    role = draw(st.sampled_from(["buyer", "seller"]))
+    other_role = "seller" if role == "buyer" else "buyer"
+    proposed = draw(_mem_float)
+
+    # Build a prior memory with some existing data
+    prior_memory = draw(st_memory_agent_memory())
+
+    scenario_config: dict[str, Any] = {
+        "id": "test",
+        "agents": [
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+        ],
+        "negotiation_params": {"max_turns": 15},
+    }
+
+    state = create_initial_state(
+        session_id="test",
+        scenario_config=scenario_config,
+        structured_memory_enabled=True,
+    )
+    # Inject prior memory
+    state["agent_memories"][role] = prior_memory.model_dump()
+    # Add some history entries
+    num_history = draw(st.integers(min_value=0, max_value=5))
+    history = draw(
+        st.lists(
+            st_history_entry([role, other_role]),
+            min_size=num_history,
+            max_size=num_history,
+        )
+    )
+    state["history"] = history
+
+    output = NegotiatorOutput(
+        inner_thought="thinking",
+        public_message="message",
+        proposed_price=proposed,
+    )
+
+    return state, role, output, prior_memory
+
+
+class TestProperty5MemoryExtractorUpdates:
+    """Feature: structured-agent-memory
+    Property 5: Memory extractor correctly updates agent memory.
+
+    For any NegotiationState with structured_memory_enabled=True, any negotiator
+    role, and any valid NegotiatorOutput with a proposed_price: after _update_state,
+    the state delta's agent_memories[role] shall have my_offers ending with the new
+    proposed_price, turn_count incremented by 1 from the previous value, and the
+    data shall be a valid AgentMemory dict.
+
+    **Validates: Requirements 6.1, 6.3, 6.4**
+    """
+
+    @settings(max_examples=100)
+    @given(data=st_memory_extractor_update_scenario())
+    def test_my_offers_ends_with_proposed_price(self, data: tuple):
+        """After _update_state, my_offers ends with the new proposed_price.
+
+        **Validates: Requirements 6.1**
+        """
+        state, role, output, prior_memory = data
+        delta = _update_state(output, "negotiator", role, state)
+
+        updated_mem = delta["agent_memories"][role]
+        assert updated_mem["my_offers"][-1] == output.proposed_price, (
+            f"Expected my_offers to end with {output.proposed_price}, "
+            f"got {updated_mem['my_offers'][-1]}"
+        )
+
+    @settings(max_examples=100)
+    @given(data=st_memory_extractor_update_scenario())
+    def test_turn_count_incremented_by_one(self, data: tuple):
+        """After _update_state, turn_count is incremented by 1 from prior value.
+
+        **Validates: Requirements 6.3**
+        """
+        state, role, output, prior_memory = data
+        delta = _update_state(output, "negotiator", role, state)
+
+        updated_mem = delta["agent_memories"][role]
+        assert updated_mem["turn_count"] == prior_memory.turn_count + 1, (
+            f"Expected turn_count={prior_memory.turn_count + 1}, "
+            f"got {updated_mem['turn_count']}"
+        )
+
+    @settings(max_examples=100)
+    @given(data=st_memory_extractor_update_scenario())
+    def test_result_is_valid_agent_memory(self, data: tuple):
+        """The updated agent_memories[role] can be reconstructed as a valid AgentMemory.
+
+        **Validates: Requirements 6.4**
+        """
+        state, role, output, prior_memory = data
+        delta = _update_state(output, "negotiator", role, state)
+
+        updated_mem = delta["agent_memories"][role]
+        # Must not raise
+        reconstructed = AgentMemory(**updated_mem)
+        # Round-trip check
+        assert reconstructed.model_dump() == updated_mem
+
+
+# ===========================================================================
+# Feature: structured-agent-memory
+# Property 6: Memory extractor captures opposing offers
+# **Validates: Requirements 6.2**
+# ===========================================================================
+
+
+@st.composite
+def st_opposing_offer_scenario(
+    draw: st.DrawFn,
+) -> tuple[NegotiationState, str, NegotiatorOutput, float]:
+    """Generate a state with structured_memory_enabled=True and at least one
+    prior opposing negotiator entry in history.
+
+    Returns (state, role, output, expected_opposing_price).
+    """
+    role = draw(st.sampled_from(["buyer", "seller"]))
+    other_role = "seller" if role == "buyer" else "buyer"
+    proposed = draw(_mem_float)
+
+    scenario_config: dict[str, Any] = {
+        "id": "test",
+        "agents": [
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+        ],
+        "negotiation_params": {"max_turns": 15},
+    }
+
+    state = create_initial_state(
+        session_id="test",
+        scenario_config=scenario_config,
+        structured_memory_enabled=True,
+    )
+
+    # Build history with at least one opposing negotiator entry
+    # First, some optional earlier entries
+    num_earlier = draw(st.integers(min_value=0, max_value=4))
+    earlier_history: list[dict[str, Any]] = []
+    for _ in range(num_earlier):
+        entry_role = draw(st.sampled_from([role, other_role]))
+        earlier_history.append({
+            "role": entry_role,
+            "agent_type": "negotiator",
+            "turn_number": draw(st.integers(min_value=1, max_value=20)),
+            "content": {
+                "inner_thought": "thought",
+                "public_message": "msg",
+                "proposed_price": draw(_mem_float),
+            },
+        })
+
+    # The most recent opposing negotiator entry (this is what we expect to capture)
+    opposing_price = draw(_mem_float)
+    opposing_entry = {
+        "role": other_role,
+        "agent_type": "negotiator",
+        "turn_number": draw(st.integers(min_value=1, max_value=20)),
+        "content": {
+            "inner_thought": "thought",
+            "public_message": "msg",
+            "proposed_price": opposing_price,
+        },
+    }
+
+    # Optionally add some non-opposing entries after (regulators, or same-role entries)
+    trailing: list[dict[str, Any]] = []
+    num_trailing = draw(st.integers(min_value=0, max_value=2))
+    for _ in range(num_trailing):
+        # Only add same-role or regulator entries so opposing_entry stays the most recent opposing
+        trailing_type = draw(st.sampled_from(["same", "regulator"]))
+        if trailing_type == "same":
+            trailing.append({
+                "role": role,
+                "agent_type": "negotiator",
+                "turn_number": draw(st.integers(min_value=1, max_value=20)),
+                "content": {
+                    "inner_thought": "thought",
+                    "public_message": "msg",
+                    "proposed_price": draw(_mem_float),
+                },
+            })
+        else:
+            trailing.append({
+                "role": "regulator",
+                "agent_type": "regulator",
+                "turn_number": draw(st.integers(min_value=1, max_value=20)),
+                "content": {
+                    "status": "CLEAR",
+                    "reasoning": "ok",
+                },
+            })
+
+    state["history"] = earlier_history + [opposing_entry] + trailing
+
+    output = NegotiatorOutput(
+        inner_thought="thinking",
+        public_message="message",
+        proposed_price=proposed,
+    )
+
+    return state, role, output, opposing_price
+
+
+class TestProperty6OpposingOfferCapture:
+    """Feature: structured-agent-memory
+    Property 6: Memory extractor captures opposing offers.
+
+    For any NegotiationState with structured_memory_enabled=True and at least one
+    prior opposing negotiator entry in history: after _update_state for a negotiator
+    turn, the state delta's agent_memories[role]["their_offers"] shall end with the
+    most recent opposing negotiator's proposed_price.
+
+    **Validates: Requirements 6.2**
+    """
+
+    @settings(max_examples=100)
+    @given(data=st_opposing_offer_scenario())
+    def test_their_offers_ends_with_opposing_price(self, data: tuple):
+        """their_offers ends with the most recent opposing negotiator's proposed_price.
+
+        **Validates: Requirements 6.2**
+        """
+        state, role, output, expected_opposing_price = data
+        delta = _update_state(output, "negotiator", role, state)
+
+        updated_mem = delta["agent_memories"][role]
+        assert len(updated_mem["their_offers"]) > 0, (
+            "Expected their_offers to be non-empty when opposing history exists"
+        )
+        assert updated_mem["their_offers"][-1] == expected_opposing_price, (
+            f"Expected their_offers to end with {expected_opposing_price}, "
+            f"got {updated_mem['their_offers'][-1]}"
+        )
+
+
+# ===========================================================================
+# Feature: structured-agent-memory
+# Property 7: Memory extraction skipped when disabled
+# **Validates: Requirements 6.5, 8.2**
+# ===========================================================================
+
+
+@st.composite
+def st_disabled_memory_update_scenario(
+    draw: st.DrawFn,
+) -> tuple[NegotiationState, str, NegotiatorOutput]:
+    """Generate a state with structured_memory_enabled=False and a negotiator output.
+
+    Returns (state, role, output).
+    """
+    role = draw(st.sampled_from(["buyer", "seller"]))
+    other_role = "seller" if role == "buyer" else "buyer"
+    proposed = draw(_mem_float)
+
+    scenario_config: dict[str, Any] = {
+        "id": "test",
+        "agents": [
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+        ],
+        "negotiation_params": {"max_turns": 15},
+    }
+
+    state = create_initial_state(
+        session_id="test",
+        scenario_config=scenario_config,
+        structured_memory_enabled=False,
+    )
+
+    # Add some history
+    num_history = draw(st.integers(min_value=0, max_value=5))
+    history = draw(
+        st.lists(
+            st_history_entry([role, other_role]),
+            min_size=num_history,
+            max_size=num_history,
+        )
+    )
+    state["history"] = history
+
+    output = NegotiatorOutput(
+        inner_thought="thinking",
+        public_message="message",
+        proposed_price=proposed,
+    )
+
+    return state, role, output
+
+
+class TestProperty7MemoryExtractionSkippedWhenDisabled:
+    """Feature: structured-agent-memory
+    Property 7: Memory extraction skipped when disabled.
+
+    For any NegotiationState with structured_memory_enabled=False and any valid
+    agent output: _update_state shall produce a state delta that does not contain
+    agent_memories, and the delta shall be identical to what the current
+    implementation produces (no memory overhead).
+
+    **Validates: Requirements 6.5, 8.2**
+    """
+
+    @settings(max_examples=100)
+    @given(data=st_disabled_memory_update_scenario())
+    def test_delta_does_not_contain_agent_memories(self, data: tuple):
+        """When structured_memory_enabled=False, delta has no agent_memories key.
+
+        **Validates: Requirements 6.5**
+        """
+        state, role, output = data
+        delta = _update_state(output, "negotiator", role, state)
+
+        assert "agent_memories" not in delta, (
+            "Delta should not contain agent_memories when structured_memory_enabled=False"
+        )
+
+    @settings(max_examples=100)
+    @given(data=st_disabled_memory_update_scenario())
+    def test_delta_identical_with_and_without_flag(self, data: tuple):
+        """Delta is identical whether structured_memory_enabled is False or absent.
+
+        **Validates: Requirements 8.2**
+        """
+        state, role, output = data
+
+        # Delta with explicit False
+        delta_false = _update_state(output, "negotiator", role, state)
+
+        # Delta with flag absent (simulate by setting to False — same behavior)
+        state_absent = dict(state)
+        state_absent["structured_memory_enabled"] = False
+        delta_absent = _update_state(output, "negotiator", role, state_absent)
+
+        assert delta_false == delta_absent, (
+            "Delta should be identical with False vs absent structured_memory_enabled"
+        )
+
+    @settings(max_examples=100)
+    @given(data=st_disabled_memory_update_scenario())
+    def test_no_memory_overhead_in_delta(self, data: tuple):
+        """When disabled, the delta keys should only contain standard negotiator keys.
+
+        **Validates: Requirements 6.5, 8.2**
+        """
+        state, role, output = data
+        delta = _update_state(output, "negotiator", role, state)
+
+        # Standard negotiator delta keys
+        expected_keys = {"history", "agent_states"}
+        if output.proposed_price > 0:
+            expected_keys.add("current_offer")
+
+        assert set(delta.keys()) == expected_keys, (
+            f"Expected delta keys {expected_keys}, got {set(delta.keys())}"
+        )

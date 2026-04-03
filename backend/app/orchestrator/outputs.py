@@ -2,7 +2,7 @@
 
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class NegotiatorOutput(BaseModel):
@@ -26,3 +26,17 @@ class ObserverOutput(BaseModel):
 
     observation: str
     recommendation: str = ""
+
+
+class AgentMemory(BaseModel):
+    """Structured per-agent memory for tracking negotiation state across turns."""
+
+    my_offers: list[float] = Field(default_factory=list)
+    their_offers: list[float] = Field(default_factory=list)
+    concessions_made: list[str] = Field(default_factory=list)
+    concessions_received: list[str] = Field(default_factory=list)
+    open_items: list[str] = Field(default_factory=list)
+    tactics_used: list[str] = Field(default_factory=list)
+    red_lines_stated: list[str] = Field(default_factory=list)
+    compliance_status: dict[str, str] = Field(default_factory=dict)
+    turn_count: int = 0

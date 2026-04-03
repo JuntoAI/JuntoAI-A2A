@@ -44,6 +44,7 @@ class StartNegotiationRequest(BaseModel):
     active_toggles: list[str] = Field(default_factory=list)
     custom_prompts: dict[str, str] = Field(default_factory=dict)
     model_overrides: dict[str, str] = Field(default_factory=dict)
+    structured_memory_enabled: bool = Field(default=False)
 
     @model_validator(mode="after")
     def validate_custom_prompt_lengths(self) -> "StartNegotiationRequest":
@@ -126,6 +127,7 @@ async def start_negotiation(
         hidden_context=hidden_context,
         custom_prompts=filtered_custom_prompts,
         model_overrides=filtered_model_overrides,
+        structured_memory_enabled=body.structured_memory_enabled,
     )
 
     # 6. Persist session
@@ -557,6 +559,7 @@ async def stream_negotiation(
         hidden_context=state.hidden_context,
         custom_prompts=state.custom_prompts,
         model_overrides=state.model_overrides,
+        structured_memory_enabled=state.structured_memory_enabled,
     )
 
     # 7. Build the async event stream generator

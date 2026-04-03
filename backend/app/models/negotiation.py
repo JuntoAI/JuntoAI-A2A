@@ -35,3 +35,5 @@ class NegotiationStateModel(BaseModel):
     total_tokens_used: int = Field(default=0, ge=0)
     custom_prompts: dict[str, str] = Field(default_factory=dict)
     model_overrides: dict[str, str] = Field(default_factory=dict)
+    structured_memory_enabled: bool = Field(default=False)
+    agent_memories: dict[str, dict[str, Any]] = Field(default_factory=dict)
