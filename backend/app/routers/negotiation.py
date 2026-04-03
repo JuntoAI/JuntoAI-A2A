@@ -369,13 +369,50 @@ def _snapshot_to_events(snapshot: dict, session_id: str):
 
     Each snapshot is keyed by node name. We extract the latest history
     entry and convert it to thought + message events.
+
+    Dispatcher snapshots may contain a terminal ``deal_status`` without
+    any ``history`` entries (the dispatcher only sets status flags).
+    We must still emit a ``NegotiationCompleteEvent`` in that case.
     """
     events = []
     for _node_name, state in snapshot.items():
-        if not isinstance(state, dict) or "history" not in state:
+        if not isinstance(state, dict):
             continue
+
+        # Handle dispatcher snapshots that set a terminal deal_status
+        # but contain no history entries (e.g. max_turns reached).
         history = state.get("history", [])
         if not history:
+            deal_status = state.get("deal_status", "")
+            if deal_status in ("Agreed", "Blocked", "Failed"):
+                summary: dict = {
+                    "current_offer": state.get("current_offer", 0),
+                    "turns_completed": state.get("turn_count", 0),
+                    "total_warnings": state.get("warning_count", 0),
+                    "ai_tokens_used": state.get("total_tokens_used", 0),
+                }
+                if deal_status == "Failed":
+                    max_turns = state.get("max_turns", 0)
+                    stall = state.get("stall_diagnosis")
+                    if stall and isinstance(stall, dict):
+                        summary["reason"] = f"Negotiation stalled: {stall.get('stall_type', 'unknown pattern')}"
+                        summary["stall_diagnosis"] = stall
+                        events.append(NegotiationStallEvent(
+                            event_type="negotiation_stall",
+                            session_id=session_id,
+                            stall_type=stall.get("stall_type", ""),
+                            confidence=stall.get("confidence", 0.0),
+                            advice=stall.get("advice", []),
+                            details=stall.get("details", {}),
+                        ))
+                    else:
+                        summary["reason"] = f"Reached maximum of {max_turns} turns without agreement"
+                events.append(NegotiationCompleteEvent(
+                    event_type="negotiation_complete",
+                    session_id=session_id,
+                    deal_status=deal_status,
+                    final_summary=summary,
+                ))
             continue
         entry = history[-1]
         role = entry.get("role", "Unknown")

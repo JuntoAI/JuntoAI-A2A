@@ -73,9 +73,15 @@ export default function MetricsDashboard({
         )}
 
         {/* Turn Counter */}
-        <div className="flex-1 min-w-[140px] rounded-lg bg-white p-3 shadow-sm">
-          <p className="text-xs text-gray-500 uppercase tracking-wide">
+        <div className="flex-1 min-w-[140px] rounded-lg bg-white p-3 shadow-sm group relative">
+          <p className="text-xs text-gray-500 uppercase tracking-wide flex items-center gap-1">
             Turn Counter
+            <span
+              className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-gray-200 text-[9px] font-bold text-gray-500 cursor-help"
+              aria-label="What is a turn?"
+            >
+              ?
+            </span>
           </p>
           <p
             className="text-2xl font-bold text-gray-900"
@@ -83,6 +89,14 @@ export default function MetricsDashboard({
           >
             Turn: {turnNumber} / {maxTurns}
           </p>
+          {/* Tooltip */}
+          <div
+            role="tooltip"
+            className="invisible group-hover:visible absolute left-0 top-full mt-1 z-10 w-64 rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg"
+          >
+            A turn = one negotiator speaking. Regulators and observers respond
+            between turns but don&apos;t count as separate turns.
+          </div>
         </div>
 
         {/* Token Balance */}
