@@ -28,6 +28,7 @@
 - [🛠️ Developing with Kiro](#-developing-with-kiro)
 - [🤝 Contributing](#-contributing)
 - [📄 License](#-license)
+- [📋 Changelog](CHANGELOG.md)
 
 ---
 
@@ -146,32 +147,9 @@ When `RUN_MODE=local` (the default), the entire cloud stack is swapped for light
 | Auth | Waitlist + tokens | Bypassed |
 | Hosting | GCP Cloud Run | Docker Compose |
 
-### Docker Compose Services
+The same scenario JSON files work in both modes without modification — only the underlying LLM provider and database change.
 
-The `docker compose up` command starts two services:
-
-| Service | Port | Description |
-|---------|------|-------------|
-| `backend` | `8000` | FastAPI orchestrator, LangGraph agents, SSE streaming |
-| `frontend` | `3000` | Next.js Glass Box UI, Arena Selector |
-
-SQLite data is persisted via a Docker volume, so your session history survives container restarts.
-
-### Scenario Configs Work Everywhere
-
-The same scenario JSON files in `backend/app/scenarios/data/` work in both cloud and local modes without modification. The orchestrator reads the scenario config identically — only the underlying LLM provider and database change based on `RUN_MODE`.
-
-### Model Mapping
-
-Local mode uses LiteLLM to route `model_id` values from scenario configs to your chosen provider. Control the mapping with these environment variables:
-
-| Variable | Purpose | Example |
-|----------|---------|---------|
-| `LLM_PROVIDER` | Which provider to route to | `openai`, `anthropic`, `ollama` |
-| `LLM_MODEL_OVERRIDE` | Force all agents to use one model (great for cost savings) | `gpt-4o-mini` |
-| `MODEL_MAP` | JSON object mapping scenario `model_id` → local model name | `{"gemini-3-flash-preview": "gpt-4o", "claude-sonnet-4": "claude-sonnet-4-20250514"}` |
-
-If `LLM_MODEL_OVERRIDE` is set, it takes precedence over `MODEL_MAP` — every agent uses the override model regardless of what the scenario config specifies.
+📖 **[Full Local Development Guide →](LOCAL_DEVELOPMENT.md)** — Docker Compose services, model mapping, default mappings table, environment variables, LiteLLM provider routing, and auth bypass details.
 
 <!-- Task 3: Environment Configuration and Connect Your Own Agents -->
 
@@ -487,3 +465,7 @@ Contributions are welcome! Check out the [open issues](https://github.com/Juntoa
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
+
+## 📋 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full history of shipped features and specs.
