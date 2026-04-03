@@ -38,8 +38,8 @@ def _mock_families() -> dict[str, MagicMock]:
 # -------------------------------------------------------------------
 class TestResolveFamily:
     def test_gemini_prefix(self) -> None:
-        from langchain_google_vertexai import ChatVertexAI
-        assert _resolve_family("gemini-2.5-flash") is ChatVertexAI
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        assert _resolve_family("gemini-2.5-flash") is ChatGoogleGenerativeAI
 
     def test_claude_prefix(self) -> None:
         from langchain_google_vertexai.model_garden import ChatAnthropicVertex
@@ -66,7 +66,7 @@ class TestGetModelValid:
             model = get_model("gemini-2.5-flash", project="proj", location="us-central1")
         fam["gemini"].assert_called_once()
         kw = fam["gemini"].call_args.kwargs
-        assert kw["model_name"] == "gemini-2.5-flash"
+        assert kw["model"] == "gemini-2.5-flash"
         assert kw["project"] == "proj"
         assert kw["location"] == "us-central1"
         assert "timeout" in kw
@@ -192,7 +192,7 @@ class TestTimeoutConfig:
         assert kw["project"] == "my-proj"
         assert kw["location"] == "asia-east1"
 
-    def test_location_defaults_to_us_central1(self) -> None:
+    def test_location_defaults_to_us_east5(self) -> None:
         fam = _mock_families()
         env = {"GOOGLE_CLOUD_PROJECT": "p"}
         with patch.dict(os.environ, env, clear=False):
@@ -200,7 +200,7 @@ class TestTimeoutConfig:
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
                 get_model("gemini-2.5-flash")
-        assert fam["gemini"].call_args.kwargs["location"] == "us-central1"
+        assert fam["gemini"].call_args.kwargs["location"] == "us-east5"
 
 
 # -------------------------------------------------------------------

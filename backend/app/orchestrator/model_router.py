@@ -11,7 +11,7 @@ import logging
 import os
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_google_vertexai import ChatVertexAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_vertexai.model_garden import ChatAnthropicVertex
 
 from app.orchestrator.exceptions import ModelNotAvailableError
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Prefix before the first '-' → LangChain class
 MODEL_FAMILIES: dict[str, type] = {
-    "gemini": ChatVertexAI,
+    "gemini": ChatGoogleGenerativeAI,
     "claude": ChatAnthropicVertex,
 }
 
@@ -58,16 +58,29 @@ def _instantiate_model(
     cls = _resolve_family(model_id)
     prefix = _get_family_prefix(model_id)
 
-    kwargs: dict = {
-        "model_name": model_id,
-        "project": project,
-        "location": location,
-    }
-
     if prefix == _GEMINI_FAMILY:
-        kwargs["timeout"] = timeout
+        # ChatGoogleGenerativeAI uses `model` (not `model_name`) and
+        # auto-detects Vertex AI when `project` is provided.
+        kwargs: dict = {
+            "model": model_id,
+            "project": project,
+            "location": location,
+            "timeout": timeout,
+        }
     elif prefix == _CLAUDE_FAMILY:
-        kwargs["max_output_tokens"] = 4096
+        # ChatAnthropicVertex still uses `model_name`.
+        kwargs = {
+            "model_name": model_id,
+            "project": project,
+            "location": location,
+            "max_output_tokens": 4096,
+        }
+    else:
+        kwargs = {
+            "model_name": model_id,
+            "project": project,
+            "location": location,
+        }
 
     return cls(**kwargs)  # type: ignore[return-value]
 
@@ -84,7 +97,7 @@ def get_model(
     ----------
     model_id:
         Model identifier whose prefix (before the first ``-``) determines
-        the LangChain class (``gemini`` → ``ChatVertexAI``,
+        the LangChain class (``gemini`` → ``ChatGoogleGenerativeAI``,
         ``claude`` → ``ChatAnthropicVertex``).
     fallback_model_id:
         Optional fallback.  If the primary model cannot be instantiated,
@@ -93,8 +106,9 @@ def get_model(
         GCP project.  Defaults to ``GOOGLE_CLOUD_PROJECT`` env var.
     location:
         Vertex AI region.  Defaults to ``VERTEX_AI_LOCATION`` env var
-        (or ``us-central1``). Claude models use ``VERTEX_AI_CLAUDE_LOCATION``
-        (or ``us-east5``) since Anthropic models have different region support.
+        (or ``us-east5``).  All model families (Gemini, Claude) use the
+        same region by default since us-east5 has the broadest model
+        availability.  Override per-family via env vars if needed.
 
     Returns
     -------
@@ -107,8 +121,7 @@ def get_model(
         If neither the primary nor the fallback model can be created.
     """
     resolved_project = project or os.environ.get("GOOGLE_CLOUD_PROJECT", "")
-    resolved_location = location or os.environ.get("VERTEX_AI_LOCATION", "europe-west1")
-    claude_location = os.environ.get("VERTEX_AI_CLAUDE_LOCATION", "us-east5")
+    resolved_location = location or os.environ.get("VERTEX_AI_LOCATION", "us-east5")
     timeout = float(os.environ.get("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", "60"))
 
     # Log a note about slow-request warning threshold (actual monitoring
@@ -122,9 +135,7 @@ def get_model(
         )
 
     try:
-        # Use Claude-specific region for Anthropic models
-        effective_location = claude_location if _get_family_prefix(model_id) == _CLAUDE_FAMILY else resolved_location
-        return _instantiate_model(model_id, resolved_project, effective_location, timeout)
+        return _instantiate_model(model_id, resolved_project, resolved_location, timeout)
     except ModelNotAvailableError:
         if fallback_model_id is not None:
             logger.warning(
@@ -133,9 +144,8 @@ def get_model(
                 fallback_model_id,
             )
             try:
-                fb_location = claude_location if _get_family_prefix(fallback_model_id) == _CLAUDE_FAMILY else resolved_location
                 return _instantiate_model(
-                    fallback_model_id, resolved_project, fb_location, timeout
+                    fallback_model_id, resolved_project, resolved_location, timeout
                 )
             except Exception as fallback_exc:
                 raise ModelNotAvailableError(
@@ -155,9 +165,8 @@ def get_model(
                 fallback_model_id,
             )
             try:
-                fb_location = claude_location if _get_family_prefix(fallback_model_id) == _CLAUDE_FAMILY else resolved_location
                 return _instantiate_model(
-                    fallback_model_id, resolved_project, fb_location, timeout
+                    fallback_model_id, resolved_project, resolved_location, timeout
                 )
             except Exception as fallback_exc:
                 raise ModelNotAvailableError(

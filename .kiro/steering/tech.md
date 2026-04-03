@@ -14,7 +14,7 @@ Monorepo with three top-level directories: `/backend`, `/frontend`, `/infra`.
   - Regulator agent → Claude Sonnet 4 (via Vertex), fallback Gemini 2.5 Pro
 - **Database**: GCP Firestore (Native mode) — sessions, waitlist, token state
 - **Hosting**: GCP Cloud Run (containerized, serverless)
-- **Dependencies**: `fastapi`, `uvicorn`, `pydantic`, `langgraph`, `langchain-google-vertexai`, `google-cloud-firestore`, `google-cloud-aiplatform`
+- **Dependencies**: `fastapi`, `uvicorn`, `pydantic`, `langgraph`, `langchain-google-genai`, `langchain-google-vertexai`, `google-cloud-firestore`, `google-cloud-aiplatform`
 
 ## Frontend
 - **Framework**: Next.js 14+ (App Router)

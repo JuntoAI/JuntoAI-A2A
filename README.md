@@ -220,8 +220,7 @@ Every configurable value lives in a single `.env` file at the monorepo root. Cop
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `VERTEX_AI_LOCATION` | Cloud only | `europe-west1` | Vertex AI region for Gemini models |
-| `VERTEX_AI_CLAUDE_LOCATION` | Cloud only | `us-east5` | Vertex AI region for Anthropic models |
+| `VERTEX_AI_LOCATION` | Cloud only | `us-east5` | Vertex AI region for all models (Gemini + Claude) |
 | `VERTEX_AI_REQUEST_TIMEOUT_SECONDS` | Optional | `60` | Timeout in seconds for Vertex AI requests |
 | `SCENARIOS_DIR` | Optional | `backend/app/scenarios/data` | Directory containing scenario JSON files |
 | `CORS_ALLOWED_ORIGINS` | Optional | `http://localhost:3000` | Comma-separated allowed CORS origins |

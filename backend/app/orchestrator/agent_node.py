@@ -12,6 +12,7 @@ import logging
 from typing import Any, Callable
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from pydantic import BaseModel
 
 from app.orchestrator import model_router
 from app.orchestrator.exceptions import AgentOutputParseError
@@ -55,13 +56,31 @@ _OUTPUT_SCHEMA_DESCRIPTIONS: dict[str, str] = {
 }
 
 
-def _fallback_output(agent_type: str, agent_name: str) -> BaseModel:
-    """Return a safe fallback output when the LLM fails to produce valid JSON."""
+def _fallback_output(
+    agent_type: str,
+    agent_name: str,
+    state: NegotiationState | None = None,
+    agent_role: str = "",
+) -> BaseModel:
+    """Return a safe fallback output when the LLM fails to produce valid JSON.
+
+    For negotiators, reuses the agent's last proposed price (from
+    ``agent_states``) so a parse failure doesn't reset the offer to 0
+    and corrupt agreement detection.
+    """
     if agent_type == "negotiator":
+        # Recover last real proposal so we hold the line instead of
+        # emitting 0.0 which maps to the scenario default.
+        last_price = 0.0
+        if state and agent_role:
+            agent_states = state.get("agent_states", {})
+            last_price = agent_states.get(agent_role, {}).get(
+                "last_proposed_price", 0.0,
+            )
         return NegotiatorOutput(
             inner_thought=f"[{agent_name} is gathering their thoughts...]",
             public_message="I need a moment to consider my position. Let me think about this.",
-            proposed_price=0.0,
+            proposed_price=last_price,
         )
     elif agent_type == "regulator":
         return RegulatorOutput(
@@ -149,9 +168,17 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
             tokens_used += getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)
 
         # 5. Parse output (retry once on failure)
+        logger.debug(
+            "Raw LLM response for agent '%s' (type=%s, model=%s): %s",
+            agent_name, agent_type, effective_model_id, response_text[:500],
+        )
         try:
             parsed = _parse_output(response_text, agent_type, agent_name)
         except AgentOutputParseError:
+            logger.warning(
+                "First parse failed for agent '%s'. Raw response (%d chars): %s",
+                agent_name, len(response_text), response_text[:500],
+            )
             # Retry with explicit JSON instruction
             # Only include the failed response if it's non-empty (Gemini rejects empty parts)
             if response_text.strip():
@@ -160,6 +187,10 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
             try:
                 response = model.invoke(messages)
                 response_text = response.content if isinstance(response.content, str) else str(response.content)
+                logger.debug(
+                    "Retry LLM response for agent '%s': %s",
+                    agent_name, response_text[:500],
+                )
                 # Add retry tokens
                 usage = getattr(response, "usage_metadata", None)
                 if usage and isinstance(usage, dict):
@@ -169,10 +200,11 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
                 parsed = _parse_output(response_text, agent_type, agent_name)
             except Exception as retry_exc:
                 logger.warning(
-                    "Retry also failed for agent '%s': %s. Using fallback response.",
-                    agent_name, retry_exc,
+                    "Retry also failed for agent '%s': %s. "
+                    "Retry raw response (%d chars): %s. Using fallback response.",
+                    agent_name, retry_exc, len(response_text), response_text[:500],
                 )
-                parsed = _fallback_output(agent_type, agent_name)
+                parsed = _fallback_output(agent_type, agent_name, effective_state, agent_role)
 
         # 6. Build state delta (uses effective_state so turn_number is correct)
         state_delta = _update_state(parsed, agent_type, agent_role, effective_state)
@@ -182,8 +214,9 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
 
         # 8. Merge deltas
         merged = {**state_delta, **turn_delta}
-        if agent_type == "negotiator":
-            merged["turn_count"] = effective_state["turn_count"]
+        # Always carry turn_count forward so it survives regulator/observer
+        # nodes and is present in the final state for transcript generation.
+        merged["turn_count"] = effective_state.get("turn_count", state.get("turn_count", 0))
         merged["total_tokens_used"] = state.get("total_tokens_used", 0) + tokens_used
         return merged
 

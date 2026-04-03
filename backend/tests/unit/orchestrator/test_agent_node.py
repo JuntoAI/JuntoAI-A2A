@@ -550,8 +550,8 @@ class TestAgentNodeIntegration:
         assert result["history"][0]["agent_type"] == "regulator"
         # Wraps back to 0
         assert result["turn_order_index"] == 0
-        # Regulator does not increment turn_count
-        assert "turn_count" not in result
+        # Regulator carries forward turn_count (does not increment it)
+        assert result["turn_count"] == 0
 
     @patch("app.orchestrator.agent_node.model_router")
     def test_observer_node_read_only(self, mock_router):

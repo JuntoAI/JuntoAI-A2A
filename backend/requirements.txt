@@ -10,6 +10,7 @@ google-cloud-aiplatform>=1.60.0
 
 # AI Orchestration
 langgraph>=0.2.0
+langchain-google-genai>=4.0.0
 langchain-google-vertexai>=2.0.0
 anthropic>=0.30.0
 
