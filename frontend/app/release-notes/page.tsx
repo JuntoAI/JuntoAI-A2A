@@ -18,7 +18,7 @@ const FEATURES = [
       "Deterministic memory extraction after each turn — no extra LLM calls",
       "Stall detector reads my_offers directly from agent_memories when enabled",
       "structured_memory_enabled flag threaded through NegotiationState, Firestore persistence, and API layer",
-      "Collapsible Advanced Options section on Arena Selector with structured memory toggle",
+      "Per-agent structured memory toggle in Advanced Config modal — enable memory independently for each agent",
       "Full backward compatibility: disabled by default, missing fields default safely, existing sessions unaffected",
       "Property tests: round-trip serialization, prompt format, memory extraction, stall detector equivalence",
     ],
