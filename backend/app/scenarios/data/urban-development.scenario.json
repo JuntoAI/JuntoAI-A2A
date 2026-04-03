@@ -18,7 +18,7 @@
       "budget": { "min": 95000000, "max": 120000000, "target": 110000000 },
       "tone": "charismatic and solution-oriented",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     },
     {
       "role": "CityPlanner",
@@ -36,7 +36,7 @@
       "tone": "measured and policy-driven",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-2.5-flash"
+      "fallback_model_id": "gemini-3-flash-preview"
     },
     {
       "role": "CommunityRep",
@@ -69,8 +69,8 @@
       "budget": { "min": 0, "max": 0, "target": 0 },
       "tone": "technical and constructive",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
-      "model_id": "gemini-2.5-flash",
-      "fallback_model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview",
+      "fallback_model_id": "gemini-3-flash-preview"
     },
     {
       "role": "BankDirector",

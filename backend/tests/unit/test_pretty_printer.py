@@ -33,7 +33,7 @@ def _agent(**overrides) -> dict:
         "budget": _budget(),
         "tone": "assertive",
         "output_fields": ["offer"],
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-3-flash-preview",
     }
     defaults.update(overrides)
     return defaults
@@ -175,7 +175,7 @@ class TestFieldsPreserved:
         assert agent["budget"] == {"min": 100.0, "max": 200.0, "target": 150.0}
         assert agent["tone"] == "assertive"
         assert agent["output_fields"] == ["offer"]
-        assert agent["model_id"] == "gemini-2.5-flash"
+        assert agent["model_id"] == "gemini-3-flash-preview"
         assert agent["fallback_model_id"] is None
 
     def test_toggle_fields_preserved(self):

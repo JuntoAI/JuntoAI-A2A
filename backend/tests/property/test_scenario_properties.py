@@ -74,7 +74,7 @@ def _build_scenario_dict(scenario_id: str) -> dict:
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "assertive",
                 "output_fields": ["offer"],
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
             },
             {
                 "role": "Seller",
@@ -85,7 +85,7 @@ def _build_scenario_dict(scenario_id: str) -> dict:
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "firm",
                 "output_fields": ["offer"],
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
             },
         ],
         "toggles": [
@@ -199,7 +199,7 @@ def _make_agent(role: str, agent_type: str = "negotiator") -> dict:
         "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
         "tone": "neutral",
         "output_fields": ["offer"],
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-3-flash-preview",
     }
 
 
@@ -413,7 +413,7 @@ def arena_scenario_strategy(draw):
                 "budget": {"min": min_val, "max": max_val, "target": target},
                 "tone": "neutral",
                 "output_fields": ["offer"],
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
             }
         )
 

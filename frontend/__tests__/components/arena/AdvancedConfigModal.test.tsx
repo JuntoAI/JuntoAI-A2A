@@ -5,7 +5,7 @@ import {
 } from "@/components/arena/AdvancedConfigModal";
 
 const defaultModels = [
-  { model_id: "gemini-2.5-flash", family: "gemini" },
+  { model_id: "gemini-3-flash-preview", family: "gemini" },
   { model_id: "claude-3-5-sonnet", family: "claude" },
   { model_id: "gemini-2.5-pro", family: "gemini" },
 ];
@@ -14,7 +14,7 @@ const baseProps: AdvancedConfigModalProps = {
   isOpen: true,
   agentName: "Recruiter",
   agentRole: "recruiter",
-  defaultModelId: "gemini-2.5-flash",
+  defaultModelId: "gemini-3-flash-preview",
   availableModels: defaultModels,
   initialCustomPrompt: "",
   initialModelOverride: null,
@@ -108,7 +108,7 @@ describe("AdvancedConfigModal", () => {
     it("calls onSave with null model override when default model is re-selected", () => {
       const { onSave } = renderModal({ initialModelOverride: "claude-3-5-sonnet" });
       const select = screen.getByLabelText("Model");
-      fireEvent.change(select, { target: { value: "gemini-2.5-flash" } });
+      fireEvent.change(select, { target: { value: "gemini-3-flash-preview" } });
 
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
       expect(onSave).toHaveBeenCalledWith("", null);

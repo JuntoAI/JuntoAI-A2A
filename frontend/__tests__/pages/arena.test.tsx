@@ -65,7 +65,7 @@ const mockDetail: api.ArenaScenario = {
       name: "Recruiter",
       role: "negotiator",
       goals: ["Hire talent"],
-      model_id: "gemini-2.5-flash",
+      model_id: "gemini-3-flash-preview",
       type: "negotiator",
     },
     {

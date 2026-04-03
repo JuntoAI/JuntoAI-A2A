@@ -28,7 +28,7 @@ from app.scenarios.router import get_scenario_registry
 _KNOWN_PREFIXES = sorted(model_router.MODEL_FAMILIES.keys())
 
 # Valid model IDs that exist in the mock scenario
-_SCENARIO_MODEL_IDS = ["gemini-2.5-flash"]
+_SCENARIO_MODEL_IDS = ["gemini-3-flash-preview"]
 
 # Model IDs with a known family prefix (pass the family filter but NOT in scenario)
 _known_but_absent_model_id = st.sampled_from(_KNOWN_PREFIXES).flatmap(
@@ -56,7 +56,7 @@ _short_prompt = st.text(
 )
 
 # Valid known model ID from the scenario
-_valid_model_id = st.just("gemini-2.5-flash")
+_valid_model_id = st.just("gemini-3-flash-preview")
 
 
 # ---------------------------------------------------------------------------
@@ -73,14 +73,14 @@ _VALID_SCENARIO_DICT = {
             "persona_prompt": "You are a buyer.", "goals": ["Buy low"],
             "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
             "tone": "assertive", "output_fields": ["offer"],
-            "model_id": "gemini-2.5-flash",
+            "model_id": "gemini-3-flash-preview",
         },
         {
             "role": "Seller", "name": "Bob", "type": "negotiator",
             "persona_prompt": "You are a seller.", "goals": ["Sell high"],
             "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
             "tone": "firm", "output_fields": ["offer"],
-            "model_id": "gemini-2.5-flash",
+            "model_id": "gemini-3-flash-preview",
         },
     ],
     "toggles": [{
@@ -222,11 +222,11 @@ async def test_unknown_role_keys_filtered_from_stored_state(unknown_roles, promp
         # Pad prompts list to match unknown_roles length
         padded_prompts = (prompts * ((len(unknown_roles) // len(prompts)) + 1))[:len(unknown_roles)]
         unknown_custom_prompts = dict(zip(unknown_roles, padded_prompts))
-        unknown_model_overrides = {r: "gemini-2.5-flash" for r in unknown_roles}
+        unknown_model_overrides = {r: "gemini-3-flash-preview" for r in unknown_roles}
 
         # Also include one valid role to ensure the request succeeds
         custom_prompts = {**unknown_custom_prompts, "Buyer": "Be aggressive"}
-        model_overrides = {**unknown_model_overrides, "Buyer": "gemini-2.5-flash"}
+        model_overrides = {**unknown_model_overrides, "Buyer": "gemini-3-flash-preview"}
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
@@ -273,7 +273,7 @@ async def test_unknown_role_keys_filtered_from_stored_state(unknown_roles, promp
 
         # The valid role we included should be present
         assert stored_custom_prompts.get("Buyer") == "Be aggressive"
-        assert stored_model_overrides.get("Buyer") == "gemini-2.5-flash"
+        assert stored_model_overrides.get("Buyer") == "gemini-3-flash-preview"
     finally:
         app.dependency_overrides.pop(get_scenario_registry, None)
         app.dependency_overrides.pop(get_firestore_client, None)

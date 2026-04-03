@@ -10,7 +10,7 @@ from app.orchestrator.state import NegotiationState, create_initial_state
 # ---------------------------------------------------------------------------
 
 
-def _make_agent(role: str, name: str, agent_type: str = "negotiator", model_id: str = "gemini-2.5-flash") -> dict:
+def _make_agent(role: str, name: str, agent_type: str = "negotiator", model_id: str = "gemini-3-flash-preview") -> dict:
     return {"role": role, "name": name, "type": agent_type, "model_id": model_id}
 
 
@@ -67,7 +67,7 @@ class TestCreateInitialState2Agent:
         assert buyer["role"] == "Buyer"
         assert buyer["name"] == "Alice"
         assert buyer["agent_type"] == "negotiator"
-        assert buyer["model_id"] == "gemini-2.5-flash"
+        assert buyer["model_id"] == "gemini-3-flash-preview"
         assert buyer["last_proposed_price"] == 0.0
         assert buyer["warning_count"] == 0
 

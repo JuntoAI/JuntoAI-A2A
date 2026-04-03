@@ -39,7 +39,7 @@ def _mock_families() -> dict[str, MagicMock]:
 class TestResolveFamily:
     def test_gemini_prefix(self) -> None:
         from langchain_google_genai import ChatGoogleGenerativeAI
-        assert _resolve_family("gemini-2.5-flash") is ChatGoogleGenerativeAI
+        assert _resolve_family("gemini-3-flash-preview") is ChatGoogleGenerativeAI
 
     def test_claude_prefix(self) -> None:
         from langchain_google_vertexai.model_garden import ChatAnthropicVertex
@@ -63,10 +63,10 @@ class TestGetModelValid:
     def test_gemini_flash(self) -> None:
         fam = _mock_families()
         with patch.dict(_FAMILIES_PATH, fam):
-            model = get_model("gemini-2.5-flash", project="proj", location="us-central1")
+            model = get_model("gemini-3-flash-preview", project="proj", location="us-central1")
         fam["gemini"].assert_called_once()
         kw = fam["gemini"].call_args.kwargs
-        assert kw["model"] == "gemini-2.5-flash"
+        assert kw["model"] == "gemini-3-flash-preview"
         assert kw["project"] == "proj"
         assert kw["location"] == "global"  # Gemini always uses global endpoint
         assert "timeout" in kw
@@ -118,7 +118,7 @@ class TestGetModelFallback:
         fam["gemini"].side_effect = RuntimeError("endpoint down")
         with patch.dict(_FAMILIES_PATH, fam):
             model = get_model(
-                "gemini-2.5-flash",
+                "gemini-3-flash-preview",
                 fallback_model_id="claude-sonnet-4-6",
                 project="proj",
                 location="eu",
@@ -133,7 +133,7 @@ class TestGetModelFallback:
         with patch.dict(_FAMILIES_PATH, fam):
             with pytest.raises(ModelNotAvailableError) as exc_info:
                 get_model(
-                    "gemini-2.5-flash",
+                    "gemini-3-flash-preview",
                     fallback_model_id="claude-sonnet-4-6",
                     project="proj",
                     location="eu",
@@ -145,7 +145,7 @@ class TestGetModelFallback:
         with patch.dict(_FAMILIES_PATH, fam):
             model = get_model(
                 "llama-3-70b",
-                fallback_model_id="gemini-2.5-flash",
+                fallback_model_id="gemini-3-flash-preview",
                 project="proj",
                 location="eu",
             )
@@ -166,7 +166,7 @@ class TestTimeoutConfig:
         with patch.dict(os.environ, env, clear=False):
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
-                get_model("gemini-2.5-flash")
+                get_model("gemini-3-flash-preview")
         assert fam["gemini"].call_args.kwargs["timeout"] == 60.0
 
     def test_custom_timeout_from_env(self) -> None:
@@ -178,7 +178,7 @@ class TestTimeoutConfig:
         }
         with patch.dict(os.environ, env, clear=False):
             with patch.dict(_FAMILIES_PATH, fam):
-                get_model("gemini-2.5-flash")
+                get_model("gemini-3-flash-preview")
         assert fam["gemini"].call_args.kwargs["timeout"] == 120.0
 
     def test_env_defaults_for_project_and_location(self) -> None:
@@ -187,7 +187,7 @@ class TestTimeoutConfig:
         with patch.dict(os.environ, env, clear=False):
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
-                get_model("gemini-2.5-flash")
+                get_model("gemini-3-flash-preview")
         kw = fam["gemini"].call_args.kwargs
         assert kw["project"] == "my-proj"
         assert kw["location"] == "global"  # Gemini ignores env location, always global
@@ -200,7 +200,7 @@ class TestTimeoutConfig:
             os.environ.pop("VERTEX_AI_LOCATION", None)
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
-                get_model("gemini-2.5-flash")
+                get_model("gemini-3-flash-preview")
         assert fam["gemini"].call_args.kwargs["location"] == "global"
 
     def test_claude_uses_regional_endpoint(self) -> None:
@@ -219,7 +219,7 @@ class TestTimeoutConfig:
 # 4.6  Property test P14: Model Router Returns or Raises
 # -------------------------------------------------------------------
 _VALID_MODEL_IDS = [
-    "gemini-2.5-flash",
+    "gemini-3-flash-preview",
     "gemini-2.5-pro",
     "claude-3-5-sonnet-v2",
     "claude-sonnet-4-6",

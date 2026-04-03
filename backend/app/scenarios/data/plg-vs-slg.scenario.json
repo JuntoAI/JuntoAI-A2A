@@ -19,7 +19,7 @@
       "budget": {"min": 60, "max": 100, "target": 85},
       "tone": "radically honest and direct",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     },
     {
       "role": "CEO",
@@ -35,7 +35,7 @@
       "budget": {"min": 0, "max": 40, "target": 15},
       "tone": "strategic and people-oriented",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     }
   ],
   "toggles": [

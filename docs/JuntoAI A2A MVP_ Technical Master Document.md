@@ -137,7 +137,7 @@ All scenarios are JSON files (named `*.scenario.json`) loaded at runtime from th
       "budget": { "min": 0, "max": 130000, "target": 110000 },
       "tone": "professional",
       "output_fields": ["inner_thought", "public_message", "proposed_offer"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     },
     {
       "role": "Candidate",

@@ -26,7 +26,7 @@ _TEST_SCENARIO = {
             "budget": {"min": 1000, "max": 5000, "target": 3000},
             "tone": "firm",
             "output_fields": ["offer"],
-            "model_id": "gemini-2.5-flash",
+            "model_id": "gemini-3-flash-preview",
         },
         {
             "role": "Seller",

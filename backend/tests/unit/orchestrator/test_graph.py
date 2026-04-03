@@ -66,7 +66,7 @@ def _negotiator_state(role: str, price: float) -> dict[str, Any]:
         "role": role,
         "name": role,
         "agent_type": "negotiator",
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-3-flash-preview",
         "last_proposed_price": price,
         "warning_count": 0,
     }
@@ -90,7 +90,7 @@ def _make_scenario(agents: list[dict], turn_order: list[str] | None = None) -> d
     return {"id": "test", "agents": agents, "negotiation_params": params}
 
 
-def _agent_def(role: str, agent_type: str = "negotiator", model_id: str = "gemini-2.5-flash") -> dict:
+def _agent_def(role: str, agent_type: str = "negotiator", model_id: str = "gemini-3-flash-preview") -> dict:
     return {"role": role, "name": role, "type": agent_type, "model_id": model_id, "persona_prompt": "You are an agent."}
 
 

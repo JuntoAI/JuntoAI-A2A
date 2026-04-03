@@ -30,7 +30,7 @@ def _agent_def(
     role: str,
     name: str,
     agent_type: str = "negotiator",
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = "gemini-3-flash-preview",
     **extra: Any,
 ) -> dict[str, Any]:
     base: dict[str, Any] = {

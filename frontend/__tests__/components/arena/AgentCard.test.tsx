@@ -6,7 +6,7 @@ describe("AgentCard", () => {
     name: "Buyer CEO",
     role: "negotiator",
     goals: ["Acquire company at lowest price", "Retain key talent"],
-    modelId: "gemini-2.5-flash",
+    modelId: "gemini-3-flash-preview",
     index: 0,
   };
 
@@ -30,7 +30,7 @@ describe("AgentCard", () => {
 
   it("renders model identifier", () => {
     render(<AgentCard {...baseProps} />);
-    expect(screen.getByText("Model: gemini-2.5-flash")).toBeInTheDocument();
+    expect(screen.getByText("Model: gemini-3-flash-preview")).toBeInTheDocument();
   });
 
   // Req 2.3: distinct colors per index

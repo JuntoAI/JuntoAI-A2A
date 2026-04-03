@@ -65,7 +65,7 @@ const mockDetail: api.ArenaScenario = {
       name: "Recruiter",
       role: "recruiter",
       goals: ["Hire talent"],
-      model_id: "gemini-2.5-flash",
+      model_id: "gemini-3-flash-preview",
       type: "negotiator",
     },
     {
@@ -106,7 +106,7 @@ const mockDetailMA: api.ArenaScenario = {
 };
 
 const mockModels: api.ModelInfo[] = [
-  { model_id: "gemini-2.5-flash", family: "gemini" },
+  { model_id: "gemini-3-flash-preview", family: "gemini" },
   { model_id: "claude-3-5-sonnet", family: "claude" },
   { model_id: "gemini-2.5-pro", family: "gemini" },
 ];

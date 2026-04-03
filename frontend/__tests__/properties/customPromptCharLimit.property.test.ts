@@ -22,9 +22,9 @@ const defaultProps: AdvancedConfigModalProps = {
   isOpen: true,
   agentName: "TestAgent",
   agentRole: "Tester",
-  defaultModelId: "gemini-2.5-flash",
+  defaultModelId: "gemini-3-flash-preview",
   availableModels: [
-    { model_id: "gemini-2.5-flash", family: "gemini" },
+    { model_id: "gemini-3-flash-preview", family: "gemini" },
     { model_id: "claude-3-5-sonnet", family: "claude" },
   ],
   initialCustomPrompt: "",

@@ -81,7 +81,7 @@ describe("fetchScenarioDetail", () => {
         name: "Recruiter",
         role: "recruiter",
         goals: ["Hire"],
-        model_id: "gemini-2.5-flash",
+        model_id: "gemini-3-flash-preview",
         type: "negotiator",
       },
     ],

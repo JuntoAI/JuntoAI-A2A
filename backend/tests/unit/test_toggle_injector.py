@@ -36,7 +36,7 @@ def _agent(**overrides) -> dict:
         "budget": _budget(),
         "tone": "assertive",
         "output_fields": ["offer"],
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-3-flash-preview",
     }
     defaults.update(overrides)
     return defaults

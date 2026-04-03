@@ -18,7 +18,7 @@
       "budget": { "min": 0, "max": 100, "target": 50 },
       "tone": "curious and good-humored",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     },
     {
       "role": "EasterBunny",
@@ -52,7 +52,7 @@
       "tone": "dry wit with judicial authority",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-2.5-flash"
+      "fallback_model_id": "gemini-3-flash-preview"
     }
   ],
   "toggles": [

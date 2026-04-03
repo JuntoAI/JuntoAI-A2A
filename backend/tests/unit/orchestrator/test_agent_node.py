@@ -37,7 +37,7 @@ def _make_agent_config(
     role: str = "Buyer",
     name: str = "Alice",
     agent_type: str = "negotiator",
-    model_id: str = "gemini-2.5-flash",
+    model_id: str = "gemini-3-flash-preview",
     persona_prompt: str = "You are a savvy buyer.",
     goals: list[str] | None = None,
     budget: dict | None = None,
@@ -78,8 +78,8 @@ def _make_state(
         ]
     if agent_states is None:
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
-            "Seller": {"role": "Seller", "name": "Bob", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
+            "Seller": {"role": "Seller", "name": "Bob", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
         }
     return NegotiationState(
         session_id="test-sess",
@@ -299,7 +299,7 @@ class TestUpdateStateRegulator:
             _make_agent_config("Regulator", "Carol", agent_type="regulator"),
         ]
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(warning_count=1, agents=agents, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
@@ -309,7 +309,7 @@ class TestUpdateStateRegulator:
     def test_warning_increments_role_warning_count(self):
         parsed = RegulatorOutput(status="WARNING", reasoning="too high")
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 1},
         }
         state = _make_state(warning_count=1, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
@@ -319,7 +319,7 @@ class TestUpdateStateRegulator:
     def test_clear_does_not_increment(self):
         parsed = RegulatorOutput(status="CLEAR", reasoning="all good")
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(warning_count=0, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
@@ -331,7 +331,7 @@ class TestUpdateStateRegulator:
         """BLOCKED with 0 prior warnings should be downgraded to WARNING, not block the deal."""
         parsed = RegulatorOutput(status="BLOCKED", reasoning="violation")
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(agent_states=agent_states, turn_order=["Buyer", "Regulator"])
@@ -345,17 +345,20 @@ class TestUpdateStateRegulator:
         """BLOCKED with prior warnings should actually block the deal."""
         parsed = RegulatorOutput(status="BLOCKED", reasoning="repeated violation")
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 1},
         }
         state = _make_state(warning_count=1, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
         delta = _update_state(parsed, "regulator", "Regulator", state)
         assert delta["deal_status"] == "Blocked"
+        # BLOCKED also increments the warning count
+        assert delta["warning_count"] == 2
+        assert delta["agent_states"]["Regulator"]["warning_count"] == 2
 
     def test_three_warnings_blocks_deal(self):
         parsed = RegulatorOutput(status="WARNING", reasoning="third warning")
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 2},
         }
         state = _make_state(warning_count=2, agent_states=agent_states, turn_order=["Buyer", "Regulator"])
@@ -381,7 +384,7 @@ class TestUpdateStateObserver:
     def test_only_appends_history(self):
         parsed = ObserverOutput(observation="stalemate detected", recommendation="split")
         agent_states = {
-            "Analyst": {"role": "Analyst", "name": "Dave", "agent_type": "observer", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Analyst": {"role": "Analyst", "name": "Dave", "agent_type": "observer", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(
             current_offer=500.0,
@@ -403,7 +406,7 @@ class TestUpdateStateObserver:
     def test_history_entry_format(self):
         parsed = ObserverOutput(observation="noted")
         agent_states = {
-            "Analyst": {"role": "Analyst", "name": "Dave", "agent_type": "observer", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Analyst": {"role": "Analyst", "name": "Dave", "agent_type": "observer", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(agent_states=agent_states, turn_order=["Analyst"], turn_count=5)
         delta = _update_state(parsed, "observer", "Analyst", state)
@@ -495,9 +498,9 @@ class TestAgentNodeIntegration:
         )
         mock_router.get_model.return_value = mock_model
 
-        agents = [_make_agent_config("Buyer", "Alice", "negotiator", "gemini-2.5-flash", "You are a buyer.")]
+        agents = [_make_agent_config("Buyer", "Alice", "negotiator", "gemini-3-flash-preview", "You are a buyer.")]
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(
             turn_order=["Buyer"],
@@ -531,7 +534,7 @@ class TestAgentNodeIntegration:
             _make_agent_config("Regulator", "Carol", "regulator", "claude-sonnet-4-6", "You are a regulator."),
         ]
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(
@@ -561,9 +564,9 @@ class TestAgentNodeIntegration:
         )
         mock_router.get_model.return_value = mock_model
 
-        agents = [_make_agent_config("Analyst", "Dave", "observer", "gemini-2.5-flash", "You observe.")]
+        agents = [_make_agent_config("Analyst", "Dave", "observer", "gemini-3-flash-preview", "You observe.")]
         agent_states = {
-            "Analyst": {"role": "Analyst", "name": "Dave", "agent_type": "observer", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Analyst": {"role": "Analyst", "name": "Dave", "agent_type": "observer", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(
             turn_order=["Analyst"],
@@ -595,9 +598,9 @@ class TestAgentNodeIntegration:
         ]
         mock_router.get_model.return_value = mock_model
 
-        agents = [_make_agent_config("Buyer", "Alice", "negotiator", "gemini-2.5-flash", "You buy.")]
+        agents = [_make_agent_config("Buyer", "Alice", "negotiator", "gemini-3-flash-preview", "You buy.")]
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(turn_order=["Buyer"], agents=agents, agent_states=agent_states)
 
@@ -614,9 +617,9 @@ class TestAgentNodeIntegration:
         mock_model.invoke.return_value = AIMessage(content="still not json")
         mock_router.get_model.return_value = mock_model
 
-        agents = [_make_agent_config("Buyer", "Alice", "negotiator", "gemini-2.5-flash", "You buy.")]
+        agents = [_make_agent_config("Buyer", "Alice", "negotiator", "gemini-3-flash-preview", "You buy.")]
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-2.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(turn_order=["Buyer"], agents=agents, agent_states=agent_states)
 

@@ -18,7 +18,7 @@
       "budget": { "min": 90, "max": 180, "target": 150 },
       "tone": "earnest and slightly dramatic",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     },
     {
       "role": "Parent",
@@ -52,7 +52,7 @@
       "tone": "empathetic and constructive",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-2.5-flash"
+      "fallback_model_id": "gemini-3-flash-preview"
     }
   ],
   "toggles": [

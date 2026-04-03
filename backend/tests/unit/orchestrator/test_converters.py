@@ -31,7 +31,7 @@ def _full_state(**overrides) -> NegotiationState:
                 "role": "Buyer",
                 "name": "Alice",
                 "agent_type": "negotiator",
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
                 "last_proposed_price": 500_000.0,
                 "warning_count": 0,
             },
@@ -144,7 +144,7 @@ class TestFromPydantic:
     def test_agent_states_round_trip(self):
         agent_states = {
             "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator",
-                       "model_id": "gemini-2.5-flash", "last_proposed_price": 100.0, "warning_count": 0},
+                       "model_id": "gemini-3-flash-preview", "last_proposed_price": 100.0, "warning_count": 0},
             "Seller": {"role": "Seller", "name": "Bob", "agent_type": "negotiator",
                         "model_id": "claude-sonnet-4-6", "last_proposed_price": 200.0, "warning_count": 0},
         }
