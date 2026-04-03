@@ -6,6 +6,22 @@ Each entry corresponds to a completed spec — shipped when the last task was fi
 
 ---
 
+## A2A Local Battle Arena (Spec 080) — 2026-04-03
+
+- Dual-mode architecture: single `RUN_MODE` env var switches between cloud (GCP) and local (Docker) with zero code changes
+- `SessionStore` protocol abstracting Firestore and SQLite — implementations swappable at runtime
+- `SQLiteSessionClient` with aiosqlite for zero-cloud-config local persistence
+- LiteLLM-based model router for local mode — supports OpenAI, Anthropic, and Ollama providers
+- Ollama Docker Compose sidecar with auto-pull init service — working LLM out of the box, no API keys needed
+- Transparent model mapping: scenario `model_id` values (e.g., `gemini-2.5-flash`) resolve to local provider equivalents
+- `LLM_MODEL_OVERRIDE` and `MODEL_MAP` env vars for full model routing control
+- Auth gate bypass in local mode — no waitlist, no token limits, no email validation
+- Lazy GCP imports — local mode starts without any Google Cloud SDK packages installed
+- `docker-compose.yml` with backend, frontend, ollama, and ollama-pull services (health checks, named volumes)
+- Frontend `NEXT_PUBLIC_RUN_MODE` detection — skips landing page and hides token counter in local mode
+- `.env.example` with grouped variables, inline docs, and zero-config Ollama defaults
+- Property tests: session round-trip, missing session errors, update merge, model mapping validity, override precedence, Ollama model resolution, Ollama no-API-key requirement, RUN_MODE validation, HTTP 503 on DatabaseConnectionError, scenario state identity across modes
+
 ## World-Class README & Contributor Hub (Spec 120) — 2026-04-02
 
 - Monorepo root README (~800 lines) with badges, Kiro callout, hero description, and anchor-linked TOC

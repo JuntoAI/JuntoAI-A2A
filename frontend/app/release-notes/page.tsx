@@ -9,6 +9,25 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "A2A Local Battle Arena",
+    specId: "080",
+    date: "2026-04-03",
+    items: [
+      "Dual-mode architecture: single RUN_MODE env var switches between cloud (GCP) and local (Docker)",
+      "SessionStore protocol abstracting Firestore and SQLite — swappable at runtime",
+      "SQLiteSessionClient with aiosqlite for zero-cloud-config local persistence",
+      "LiteLLM-based model router for local mode — supports OpenAI, Anthropic, and Ollama",
+      "Ollama Docker Compose sidecar with auto-pull init service — no API keys needed",
+      "Transparent model mapping: scenario model_id values resolve to local provider equivalents",
+      "LLM_MODEL_OVERRIDE and MODEL_MAP env vars for full model routing control",
+      "Auth gate bypass in local mode — no waitlist, no token limits, no email validation",
+      "Lazy GCP imports — local mode starts without Google Cloud SDK packages",
+      "docker-compose.yml with backend, frontend, ollama, and ollama-pull services",
+      "Frontend NEXT_PUBLIC_RUN_MODE detection — skips landing page in local mode",
+      ".env.example with grouped variables, inline docs, and zero-config Ollama defaults",
+    ],
+  },
+  {
     title: "World-Class README & Contributor Hub",
     specId: "120",
     date: "2026-04-02",
