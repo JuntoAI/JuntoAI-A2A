@@ -2,6 +2,10 @@ import { describe, it, expect, beforeEach } from "vitest";
 import * as fc from "fast-check";
 import { renderHook, act, render, screen } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
+
+// Force cloud mode so SessionContext uses sessionStorage-based auth
+vi.mock("../../lib/runMode", () => ({ isLocalMode: false }));
+
 import { SessionProvider, useSession } from "../../context/SessionContext";
 import { handleNegotiationResponse } from "../../lib/negotiation";
 

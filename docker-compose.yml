@@ -1,0 +1,53 @@
+services:
+  ollama:
+    image: ollama/ollama
+    ports: ["11434:11434"]
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama-pull:
+    image: ollama/ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["ollama", "pull", "${OLLAMA_MODEL:-llama3.1}"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+
+  backend:
+    build: ./backend
+    ports: ["8000:8080"]
+    env_file: .env
+    environment:
+      RUN_MODE: local
+      LLM_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+    volumes:
+      - sqlite-data:/app/data
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    build: ./frontend
+    ports: ["3000:3000"]
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_RUN_MODE: local
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  sqlite-data:
+  ollama-data:

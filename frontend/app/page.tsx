@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { isLocalMode } from "@/lib/runMode";
 import WaitlistForm from "@/components/WaitlistForm";
 import ScenarioBanner from "@/components/ScenarioBanner";
 
@@ -29,6 +31,10 @@ const jsonLd = {
 };
 
 export default function Home() {
+  if (isLocalMode) {
+    redirect("/arena");
+  }
+
   return (
     <>
       <script

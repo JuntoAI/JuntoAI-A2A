@@ -37,7 +37,7 @@ describe("OutcomeReceipt", () => {
     const content = screen.getByTestId("outcome-content");
     expect(content).toHaveTextContent("Deal closed successfully");
     expect(content).toHaveTextContent("Final Price:");
-    expect(content).toHaveTextContent("$500,000");
+    expect(content).toHaveTextContent("€500,000");
     expect(content).toHaveTextContent("Turns: 6");
     expect(content).toHaveTextContent("Warnings: 1");
 
@@ -81,7 +81,7 @@ describe("OutcomeReceipt", () => {
     const content = screen.getByTestId("outcome-content");
     expect(content).toHaveTextContent("Blocked by: EU Regulator");
     expect(content).toHaveTextContent("Regulator blocked the deal");
-    expect(content).toHaveTextContent("Last Offer: $300,000");
+    expect(content).toHaveTextContent("Last Offer: €300,000");
     expect(content).toHaveTextContent("Total Warnings: 3");
 
     const card = screen.getByTestId("outcome-heading").closest("div.rounded-lg");
@@ -134,7 +134,7 @@ describe("OutcomeReceipt", () => {
     const content = screen.getByTestId("outcome-content");
     expect(content).toHaveTextContent("Parties walked away");
     expect(content).not.toHaveTextContent("Negotiation reached maximum turns");
-    expect(content).toHaveTextContent("Last Offer: $100,000");
+    expect(content).toHaveTextContent("Last Offer: €100,000");
     expect(content).toHaveTextContent("Warnings: 2");
   });
 
@@ -161,7 +161,7 @@ describe("OutcomeReceipt", () => {
     );
 
     const measured = screen.getByTestId("measured-metrics");
-    expect(measured).toHaveTextContent("AI Tokens Used: 12,345");
+    expect(measured).toHaveTextContent("AI Tokens: 12,345");
   });
 
   it("hides estimated metrics when scenarioOutcomeReceipt is null", () => {

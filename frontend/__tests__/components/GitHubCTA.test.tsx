@@ -12,6 +12,9 @@ vi.mock("@/components/ScenarioBanner", () => ({
   default: () => createElement("div", { "data-testid": "scenario-banner" }, "ScenarioBanner"),
 }));
 
+// Force cloud mode so the landing page renders instead of redirecting
+vi.mock("@/lib/runMode", () => ({ isLocalMode: false }));
+
 import Home from "@/app/page";
 
 /**

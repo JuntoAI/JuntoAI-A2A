@@ -1,7 +1,7 @@
 """Integration tests for GET /api/v1/negotiation/stream/{session_id}."""
 
 import pytest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from app.exceptions import SessionNotFoundError
 
@@ -40,10 +40,12 @@ class TestStreamForbidden:
             "scenario_id": "sc1",
             "owner_email": "owner@test.com",
         }
-        resp = await test_client.get(
-            "/api/v1/negotiation/stream/s1",
-            params={"email": "intruder@test.com"},
-        )
+        with patch("app.routers.negotiation.settings") as mock_settings:
+            mock_settings.RUN_MODE = "cloud"
+            resp = await test_client.get(
+                "/api/v1/negotiation/stream/s1",
+                params={"email": "intruder@test.com"},
+            )
         assert resp.status_code == 403
 
 

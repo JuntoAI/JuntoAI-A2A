@@ -1,7 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fc from "fast-check";
 import { NextRequest } from "next/server";
-import { middleware } from "../../middleware";
 
 /**
  * Feature: 050_a2a-frontend-gate-waitlist
@@ -12,6 +11,8 @@ import { middleware } from "../../middleware";
  *
  * Property 7: For any protected route path with a valid session cookie,
  * the middleware SHALL allow access (HTTP 200, no redirect).
+ *
+ * These properties apply to cloud mode. In local mode, all requests pass through.
  */
 
 /** Arbitrary for a safe path segment character set. */
@@ -43,14 +44,23 @@ function createRequest(
   return req;
 }
 
-describe("Property 6: Access gate blocks unauthenticated users", () => {
+describe("Property 6: Access gate blocks unauthenticated users (cloud mode)", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_RUN_MODE", "cloud");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   /**
    * **Validates: Requirements 4.1, 4.2**
    *
    * For any random protected route path with no session cookie,
    * the middleware SHALL return a 307 redirect to `/`.
    */
-  it("redirects to / when no junto_session cookie is present", () => {
+  it("redirects to / when no junto_session cookie is present", async () => {
+    const { middleware } = await import("../../middleware");
     fc.assert(
       fc.property(protectedPathArb, (path) => {
         const req = createRequest(path);
@@ -64,17 +74,56 @@ describe("Property 6: Access gate blocks unauthenticated users", () => {
   });
 });
 
-describe("Property 7: Access gate allows authenticated users", () => {
+describe("Property 7: Access gate allows authenticated users (cloud mode)", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_RUN_MODE", "cloud");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   /**
    * **Validates: Requirements 4.3**
    *
    * For any random protected route path with a valid junto_session=1 cookie,
    * the middleware SHALL return 200 with no redirect.
    */
-  it("allows access when junto_session cookie is present", () => {
+  it("allows access when junto_session cookie is present", async () => {
+    const { middleware } = await import("../../middleware");
     fc.assert(
       fc.property(protectedPathArb, (path) => {
         const req = createRequest(path, { junto_session: "1" });
+        const res = middleware(req);
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get("location")).toBeNull();
+      }),
+      { numRuns: 100 },
+    );
+  });
+});
+
+describe("Local mode: Access gate bypassed", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_RUN_MODE", "local");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  /**
+   * **Validates: Requirements 12.2, 5.5**
+   *
+   * For any random protected route path with no session cookie,
+   * the middleware SHALL allow access (HTTP 200) in local mode.
+   */
+  it("allows all requests without session cookie in local mode", async () => {
+    const { middleware } = await import("../../middleware");
+    fc.assert(
+      fc.property(protectedPathArb, (path) => {
+        const req = createRequest(path);
         const res = middleware(req);
 
         expect(res.status).toBe(200);

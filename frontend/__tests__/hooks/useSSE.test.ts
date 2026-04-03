@@ -1,59 +1,47 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useSSE } from "@/hooks/useSSE";
 import type { GlassBoxAction } from "@/lib/glassBoxReducer";
 
 // ---------------------------------------------------------------------------
-// Mock EventSource
-// ---------------------------------------------------------------------------
-
-type EventSourceHandler = ((event: Event) => void) | null;
-type MessageHandler = ((event: MessageEvent) => void) | null;
-
-class MockEventSource {
-  static instances: MockEventSource[] = [];
-
-  url: string;
-  onopen: EventSourceHandler = null;
-  onmessage: MessageHandler = null;
-  onerror: EventSourceHandler = null;
-  close = vi.fn();
-
-  constructor(url: string) {
-    this.url = url;
-    MockEventSource.instances.push(this);
-  }
-
-  /** Simulate the connection opening */
-  simulateOpen() {
-    this.onopen?.(new Event("open"));
-  }
-
-  /** Simulate an incoming message with a JSON data payload */
-  simulateMessage(data: string) {
-    this.onmessage?.(new MessageEvent("message", { data }));
-  }
-
-  /** Simulate a connection error */
-  simulateError() {
-    this.onerror?.(new Event("error"));
-  }
-}
-
-// Install mock globally (jsdom has no EventSource)
-vi.stubGlobal("EventSource", MockEventSource);
-
-// ---------------------------------------------------------------------------
-// Helpers
+// Helpers for mocking fetch-based SSE (ReadableStream)
 // ---------------------------------------------------------------------------
 
 const SESSION_ID = "test-session-123";
 const EMAIL = "investor@example.com";
 const MAX_TURNS = 15;
-const API_BASE = "/api/v1";
 
-function latestES(): MockEventSource {
-  return MockEventSource.instances[MockEventSource.instances.length - 1];
+/** Encode an SSE frame: optional id + data line, terminated by double newline */
+function sseFrame(data: string, id?: string): string {
+  let frame = "";
+  if (id) frame += `id: ${id}\n`;
+  frame += `data: ${data}\n\n`;
+  return frame;
+}
+
+/** Create a ReadableStream that yields the given chunks, then closes */
+function createSSEStream(chunks: string[]): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  let index = 0;
+  return new ReadableStream({
+    pull(controller) {
+      if (index < chunks.length) {
+        controller.enqueue(encoder.encode(chunks[index]));
+        index++;
+      } else {
+        controller.close();
+      }
+    },
+  });
+}
+
+/** Create a mock Response with a ReadableStream body */
+function mockSSEResponse(chunks: string[]): Response {
+  return {
+    ok: true,
+    status: 200,
+    body: createSSEStream(chunks),
+  } as unknown as Response;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,15 +50,15 @@ function latestES(): MockEventSource {
 
 describe("useSSE", () => {
   let dispatch: ReturnType<typeof vi.fn<(action: GlassBoxAction) => void>>;
+  let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    MockEventSource.instances = [];
     dispatch = vi.fn();
-    vi.useFakeTimers();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -78,44 +66,35 @@ describe("useSSE", () => {
   // Connection URL
   // -----------------------------------------------------------------------
 
-  it("opens EventSource with correct URL including sessionId and email", () => {
+  it("calls fetch with correct URL including sessionId and email", async () => {
+    fetchMock.mockResolvedValue(mockSSEResponse([]));
+
     renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
 
-    expect(MockEventSource.instances).toHaveLength(1);
-    const es = latestES();
-    expect(es.url).toBe(
-      `${API_BASE}/negotiation/stream/${SESSION_ID}?email=${encodeURIComponent(EMAIL)}`,
-    );
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/v1/negotiation/stream/${SESSION_ID}?email=${encodeURIComponent(EMAIL)}`,
+        expect.objectContaining({
+          headers: { Accept: "text/event-stream" },
+        }),
+      );
+    });
   });
 
-  it("does not open EventSource when sessionId is null", () => {
+  it("does not call fetch when sessionId is null", async () => {
     renderHook(() => useSSE(null, EMAIL, MAX_TURNS, dispatch));
-    expect(MockEventSource.instances).toHaveLength(0);
+    // Give it a tick to ensure nothing fires
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   // -----------------------------------------------------------------------
-  // Connection opened
+  // Connection opened + agent_thought
   // -----------------------------------------------------------------------
 
-  it("dispatches CONNECTION_OPENED and returns isConnected=true on open", () => {
-    const { result } = renderHook(() =>
-      useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch),
-    );
-
-    act(() => latestES().simulateOpen());
-
-    expect(dispatch).toHaveBeenCalledWith({ type: "CONNECTION_OPENED" });
-    expect(result.current.isConnected).toBe(true);
-    expect(result.current.startTime).toBeGreaterThan(0);
-  });
-
-  // -----------------------------------------------------------------------
-  // agent_thought event
-  // -----------------------------------------------------------------------
-
-  it("dispatches AGENT_THOUGHT on agent_thought event", () => {
-    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
-
+  it("dispatches CONNECTION_OPENED and AGENT_THOUGHT on agent_thought event", async () => {
     const payload = {
       event_type: "agent_thought",
       agent_name: "Buyer",
@@ -123,14 +102,18 @@ describe("useSSE", () => {
       turn_number: 1,
     };
 
-    act(() => {
-      latestES().simulateOpen();
-      latestES().simulateMessage(JSON.stringify(payload));
-    });
+    fetchMock.mockResolvedValue(
+      mockSSEResponse([sseFrame(JSON.stringify(payload), "evt-1")]),
+    );
 
-    expect(dispatch).toHaveBeenCalledWith({
-      type: "AGENT_THOUGHT",
-      payload,
+    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
+
+    await waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({ type: "CONNECTION_OPENED" });
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "AGENT_THOUGHT",
+        payload,
+      });
     });
   });
 
@@ -138,9 +121,7 @@ describe("useSSE", () => {
   // agent_message event
   // -----------------------------------------------------------------------
 
-  it("dispatches AGENT_MESSAGE on agent_message event", () => {
-    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
-
+  it("dispatches AGENT_MESSAGE on agent_message event", async () => {
     const payload = {
       event_type: "agent_message",
       agent_name: "Seller",
@@ -149,14 +130,17 @@ describe("useSSE", () => {
       proposed_price: 500000,
     };
 
-    act(() => {
-      latestES().simulateOpen();
-      latestES().simulateMessage(JSON.stringify(payload));
-    });
+    fetchMock.mockResolvedValue(
+      mockSSEResponse([sseFrame(JSON.stringify(payload))]),
+    );
 
-    expect(dispatch).toHaveBeenCalledWith({
-      type: "AGENT_MESSAGE",
-      payload,
+    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
+
+    await waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "AGENT_MESSAGE",
+        payload,
+      });
     });
   });
 
@@ -164,11 +148,7 @@ describe("useSSE", () => {
   // negotiation_complete event
   // -----------------------------------------------------------------------
 
-  it("dispatches NEGOTIATION_COMPLETE on negotiation_complete event", () => {
-    const { result } = renderHook(() =>
-      useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch),
-    );
-
+  it("dispatches NEGOTIATION_COMPLETE on negotiation_complete event", async () => {
     const payload = {
       event_type: "negotiation_complete",
       session_id: SESSION_ID,
@@ -176,121 +156,86 @@ describe("useSSE", () => {
       final_summary: { price: 450000 },
     };
 
-    act(() => {
-      latestES().simulateOpen();
-      latestES().simulateMessage(JSON.stringify(payload));
-    });
+    fetchMock.mockResolvedValue(
+      mockSSEResponse([sseFrame(JSON.stringify(payload))]),
+    );
 
-    expect(dispatch).toHaveBeenCalledWith({
-      type: "NEGOTIATION_COMPLETE",
-      payload,
+    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
+
+    await waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "NEGOTIATION_COMPLETE",
+        payload,
+      });
     });
-    // Hook should close the connection and set isConnected=false
-    expect(latestES().close).toHaveBeenCalled();
-    expect(result.current.isConnected).toBe(false);
   });
 
   // -----------------------------------------------------------------------
   // error event
   // -----------------------------------------------------------------------
 
-  it("dispatches SSE_ERROR on error event", () => {
-    const { result } = renderHook(() =>
-      useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch),
-    );
-
+  it("dispatches SSE_ERROR on error event", async () => {
     const payload = {
       event_type: "error",
       message: "Something went wrong",
     };
 
-    act(() => {
-      latestES().simulateOpen();
-      latestES().simulateMessage(JSON.stringify(payload));
-    });
+    fetchMock.mockResolvedValue(
+      mockSSEResponse([sseFrame(JSON.stringify(payload))]),
+    );
 
-    expect(dispatch).toHaveBeenCalledWith({
-      type: "SSE_ERROR",
-      payload: { message: "Something went wrong" },
+    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
+
+    await waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "SSE_ERROR",
+        payload: { message: "Something went wrong" },
+      });
     });
-    expect(latestES().close).toHaveBeenCalled();
-    expect(result.current.isConnected).toBe(false);
   });
 
   // -----------------------------------------------------------------------
   // Cleanup on unmount
   // -----------------------------------------------------------------------
 
-  it("calls eventSource.close() on unmount", () => {
+  it("aborts fetch on unmount", async () => {
+    let abortSignal: AbortSignal | undefined;
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+      abortSignal = init.signal;
+      return new Promise(() => {}); // Never resolves — keeps connection open
+    });
+
     const { unmount } = renderHook(() =>
       useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch),
     );
 
-    const es = latestES();
-    act(() => es.simulateOpen());
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
 
     unmount();
 
-    expect(es.close).toHaveBeenCalled();
-  });
-
-  // -----------------------------------------------------------------------
-  // Reconnect after 2-second delay on error
-  // -----------------------------------------------------------------------
-
-  it("attempts reconnect after 2-second delay on connection error", () => {
-    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
-
-    const firstES = latestES();
-
-    // Simulate connection error (first attempt)
-    act(() => firstES.simulateError());
-
-    expect(firstES.close).toHaveBeenCalled();
-    // No new EventSource yet — waiting for 2s timer
-    expect(MockEventSource.instances).toHaveLength(1);
-
-    // Advance timer by 2 seconds
-    act(() => vi.advanceTimersByTime(2000));
-
-    // A second EventSource should have been created (reconnect)
-    expect(MockEventSource.instances).toHaveLength(2);
-    const secondES = latestES();
-    expect(secondES.url).toBe(firstES.url);
-  });
-
-  it("dispatches CONNECTION_ERROR after retry also fails", () => {
-    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
-
-    const firstES = latestES();
-
-    // First error → triggers reconnect timer
-    act(() => firstES.simulateError());
-    act(() => vi.advanceTimersByTime(2000));
-
-    const secondES = latestES();
-
-    // Second error → gives up
-    act(() => secondES.simulateError());
-
-    expect(dispatch).toHaveBeenCalledWith({
-      type: "CONNECTION_ERROR",
-      payload: { message: "SSE connection failed after retry" },
-    });
+    expect(abortSignal?.aborted).toBe(true);
   });
 
   // -----------------------------------------------------------------------
   // Malformed JSON
   // -----------------------------------------------------------------------
 
-  it("skips malformed JSON without crashing", () => {
+  it("skips malformed JSON without crashing", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    fetchMock.mockResolvedValue(
+      mockSSEResponse([sseFrame("not valid json {{{")]),
+    );
 
     renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
 
-    act(() => {
-      latestES().simulateOpen();
-      latestES().simulateMessage("not valid json {{{");
+    await waitFor(() => {
+      expect(warnSpy).toHaveBeenCalledWith(
+        "useSSE: skipping malformed JSON event",
+        "not valid json {{{",
+      );
     });
 
     // CONNECTION_OPENED dispatched, but no event action for the bad message
@@ -299,19 +244,11 @@ describe("useSSE", () => {
     );
     expect(eventActions).toHaveLength(0);
 
-    // Console.warn was called
-    expect(warnSpy).toHaveBeenCalledWith(
-      "useSSE: skipping malformed JSON event",
-      "not valid json {{{",
-    );
-
     warnSpy.mockRestore();
   });
 
-  it("continues processing valid events after malformed JSON", () => {
+  it("continues processing valid events after malformed JSON", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
 
     const thoughtPayload = {
       event_type: "agent_thought",
@@ -320,15 +257,41 @@ describe("useSSE", () => {
       turn_number: 1,
     };
 
-    act(() => {
-      latestES().simulateOpen();
-      latestES().simulateMessage("broken json");
-      latestES().simulateMessage(JSON.stringify(thoughtPayload));
-    });
+    fetchMock.mockResolvedValue(
+      mockSSEResponse([
+        sseFrame("broken json"),
+        sseFrame(JSON.stringify(thoughtPayload)),
+      ]),
+    );
 
-    expect(dispatch).toHaveBeenCalledWith({
-      type: "AGENT_THOUGHT",
-      payload: thoughtPayload,
+    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
+
+    await waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "AGENT_THOUGHT",
+        payload: thoughtPayload,
+      });
     });
+  });
+
+  // -----------------------------------------------------------------------
+  // Reconnect on fetch failure
+  // -----------------------------------------------------------------------
+
+  it("attempts reconnect on fetch failure", async () => {
+    // First call fails, second succeeds with empty stream
+    fetchMock
+      .mockRejectedValueOnce(new Error("Network error"))
+      .mockResolvedValueOnce(mockSSEResponse([]));
+
+    renderHook(() => useSSE(SESSION_ID, EMAIL, MAX_TURNS, dispatch));
+
+    // Wait for reconnect (1s backoff + some buffer)
+    await waitFor(
+      () => {
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      },
+      { timeout: 3000 },
+    );
   });
 });

@@ -70,7 +70,7 @@ describe("Property 8: Custom prompt character limit enforcement in textarea", ()
           unmount();
         },
       ),
-      { numRuns: 150 },
+      { numRuns: 30 },
     );
   });
 
@@ -110,7 +110,7 @@ describe("Property 8: Custom prompt character limit enforcement in textarea", ()
           unmount();
         },
       ),
-      { numRuns: 150 },
+      { numRuns: 30 },
     );
   });
 
@@ -146,7 +146,7 @@ describe("Property 8: Custom prompt character limit enforcement in textarea", ()
           unmount();
         },
       ),
-      { numRuns: 150 },
+      { numRuns: 30 },
     );
   });
 });

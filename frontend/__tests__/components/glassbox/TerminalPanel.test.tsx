@@ -41,30 +41,28 @@ describe("TerminalPanel", () => {
     expect(lastDiv).toBeTruthy();
   });
 
-  it("shows blinking cursor when isConnected && dealStatus === 'Negotiating'", () => {
+  it("shows thinking indicator when isConnected && dealStatus === 'Negotiating'", () => {
     render(
       <TerminalPanel thoughts={[]} isConnected={true} dealStatus="Negotiating" />,
     );
 
-    const cursor = screen.getByTestId("blinking-cursor");
-    expect(cursor).toBeInTheDocument();
-    expect(cursor.className).toContain("animate-pulse");
+    expect(screen.getByText("Agent is thinking…")).toBeInTheDocument();
   });
 
-  it("does not show blinking cursor when not connected", () => {
+  it("does not show thinking indicator when not connected", () => {
     render(
       <TerminalPanel thoughts={[]} isConnected={false} dealStatus="Negotiating" />,
     );
 
-    expect(screen.queryByTestId("blinking-cursor")).not.toBeInTheDocument();
+    expect(screen.queryByText("Agent is thinking…")).not.toBeInTheDocument();
   });
 
-  it("does not show blinking cursor when deal is terminal", () => {
+  it("does not show thinking indicator when deal is terminal", () => {
     render(
       <TerminalPanel thoughts={[]} isConnected={true} dealStatus="Agreed" />,
     );
 
-    expect(screen.queryByTestId("blinking-cursor")).not.toBeInTheDocument();
+    expect(screen.queryByText("Agent is thinking…")).not.toBeInTheDocument();
   });
 
   it('shows placeholder "Awaiting agent initialization..." when thoughts empty and connected', () => {

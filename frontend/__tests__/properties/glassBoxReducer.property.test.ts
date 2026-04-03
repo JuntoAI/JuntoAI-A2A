@@ -21,7 +21,7 @@ import {
 // Arbitraries
 // ---------------------------------------------------------------------------
 
-const agentNameArb = fc.string({ minLength: 1, maxLength: 30 });
+const agentNameArb = fc.string({ minLength: 1, maxLength: 30 }).filter(s => s !== "__proto__" && s !== "constructor" && s !== "toString");
 const turnNumberArb = fc.integer({ min: 1, max: 100 });
 
 /** Arbitrary for AGENT_THOUGHT actions */

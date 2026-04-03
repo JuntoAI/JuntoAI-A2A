@@ -14,7 +14,7 @@ describe("MetricsDashboard", () => {
     render(<MetricsDashboard {...defaultProps} />);
 
     const offer = screen.getByTestId("current-offer");
-    expect(offer.textContent).toBe("$250,000");
+    expect(offer.textContent).toBe("€250,000");
   });
 
   it('renders Turn Counter as "Turn: X / Y"', () => {

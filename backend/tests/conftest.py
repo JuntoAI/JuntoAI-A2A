@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from app.db import get_firestore_client
+from app.db import get_session_store
 from app.main import app
 from app.middleware import get_sse_tracker
 from app.middleware.sse_limiter import SSEConnectionTracker
@@ -86,7 +86,7 @@ async def test_client(mock_db, mock_tracker, mock_registry):
     """Async httpx client with dependency overrides for integration tests."""
     from app.scenarios.router import get_scenario_registry
 
-    app.dependency_overrides[get_firestore_client] = lambda: mock_db
+    app.dependency_overrides[get_session_store] = lambda: mock_db
     app.dependency_overrides[get_sse_tracker] = lambda: mock_tracker
     app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
     async with httpx.AsyncClient(

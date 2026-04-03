@@ -66,7 +66,7 @@ describe("Property 8: Outcome Receipt renders appropriate content per deal statu
 
         const content = within(container).getByTestId("outcome-content");
         expect(content).toHaveTextContent("Final Price:");
-        expect(content).toHaveTextContent(`$${offer.toLocaleString()}`);
+        expect(content).toHaveTextContent(`€${offer.toLocaleString()}`);
 
         unmount();
       }),

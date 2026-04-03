@@ -52,8 +52,8 @@ import ArenaPage from "@/app/(protected)/arena/page";
 // ---------------------------------------------------------------------------
 
 const mockScenarios: api.ScenarioSummary[] = [
-  { id: "talent_war", name: "The Talent War", description: "HR negotiation" },
-  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition" },
+  { id: "talent_war", name: "The Talent War", description: "HR negotiation", difficulty: "beginner" },
+  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition", difficulty: "intermediate" },
 ];
 
 const mockDetail: api.ArenaScenario = {
@@ -125,8 +125,8 @@ describe("Arena Control Panel Page", () => {
       expect(api.fetchScenarios).toHaveBeenCalledOnce();
     });
     await waitFor(() => {
-      expect(screen.getByText("The Talent War")).toBeInTheDocument();
-      expect(screen.getByText("M&A Buyout")).toBeInTheDocument();
+      expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
+      expect(screen.getByText(/M&A Buyout/)).toBeInTheDocument();
     });
   });
 
@@ -134,7 +134,7 @@ describe("Arena Control Panel Page", () => {
   it("fetches detail on scenario select and renders agent cards and toggles", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("The Talent War")).toBeInTheDocument();
+      expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -144,7 +144,7 @@ describe("Arena Control Panel Page", () => {
     });
 
     await waitFor(() => {
-      expect(api.fetchScenarioDetail).toHaveBeenCalledWith("talent_war");
+      expect(api.fetchScenarioDetail).toHaveBeenCalledWith("talent_war", "test@example.com");
     });
 
     await waitFor(() => {
@@ -161,7 +161,7 @@ describe("Arena Control Panel Page", () => {
   it("resets toggles when a different scenario is selected", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("The Talent War")).toBeInTheDocument();
+      expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
     });
 
     // Select first scenario
@@ -213,7 +213,7 @@ describe("Arena Control Panel Page", () => {
 
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("The Talent War")).toBeInTheDocument();
+      expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
     });
 
     // Select scenario
@@ -263,7 +263,7 @@ describe("Arena Control Panel Page", () => {
 
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("The Talent War")).toBeInTheDocument();
+      expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -300,7 +300,7 @@ describe("Arena Control Panel Page", () => {
 
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("The Talent War")).toBeInTheDocument();
+      expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -333,7 +333,7 @@ describe("Arena Control Panel Page", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(api.fetchScenarioDetail).toHaveBeenCalledWith("talent_war");
+      expect(api.fetchScenarioDetail).toHaveBeenCalledWith("talent_war", "test@example.com");
     });
 
     await waitFor(() => {
@@ -345,7 +345,7 @@ describe("Arena Control Panel Page", () => {
   it("disables Initialize button when no scenario is selected", async () => {
     renderPage();
     await waitFor(() => {
-      expect(screen.getByText("The Talent War")).toBeInTheDocument();
+      expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
     });
 
     const button = screen.getByRole("button", {

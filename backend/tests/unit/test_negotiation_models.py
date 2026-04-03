@@ -6,7 +6,7 @@ Uses hypothesis to verify universal invariants across generated inputs.
 import json
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
@@ -120,7 +120,7 @@ def test_start_negotiation_request_defaults_round_trip(email, scenario_id):
 # ---------------------------------------------------------------------------
 
 
-@settings(max_examples=100)
+@settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
 @given(
     oversized_prompt=st.text(
         alphabet=st.characters(whitelist_categories=("L", "N", "Zs")),

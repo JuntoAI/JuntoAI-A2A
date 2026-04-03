@@ -14,6 +14,11 @@ langchain-google-genai>=4.0.0
 langchain-google-vertexai>=2.0.0
 anthropic>=0.30.0
 
+# Local mode
+aiosqlite
+litellm
+langchain-community
+
 # Testing
 pytest
 pytest-asyncio

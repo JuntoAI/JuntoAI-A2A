@@ -3,9 +3,9 @@ import { ScenarioSelector } from "@/components/arena/ScenarioSelector";
 import type { ScenarioSummary } from "@/lib/api";
 
 const mockScenarios: ScenarioSummary[] = [
-  { id: "talent_war", name: "The Talent War", description: "HR negotiation" },
-  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition" },
-  { id: "b2b_sales", name: "B2B Sales", description: "SaaS contract" },
+  { id: "talent_war", name: "The Talent War", description: "HR negotiation", difficulty: "beginner" },
+  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition", difficulty: "intermediate" },
+  { id: "b2b_sales", name: "B2B Sales", description: "SaaS contract", difficulty: "advanced" },
 ];
 
 describe("ScenarioSelector", () => {
@@ -29,7 +29,7 @@ describe("ScenarioSelector", () => {
   it("renders all scenario options from the scenarios prop", () => {
     render(<ScenarioSelector {...defaultProps} />);
     for (const s of mockScenarios) {
-      expect(screen.getByText(s.name)).toBeInTheDocument();
+      expect(screen.getByText(new RegExp(s.name))).toBeInTheDocument();
     }
     // placeholder + 3 scenarios
     const options = screen.getAllByRole("option");

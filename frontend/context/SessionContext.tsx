@@ -8,6 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
+import { isLocalMode } from "@/lib/runMode";
 
 // --- Interfaces ---
 
@@ -49,8 +50,19 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<SessionState>(defaultState);
 
-  // Restore from sessionStorage on mount
+  // Restore from sessionStorage on mount (or auto-auth in local mode)
   useEffect(() => {
+    if (isLocalMode) {
+      setState({
+        email: "local@dev",
+        tokenBalance: Infinity,
+        lastResetDate: null,
+        isAuthenticated: true,
+        isHydrated: true,
+      });
+      return;
+    }
+
     const email = sessionStorage.getItem(STORAGE_KEY_EMAIL);
     const balanceStr = sessionStorage.getItem(STORAGE_KEY_TOKEN_BALANCE);
     const lastReset = sessionStorage.getItem(STORAGE_KEY_LAST_RESET);

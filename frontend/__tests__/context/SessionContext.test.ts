@@ -1,13 +1,17 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
+
+// Mock runMode to cloud so SessionContext uses sessionStorage-based auth
+vi.mock("../../lib/runMode", () => ({ isLocalMode: false }));
+
 import { SessionProvider, useSession } from "../../context/SessionContext";
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(SessionProvider, null, children);
 }
 
-describe("SessionContext", () => {
+describe("SessionContext (cloud mode)", () => {
   beforeEach(() => {
     sessionStorage.clear();
     // Clear cookies
@@ -88,7 +92,6 @@ describe("SessionContext", () => {
 
     const { result } = renderHook(() => useSession(), { wrapper });
 
-    // useEffect fires synchronously in test environment after renderHook
     expect(result.current.email).toBe("restored@example.com");
     expect(result.current.tokenBalance).toBe(42);
     expect(result.current.lastResetDate).toBe("2025-06-01");

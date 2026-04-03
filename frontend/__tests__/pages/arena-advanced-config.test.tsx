@@ -52,8 +52,8 @@ import ArenaPage from "@/app/(protected)/arena/page";
 // ---------------------------------------------------------------------------
 
 const mockScenarios: api.ScenarioSummary[] = [
-  { id: "talent_war", name: "The Talent War", description: "HR negotiation" },
-  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition" },
+  { id: "talent_war", name: "The Talent War", description: "HR negotiation", difficulty: "beginner" },
+  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition", difficulty: "intermediate" },
 ];
 
 const mockDetail: api.ArenaScenario = {
@@ -166,7 +166,7 @@ describe("Arena Page — Advanced Config State Management", () => {
 
       renderPage();
       await waitFor(() => {
-        expect(screen.getByText("The Talent War")).toBeInTheDocument();
+        expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
       });
 
       // Select first scenario
@@ -234,7 +234,7 @@ describe("Arena Page — Advanced Config State Management", () => {
 
       renderPage();
       await waitFor(() => {
-        expect(screen.getByText("The Talent War")).toBeInTheDocument();
+        expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
       });
 
       // Select scenario — page should still render fine
@@ -280,7 +280,7 @@ describe("Arena Page — Advanced Config State Management", () => {
 
       renderPage();
       await waitFor(() => {
-        expect(screen.getByText("The Talent War")).toBeInTheDocument();
+        expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
       });
 
       // Select scenario without configuring any advanced settings

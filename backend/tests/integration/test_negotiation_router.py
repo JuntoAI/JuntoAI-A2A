@@ -14,7 +14,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from app.db import get_firestore_client
+from app.db import get_session_store
 from app.main import app
 from app.orchestrator import model_router
 from app.scenarios.models import AgentDefinition, ArenaScenario
@@ -121,6 +121,12 @@ def _build_mock_db():
     db._collection = MagicMock()
     db._collection.document = MagicMock(return_value=doc_ref)
 
+    # Local mode: create_session stores data via the protocol method
+    async def _capture_create(state):
+        stored_data.update(state.model_dump())
+
+    db.create_session = AsyncMock(side_effect=_capture_create)
+
     # Mock waitlist lookup for token balance
     waitlist_doc = MagicMock()
     waitlist_doc.exists = True
@@ -159,7 +165,7 @@ async def test_invalid_model_override_returns_422(invalid_mid, role):
     mock_db, _ = _build_mock_db()
 
     app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
-    app.dependency_overrides[get_firestore_client] = lambda: mock_db
+    app.dependency_overrides[get_session_store] = lambda: mock_db
 
     try:
         async with httpx.AsyncClient(
@@ -188,7 +194,7 @@ async def test_invalid_model_override_returns_422(invalid_mid, role):
         assert invalid_mid in body["detail"]
     finally:
         app.dependency_overrides.pop(get_scenario_registry, None)
-        app.dependency_overrides.pop(get_firestore_client, None)
+        app.dependency_overrides.pop(get_session_store, None)
 
 
 # ---------------------------------------------------------------------------
@@ -215,7 +221,7 @@ async def test_unknown_role_keys_filtered_from_stored_state(unknown_roles, promp
     mock_db, stored_data = _build_mock_db()
 
     app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
-    app.dependency_overrides[get_firestore_client] = lambda: mock_db
+    app.dependency_overrides[get_session_store] = lambda: mock_db
 
     try:
         # Build custom_prompts and model_overrides with unknown role keys
@@ -276,4 +282,4 @@ async def test_unknown_role_keys_filtered_from_stored_state(unknown_roles, promp
         assert stored_model_overrides.get("Buyer") == "gemini-3-flash-preview"
     finally:
         app.dependency_overrides.pop(get_scenario_registry, None)
-        app.dependency_overrides.pop(get_firestore_client, None)
+        app.dependency_overrides.pop(get_session_store, None)

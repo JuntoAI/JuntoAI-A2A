@@ -35,29 +35,28 @@ vi.mock("@/context/SessionContext", () => ({
   }),
 }));
 
-// Track EventSource instances for SSE assertions
-let lastEventSource: {
-  url: string;
-  onopen: (() => void) | null;
-  onmessage: ((e: { data: string }) => void) | null;
-  onerror: (() => void) | null;
-  close: ReturnType<typeof vi.fn>;
-} | null = null;
+// Mock useSSE hook
+let mockDispatch: React.Dispatch<import("@/lib/glassBoxReducer").GlassBoxAction> | null = null;
+const mockStop = vi.fn();
 
-class MockEventSource {
-  url: string;
-  onopen: (() => void) | null = null;
-  onmessage: ((e: { data: string }) => void) | null = null;
-  onerror: (() => void) | null = null;
-  close = vi.fn();
+vi.mock("@/hooks/useSSE", () => ({
+  useSSE: (
+    _sessionId: string | null,
+    _email: string,
+    _maxTurns: number,
+    dispatch: React.Dispatch<import("@/lib/glassBoxReducer").GlassBoxAction>,
+  ) => {
+    mockDispatch = dispatch;
+    return { isConnected: false, startTime: Date.now(), stop: mockStop };
+  },
+}));
 
-  constructor(url: string) {
-    this.url = url;
-    lastEventSource = this;
-  }
-}
-
-vi.stubGlobal("EventSource", MockEventSource);
+// Mock fetchScenarioDetail to avoid network calls
+vi.mock("@/lib/api", () => ({
+  fetchScenarioDetail: vi.fn().mockResolvedValue({
+    negotiation_params: {},
+  }),
+}));
 
 // Import AFTER mocks
 import GlassBoxPage from "@/app/(protected)/arena/session/[sessionId]/page";
@@ -70,16 +69,33 @@ function renderPage() {
   return render(<GlassBoxPage />);
 }
 
-/** Simulate SSE connection open + fire events */
-function openSSE() {
+/** Simulate dispatching SSE events through the reducer */
+function dispatchEvent(action: import("@/lib/glassBoxReducer").GlassBoxAction) {
   act(() => {
-    lastEventSource?.onopen?.();
+    mockDispatch?.(action);
   });
 }
 
-function sendSSEMessage(data: Record<string, unknown>) {
-  act(() => {
-    lastEventSource?.onmessage?.({ data: JSON.stringify(data) });
+function openConnection() {
+  dispatchEvent({ type: "CONNECTION_OPENED" });
+}
+
+function sendNegotiationComplete(dealStatus: string, finalSummary: Record<string, unknown> = {}) {
+  dispatchEvent({
+    type: "NEGOTIATION_COMPLETE",
+    payload: {
+      event_type: "negotiation_complete",
+      session_id: "sess-abc-123",
+      deal_status: dealStatus,
+      final_summary: finalSummary,
+    },
+  });
+}
+
+function sendSSEError(message: string) {
+  dispatchEvent({
+    type: "SSE_ERROR",
+    payload: { message },
   });
 }
 
@@ -90,7 +106,7 @@ function sendSSEMessage(data: Record<string, unknown>) {
 describe("Glass Box Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    lastEventSource = null;
+    mockDispatch = null;
     // Reset to valid params
     mockParams.sessionId = "sess-abc-123";
   });
@@ -104,27 +120,18 @@ describe("Glass Box Page", () => {
     expect(screen.getByTestId("chat-panel")).toBeInTheDocument();
   });
 
-  // Req 5.1: SSE connection opens with correct sessionId
-  it("opens SSE connection with correct sessionId and email", () => {
+  // Req 5.1: useSSE hook is called (dispatch is captured)
+  it("initializes SSE connection via useSSE hook", () => {
     renderPage();
-
-    expect(lastEventSource).not.toBeNull();
-    expect(lastEventSource!.url).toContain("sess-abc-123");
-    expect(lastEventSource!.url).toContain("email=user%40test.com");
+    expect(mockDispatch).not.toBeNull();
   });
 
   // Req 10.7: OutcomeReceipt overlay renders when dealStatus is terminal
   it("renders OutcomeReceipt when dealStatus becomes Agreed", () => {
     renderPage();
-    openSSE();
+    openConnection();
 
-    // Send a negotiation_complete event
-    sendSSEMessage({
-      event_type: "negotiation_complete",
-      deal_status: "Agreed",
-      final_summary: { price: 100000 },
-      session_id: "sess-abc-123",
-    });
+    sendNegotiationComplete("Agreed", { price: 100000 });
 
     expect(screen.getByTestId("outcome-receipt")).toBeInTheDocument();
     expect(screen.getByTestId("outcome-overlay")).toBeInTheDocument();
@@ -132,14 +139,9 @@ describe("Glass Box Page", () => {
 
   it("renders OutcomeReceipt when dealStatus becomes Blocked", () => {
     renderPage();
-    openSSE();
+    openConnection();
 
-    sendSSEMessage({
-      event_type: "negotiation_complete",
-      deal_status: "Blocked",
-      final_summary: { reason: "Regulator blocked" },
-      session_id: "sess-abc-123",
-    });
+    sendNegotiationComplete("Blocked", { reason: "Regulator blocked" });
 
     expect(screen.getByTestId("outcome-receipt")).toBeInTheDocument();
     expect(screen.getByTestId("outcome-heading")).toHaveTextContent("Deal Blocked");
@@ -147,14 +149,9 @@ describe("Glass Box Page", () => {
 
   it("renders OutcomeReceipt when dealStatus becomes Failed", () => {
     renderPage();
-    openSSE();
+    openConnection();
 
-    sendSSEMessage({
-      event_type: "negotiation_complete",
-      deal_status: "Failed",
-      final_summary: {},
-      session_id: "sess-abc-123",
-    });
+    sendNegotiationComplete("Failed");
 
     expect(screen.getByTestId("outcome-receipt")).toBeInTheDocument();
     expect(screen.getByTestId("outcome-heading")).toHaveTextContent("Negotiation Failed");
@@ -177,12 +174,9 @@ describe("Glass Box Page", () => {
   // Req 11.2, 11.3: SSE error shows error with Return to Arena link
   it("shows error with Return to Arena link on SSE error event", () => {
     renderPage();
-    openSSE();
+    openConnection();
 
-    sendSSEMessage({
-      event_type: "error",
-      message: "Session not found",
-    });
+    sendSSEError("Session not found");
 
     expect(screen.getByTestId("sse-error")).toHaveTextContent("Session not found");
     const link = screen.getByTestId("return-to-arena");
@@ -214,11 +208,12 @@ describe("Glass Box Page", () => {
   });
 
   // SSE not opened when sessionId is invalid
-  it("does not open SSE when sessionId is invalid", () => {
+  it("does not initialize SSE when sessionId is invalid", () => {
     mockParams.sessionId = "";
 
     renderPage();
 
-    expect(lastEventSource).toBeNull();
+    // The page renders the error state, useSSE is called with null sessionId
+    expect(screen.getByTestId("session-error")).toBeInTheDocument();
   });
 });

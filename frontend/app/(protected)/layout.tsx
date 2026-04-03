@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/context/SessionContext";
+import { isLocalMode } from "@/lib/runMode";
 import TokenDisplay from "@/components/TokenDisplay";
 
 export default function ProtectedLayout({
@@ -14,12 +15,12 @@ export default function ProtectedLayout({
   const router = useRouter();
 
   useEffect(() => {
-    if (isHydrated && !isAuthenticated) {
+    if (!isLocalMode && isHydrated && !isAuthenticated) {
       router.replace("/");
     }
   }, [isAuthenticated, isHydrated, router]);
 
-  if (!isHydrated || !isAuthenticated) {
+  if (!isLocalMode && (!isHydrated || !isAuthenticated)) {
     return null;
   }
 
@@ -35,12 +36,14 @@ export default function ProtectedLayout({
           {email}
         </span>
         <TokenDisplay />
-        <button
-          onClick={handleLogout}
-          className="rounded-md px-3 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-        >
-          Logout
-        </button>
+        {!isLocalMode && (
+          <button
+            onClick={handleLogout}
+            className="rounded-md px-3 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          >
+            Logout
+          </button>
+        )}
       </div>
       {children}
     </>
