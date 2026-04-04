@@ -6,6 +6,20 @@ Each entry corresponds to a completed spec — shipped when the last task was fi
 
 ---
 
+## Hybrid Agent Memory (Spec 110) — 2026-04-04
+
+- Milestone summary generator: lightweight LLM call per agent at configurable turn intervals produces ≤300-token strategic summaries capturing key positions, concessions, disputes, and trajectory
+- Configurable sliding window: `sliding_window_size` scenario parameter (default 3) replaces hardcoded window from spec 100
+- Full history elimination: after first milestone, prompt builder excludes all raw history beyond the sliding window — token cost per turn becomes bounded regardless of negotiation length
+- `milestone_interval` scenario parameter (default 4) controls turn cycles between summary generations
+- Milestone summaries include agent-private reasoning context (inner thoughts, strategy) for perspective-aware compression
+- Non-blocking failure: LLM failure for one agent's summary does not block other agents or the negotiation
+- Dispatcher integration: milestone generation triggers after turn advancement, before next agent node runs
+- "Milestone Summaries" toggle in Advanced Options — visually disabled when structured memory is off, auto-enables structured memory when toggled on
+- Server-side dependency enforcement: `milestone_summaries_enabled=True` forces `structured_memory_enabled=True` regardless of request payload
+- Full backward compatibility: disabled by default, missing fields default safely, existing sessions and scenario JSONs unaffected
+- Property tests: NegotiationParams round-trip, state initialization invariants, milestone serialization round-trip, prompt token boundedness
+
 ## Structured Agent Memory (Spec 100) — 2026-04-03
 
 - Per-agent `AgentMemory` Pydantic V2 model: typed fields for offer history, concessions, open items, tactics, red lines, compliance status, and turn count
