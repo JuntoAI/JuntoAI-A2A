@@ -110,7 +110,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // Remove cookie by setting max-age=0
     document.cookie = `${SESSION_COOKIE_NAME}=; SameSite=Strict; path=/; max-age=0`;
 
-    setState(defaultState);
+    // Keep isHydrated true so the protected layout redirect fires
+    setState({ ...defaultState, isHydrated: true });
   }, []);
 
   const updateTokenBalance = useCallback((newBalance: number) => {
