@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Release Notes — JuntoAI A2A Protocol Sandbox",
+  title: "Release Notes | JuntoAI A2A Protocol Sandbox",
   description:
     "A continuous stream of features shipped in the JuntoAI A2A Protocol Sandbox.",
 };

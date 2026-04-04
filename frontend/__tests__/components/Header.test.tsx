@@ -21,6 +21,12 @@ vi.mock("@/context/SessionContext", () => ({
   useSession: () => mockSessionState,
 }));
 
+let mockPathname = "/";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockPathname,
+}));
+
 vi.mock("@/components/TokenDisplay", () => ({
   default: () => createElement("div", { "data-testid": "token-display" }, "50 tokens"),
 }));
@@ -50,6 +56,7 @@ import Header from "@/components/Header";
 describe("Header Component", () => {
   beforeEach(() => {
     cleanup();
+    mockPathname = "/";
     mockSessionState = {
       email: null,
       tokenBalance: 0,
@@ -67,8 +74,13 @@ describe("Header Component", () => {
   it("renders logo image with correct src and alt text", () => {
     render(createElement(Header));
     const logo = screen.getByTestId("header-logo");
-    expect(logo).toHaveAttribute("src", "/a2a-logo-400x200.png");
+    expect(logo).toHaveAttribute("src", "/juntoai_logo_500x500.png");
     expect(logo).toHaveAttribute("alt", "JuntoAI logo");
+  });
+
+  it("renders product name text next to logo", () => {
+    render(createElement(Header));
+    expect(screen.getByText("JuntoAI A2A")).toBeInTheDocument();
   });
 
   it("logo links to home page", () => {
@@ -144,5 +156,20 @@ describe("Header Component", () => {
     mockSessionState.isHydrated = true;
     render(createElement(Header));
     expect(screen.queryByText(/join waitlist/i)).not.toBeInTheDocument();
+  });
+
+  // --- Arena route: no external links ---
+
+  it("hides JuntoAI and GitHub links on /arena", () => {
+    mockPathname = "/arena";
+    render(createElement(Header));
+    const juntoLinks = screen.queryAllByRole("link").filter(
+      (el) => el.getAttribute("href") === "https://juntoai.org",
+    );
+    const ghLinks = screen.queryAllByRole("link").filter(
+      (el) => el.getAttribute("href") === "https://github.com/JuntoAI/JuntoAI-A2A",
+    );
+    expect(juntoLinks.length).toBe(0);
+    expect(ghLinks.length).toBe(0);
   });
 });
