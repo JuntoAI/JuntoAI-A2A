@@ -1,4 +1,5 @@
 .hypothesis/
+.vscode/
 __pycache__/
 *.pyc
 .venv/
