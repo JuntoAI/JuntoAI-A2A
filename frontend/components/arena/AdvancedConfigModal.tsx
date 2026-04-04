@@ -145,9 +145,7 @@ export function AdvancedConfigModal({
       // Sync milestone summaries global state
       if (value === "structured_milestones") {
         onMilestoneSummariesChange(true);
-      } else if (milestoneSummariesEnabled && value !== "structured_milestones") {
-        // Only disable milestones if this agent is changing away from it
-        // (milestones is global, but we disable when explicitly deselected)
+      } else if (milestoneSummariesEnabled) {
         onMilestoneSummariesChange(false);
       }
     },

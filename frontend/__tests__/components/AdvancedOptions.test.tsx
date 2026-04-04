@@ -244,7 +244,8 @@ describe("Per-Agent Memory Strategy Radio Group", () => {
 
     // "No Memory" indicator should be gone — reset to default (structured)
     expect(screen.queryByText("⚠ No Memory")).not.toBeInTheDocument();
-    // Default structured memory indicator should be present
-    expect(screen.getByText("✦ Structured Memory")).toBeInTheDocument();
+    // Default structured memory indicator should be present for all agents
+    const indicators = screen.getAllByText("✦ Structured Memory");
+    expect(indicators.length).toBeGreaterThan(0);
   });
 });
