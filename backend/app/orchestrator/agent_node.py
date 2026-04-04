@@ -289,7 +289,11 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
 
     history = state.get("history", [])
 
-    if state.get("structured_memory_enabled", False) and role in state.get("structured_memory_roles", []):
+    # No Memory mode: agent receives zero negotiation history
+    no_memory_roles = state.get("no_memory_roles", [])
+    if role in no_memory_roles:
+        user_parts.append("(No negotiation history available — you are operating without memory of previous turns.)")
+    elif state.get("structured_memory_enabled", False) and role in state.get("structured_memory_roles", []):
         # Structured memory mode: labeled memory fields + sliding window
         agent_memories = state.get("agent_memories", {})
         raw_mem = agent_memories.get(role, {})

@@ -1,6 +1,7 @@
 "use client";
 
 import { SlidersHorizontal } from "lucide-react";
+import type { MemoryStrategy } from "./AdvancedConfigModal";
 
 const AGENT_COLORS = [
   "#007BFF",
@@ -21,8 +22,7 @@ export interface AgentCardProps {
   index: number;
   hasCustomPrompt?: boolean;
   modelOverride?: string | null;
-  hasStructuredMemory?: boolean;
-  hasMilestoneSummaries?: boolean;
+  memoryStrategy?: MemoryStrategy;
   onAdvancedConfig?: () => void;
 }
 
@@ -34,8 +34,7 @@ export function AgentCard({
   index,
   hasCustomPrompt = false,
   modelOverride = null,
-  hasStructuredMemory = false,
-  hasMilestoneSummaries = false,
+  memoryStrategy = "full_transcript",
   onAdvancedConfig = () => {},
 }: AgentCardProps) {
   const color = AGENT_COLORS[index % AGENT_COLORS.length];
@@ -66,14 +65,24 @@ export function AgentCard({
           <span className="ml-1 text-blue-500">(override)</span>
         )}
       </p>
-      {hasStructuredMemory && (
-        <p className="mt-1 text-xs text-green-600">
+      {memoryStrategy === "none" && (
+        <p className="mt-1 text-xs text-red-500" data-testid="memory-indicator">
+          ⚠ No Memory
+        </p>
+      )}
+      {memoryStrategy === "full_transcript" && (
+        <p className="mt-1 text-xs text-gray-500" data-testid="memory-indicator">
+          ✦ Full Transcript
+        </p>
+      )}
+      {memoryStrategy === "structured" && (
+        <p className="mt-1 text-xs text-green-600" data-testid="memory-indicator">
           ✦ Structured Memory
         </p>
       )}
-      {hasMilestoneSummaries && (
-        <p className="mt-1 text-xs text-blue-500">
-          ✦ Milestone Summaries
+      {memoryStrategy === "structured_milestones" && (
+        <p className="mt-1 text-xs text-blue-500" data-testid="memory-indicator">
+          ✦ Structured Memory + Milestones
         </p>
       )}
       <button
