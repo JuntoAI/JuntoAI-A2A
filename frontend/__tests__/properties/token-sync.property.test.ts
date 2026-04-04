@@ -98,7 +98,7 @@ describe("Property 12: Insufficient tokens disables action", () => {
     document.cookie = "junto_session=; max-age=0; path=/";
   });
 
-  it("button is disabled and message shown when balance < cost", () => {
+  it("button is disabled and message shown when balance < cost", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(
         fc

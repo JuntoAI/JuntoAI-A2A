@@ -245,6 +245,7 @@ describe("Arena Control Panel Page", () => {
         undefined,
         undefined,
         [],
+        false,
       );
     });
 

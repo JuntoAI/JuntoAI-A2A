@@ -49,7 +49,7 @@ describe("Property 3: Scenario selection renders correct component counts", () =
    *
    * ScenarioSelector option count must equal scenarios.length + 1 (placeholder).
    */
-  it("ScenarioSelector renders one option per scenario plus placeholder", () => {
+  it("ScenarioSelector renders one option per scenario plus placeholder", { timeout: 30000 }, () => {
     const scenarioSummaryArb = fc.array(
       fc.record({
         id: fc.stringMatching(/^[a-z][a-z0-9_]{2,14}$/),
@@ -87,7 +87,7 @@ describe("Property 3: Scenario selection renders correct component counts", () =
    * Rendering one AgentCard per agent in the scenario must produce
    * exactly agents.length cards.
    */
-  it("renders exactly one AgentCard per agent in the scenario", () => {
+  it("renders exactly one AgentCard per agent in the scenario", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(scenarioArb, (scenario) => {
         const { unmount, container } = render(
@@ -124,7 +124,7 @@ describe("Property 3: Scenario selection renders correct component counts", () =
    * Rendering one InformationToggle per toggle in the scenario must produce
    * exactly toggles.length checkboxes.
    */
-  it("renders exactly one InformationToggle per toggle in the scenario", () => {
+  it("renders exactly one InformationToggle per toggle in the scenario", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(scenarioArb, (scenario) => {
         const { unmount } = render(

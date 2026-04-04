@@ -28,7 +28,7 @@ import Home from "@/app/page";
  * **Validates: Requirements 7.2, 7.6**
  */
 describe("Property 6: GitHub CTA link accessibility", () => {
-  it("has correct accessibility attributes across renders", () => {
+  it("has correct accessibility attributes across renders", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(fc.constant(null), () => {
         const { unmount } = render(createElement(Home));

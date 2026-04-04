@@ -229,50 +229,57 @@ class TestCheckAgreement:
 class TestDispatcher:
     """Unit tests for _dispatcher() and _route_dispatcher()."""
 
-    def test_terminal_agreed_returns_empty(self):
+    @pytest.mark.asyncio
+    async def test_terminal_agreed_returns_empty(self):
         state = _make_state(deal_status="Agreed")
-        assert _dispatcher(state) == {}
+        assert await _dispatcher(state) == {}
 
-    def test_terminal_blocked_returns_empty(self):
+    @pytest.mark.asyncio
+    async def test_terminal_blocked_returns_empty(self):
         state = _make_state(deal_status="Blocked")
-        assert _dispatcher(state) == {}
+        assert await _dispatcher(state) == {}
 
-    def test_terminal_failed_returns_empty(self):
+    @pytest.mark.asyncio
+    async def test_terminal_failed_returns_empty(self):
         state = _make_state(deal_status="Failed")
-        assert _dispatcher(state) == {}
+        assert await _dispatcher(state) == {}
 
-    def test_max_turns_sets_failed(self):
+    @pytest.mark.asyncio
+    async def test_max_turns_sets_failed(self):
         state = _make_state(turn_count=10, max_turns=10)
-        delta = _dispatcher(state)
+        delta = await _dispatcher(state)
         assert delta["deal_status"] == "Failed"
         assert delta["max_turns"] == 10
         assert "agent_states" in delta
 
-    def test_max_turns_exceeded_sets_failed(self):
+    @pytest.mark.asyncio
+    async def test_max_turns_exceeded_sets_failed(self):
         state = _make_state(turn_count=12, max_turns=10)
-        delta = _dispatcher(state)
+        delta = await _dispatcher(state)
         assert delta["deal_status"] == "Failed"
         assert delta["max_turns"] == 10
 
-    def test_agreement_sets_agreed(self):
+    @pytest.mark.asyncio
+    async def test_agreement_sets_agreed(self):
         agent_states = {
             "Buyer": _negotiator_state("Buyer", 100000.0),
             "Seller": _negotiator_state("Seller", 102000.0),
         }
         state = _make_state(agent_states=agent_states, agreement_threshold=5000.0)
-        delta = _dispatcher(state)
+        delta = await _dispatcher(state)
         assert delta["deal_status"] == "Agreed"
         assert delta["agent_states"] == agent_states
         assert "current_offer" in delta
         assert "turn_count" in delta
 
-    def test_normal_returns_empty(self):
+    @pytest.mark.asyncio
+    async def test_normal_returns_empty(self):
         agent_states = {
             "Buyer": _negotiator_state("Buyer", 100000.0),
             "Seller": _negotiator_state("Seller", 200000.0),
         }
         state = _make_state(agent_states=agent_states, agreement_threshold=5000.0)
-        delta = _dispatcher(state)
+        delta = await _dispatcher(state)
         assert delta == {}
 
     def test_route_terminal_returns_end(self):

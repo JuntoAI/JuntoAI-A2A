@@ -27,9 +27,15 @@ def to_pydantic(state: NegotiationState) -> NegotiationStateModel:
         agent_states=state["agent_states"],
         active_toggles=state["active_toggles"],
         total_tokens_used=state.get("total_tokens_used", 0),
+        custom_prompts=state.get("custom_prompts", {}),
+        model_overrides=state.get("model_overrides", {}),
         structured_memory_enabled=state.get("structured_memory_enabled", False),
         structured_memory_roles=state.get("structured_memory_roles", []),
         agent_memories=state.get("agent_memories", {}),
+        milestone_summaries_enabled=state.get("milestone_summaries_enabled", False),
+        milestone_summaries=state.get("milestone_summaries", {}),
+        sliding_window_size=state.get("sliding_window_size", 3),
+        milestone_interval=state.get("milestone_interval", 4),
     )
 
 
@@ -58,7 +64,13 @@ def from_pydantic(model: NegotiationStateModel) -> NegotiationState:
         active_toggles=model.active_toggles,
         total_tokens_used=model.total_tokens_used,
         stall_diagnosis=None,
+        custom_prompts=model.custom_prompts,
+        model_overrides=model.model_overrides,
         structured_memory_enabled=model.structured_memory_enabled,
         structured_memory_roles=model.structured_memory_roles,
         agent_memories=model.agent_memories,
+        milestone_summaries_enabled=model.milestone_summaries_enabled,
+        milestone_summaries=model.milestone_summaries,
+        sliding_window_size=model.sliding_window_size,
+        milestone_interval=model.milestone_interval,
     )

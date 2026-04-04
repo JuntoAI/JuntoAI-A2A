@@ -87,6 +87,16 @@ class NegotiationParams(BaseModel):
         "'currency' → $X, 'time_from_22' → converts minutes-from-10PM to HH:MM, "
         "'percent' → X%, 'number' → plain number.",
     )
+    sliding_window_size: int = Field(
+        default=3,
+        ge=1,
+        description="Number of recent raw messages in the sliding window for agent prompts.",
+    )
+    milestone_interval: int = Field(
+        default=4,
+        ge=2,
+        description="Number of full turn cycles between milestone summary generations.",
+    )
 
 
 class OutcomeReceipt(BaseModel):

@@ -38,3 +38,9 @@ class NegotiationStateModel(BaseModel):
     structured_memory_enabled: bool = Field(default=False)
     structured_memory_roles: list[str] = Field(default_factory=list)
     agent_memories: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    milestone_summaries_enabled: bool = Field(default=False)
+    milestone_summaries: dict[str, list[dict[str, Any]]] = Field(
+        default_factory=dict
+    )
+    sliding_window_size: int = Field(default=3, ge=1)
+    milestone_interval: int = Field(default=4, ge=2)

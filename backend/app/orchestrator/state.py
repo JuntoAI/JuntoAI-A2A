@@ -37,6 +37,10 @@ class NegotiationState(TypedDict):
     structured_memory_enabled: bool
     structured_memory_roles: list[str]
     agent_memories: dict[str, dict[str, Any]]
+    milestone_summaries_enabled: bool
+    milestone_summaries: dict[str, list[dict[str, Any]]]
+    sliding_window_size: int
+    milestone_interval: int
 
 
 def create_initial_state(
@@ -48,6 +52,7 @@ def create_initial_state(
     model_overrides: dict[str, str] | None = None,
     structured_memory_enabled: bool = False,
     structured_memory_roles: list[str] | None = None,
+    milestone_summaries_enabled: bool = False,
 ) -> NegotiationState:
     """Build the initial NegotiationState from a scenario config dict.
 
@@ -87,6 +92,10 @@ def create_initial_state(
     # Legacy callers may pass structured_memory_enabled=True (global flag)
     # which enables memory for ALL agents. New callers pass
     # structured_memory_roles with specific role names.
+    # Milestone summaries require structured memory — force it on.
+    if milestone_summaries_enabled:
+        structured_memory_enabled = True
+
     effective_roles: list[str] = list(structured_memory_roles or [])
     if structured_memory_enabled and not effective_roles:
         effective_roles = [a["role"] for a in agents]
@@ -95,6 +104,16 @@ def create_initial_state(
     for a in agents:
         if a["role"] in effective_roles:
             agent_memories[a["role"]] = AgentMemory().model_dump()
+
+    # Read sliding window and milestone interval from scenario params.
+    sliding_window_size: int = params.get("sliding_window_size", 3)
+    milestone_interval: int = params.get("milestone_interval", 4)
+
+    # Initialize milestone summaries: one empty list per agent role when
+    # enabled, empty dict when disabled.
+    milestone_summaries: dict[str, list[dict[str, Any]]] = {}
+    if milestone_summaries_enabled:
+        milestone_summaries = {a["role"]: [] for a in agents}
 
     return NegotiationState(
         session_id=session_id,
@@ -120,4 +139,8 @@ def create_initial_state(
         structured_memory_enabled=bool(effective_roles),
         structured_memory_roles=effective_roles,
         agent_memories=agent_memories,
+        milestone_summaries_enabled=milestone_summaries_enabled,
+        milestone_summaries=milestone_summaries,
+        sliding_window_size=sliding_window_size,
+        milestone_interval=milestone_interval,
     )

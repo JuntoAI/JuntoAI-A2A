@@ -18,6 +18,7 @@ import { AgentCard } from "@/components/arena/AgentCard";
 import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
 import { AdvancedConfigModal } from "@/components/arena/AdvancedConfigModal";
+import { MilestoneSummariesToggle } from "@/components/arena/MilestoneSummariesToggle";
 import { Spinner } from "@/components/ui/Spinner";
 
 function ArenaPageContent() {
@@ -43,6 +44,7 @@ function ArenaPageContent() {
   const [modelOverrides, setModelOverrides] = useState<Record<string, string>>({});
   const [structuredMemoryRoles, setStructuredMemoryRoles] = useState<Record<string, boolean>>({});
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
+  const [milestoneSummariesEnabled, setMilestoneSummariesEnabled] = useState(false);
   const [advancedConfigAgent, setAdvancedConfigAgent] = useState<{
     name: string;
     role: string;
@@ -106,6 +108,7 @@ function ArenaPageContent() {
     setCustomPrompts({});
     setModelOverrides({});
     setStructuredMemoryRoles({});
+    setMilestoneSummariesEnabled(false);
   }, [selectedScenarioId]);
 
   // Fetch scenario detail on selection
@@ -114,6 +117,7 @@ function ArenaPageContent() {
     setScenarioDetail(null);
     setActiveToggles([]);
     setStructuredMemoryRoles({});
+    setMilestoneSummariesEnabled(false);
     setError(null);
     setIsLoadingDetail(true);
     try {
@@ -163,6 +167,7 @@ function ArenaPageContent() {
         Object.keys(filteredPrompts).length > 0 ? filteredPrompts : undefined,
         Object.keys(filteredOverrides).length > 0 ? filteredOverrides : undefined,
         Object.keys(structuredMemoryRoles).filter((r) => structuredMemoryRoles[r]),
+        milestoneSummariesEnabled,
       );
       updateTokenBalance(result.tokens_remaining);
       router.push(
@@ -187,11 +192,38 @@ function ArenaPageContent() {
     customPrompts,
     modelOverrides,
     structuredMemoryRoles,
+    milestoneSummariesEnabled,
     updateTokenBalance,
     router,
   ]);
 
   const insufficientTokens = tokenBalance <= 0;
+
+  // Derived: structured memory is "on" if at least one agent has it enabled
+  const isStructuredMemoryOn = Object.values(structuredMemoryRoles).some(Boolean);
+
+  // Auto-disable milestone summaries when structured memory is turned off for all agents
+  useEffect(() => {
+    if (!isStructuredMemoryOn && milestoneSummariesEnabled) {
+      setMilestoneSummariesEnabled(false);
+    }
+  }, [isStructuredMemoryOn, milestoneSummariesEnabled]);
+
+  // Milestone summaries toggle handler
+  const handleMilestoneSummariesChange = useCallback(
+    (enabled: boolean) => {
+      setMilestoneSummariesEnabled(enabled);
+      if (enabled && !isStructuredMemoryOn && scenarioDetail) {
+        // Auto-enable structured memory for all agents
+        const roles: Record<string, boolean> = {};
+        for (const agent of scenarioDetail.agents) {
+          roles[agent.role] = true;
+        }
+        setStructuredMemoryRoles(roles);
+      }
+    },
+    [isStructuredMemoryOn, scenarioDetail],
+  );
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
@@ -275,6 +307,18 @@ function ArenaPageContent() {
               </div>
             </section>
           )}
+
+          {/* Advanced Options */}
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-gray-800">
+              Advanced Options
+            </h2>
+            <MilestoneSummariesToggle
+              enabled={milestoneSummariesEnabled}
+              structuredMemoryEnabled={isStructuredMemoryOn}
+              onChange={handleMilestoneSummariesChange}
+            />
+          </section>
 
         </>
       )}
