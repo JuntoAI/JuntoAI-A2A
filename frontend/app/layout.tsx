@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import Providers from "@/components/Providers";
+import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieBanner from "@/components/CookieBanner";
 import "./globals.css";
@@ -102,6 +103,7 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-screen flex-col">
         <Providers>
+          <Header />
           <div className="flex-1">{children}</div>
           <Footer />
           <CookieBanner />
