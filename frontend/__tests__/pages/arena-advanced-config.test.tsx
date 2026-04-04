@@ -213,7 +213,7 @@ describe("Arena Page — Advanced Config State Management", () => {
           [],
           undefined,
           undefined,
-          undefined,
+          ["buyer"],
           false,
           undefined,
         );
@@ -261,7 +261,7 @@ describe("Arena Page — Advanced Config State Management", () => {
           [],
           undefined,
           undefined,
-          undefined,
+          ["recruiter", "candidate"],
           false,
           undefined,
         );
@@ -272,7 +272,6 @@ describe("Arena Page — Advanced Config State Management", () => {
       );
     });
   });
-
   // ---------------------------------------------------------------------------
   // Req 4.5: Empty custom_prompts/model_overrides produce identical behavior
   // ---------------------------------------------------------------------------
@@ -306,7 +305,7 @@ describe("Arena Page — Advanced Config State Management", () => {
           [],
           undefined,
           undefined,
-          undefined,
+          ["recruiter", "candidate"],
           false,
           undefined,
         );

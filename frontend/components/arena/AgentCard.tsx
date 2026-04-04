@@ -34,7 +34,7 @@ export function AgentCard({
   index,
   hasCustomPrompt = false,
   modelOverride = null,
-  memoryStrategy = "full_transcript",
+  memoryStrategy = "structured",
   onAdvancedConfig = () => {},
 }: AgentCardProps) {
   const color = AGENT_COLORS[index % AGENT_COLORS.length];
