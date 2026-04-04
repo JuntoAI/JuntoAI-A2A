@@ -6,6 +6,17 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Developer Community Infrastructure (Spec 160) — 2026-04-04
+
+- GitHub Actions PR CI pipeline (`.github/workflows/pr-tests.yml`): parallel backend pytest + frontend Vitest jobs on every PR to `main`, 70% coverage enforced
+- `CONTRIBUTING.md`: fork-and-PR workflow, local dev setup (Docker, Python 3.11, Node 20), test commands, scenario contribution guide (JSON-only, no code changes)
+- `CODE_OF_CONDUCT.md` based on Contributor Covenant v2.1 with enforcement contact and community scope
+- GitHub issue templates: structured YAML forms for bug reports (repro steps, environment) and feature requests (problem, proposed solution), blank issues disabled
+- Pull request template with change-type checkboxes, related-issue linking, and pre-merge checklist (tests, coverage, CONTRIBUTING.md read)
+- Contributor onboarding labels documented: `good first issue`, `scenario-contribution`, `help wanted`
+- README community section updated: links to CONTRIBUTING.md, CODE_OF_CONDUCT.md, WhatsApp channel, and `good first issue` filtered view
+- Branch protection guidance: `main` protected, CI must pass before merge, no direct pushes
+
 ## User Profile & Token Upgrade (Spec 140) — 2026-04-04
 
 - 3-tier daily token system: Tier 1 (20 tokens/day) on signup, Tier 2 (50) on email verification, Tier 3 (100) on full profile completion
