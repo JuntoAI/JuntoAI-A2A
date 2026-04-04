@@ -13,6 +13,7 @@ Implement a 3-tier daily token system (20/50/100 tokens) driven by profile miles
     - `ProfileUpdateRequest` includes `country` field with ISO 3166-1 alpha-2 validator (using `pycountry`)
     - `ProfileResponse` includes `password_hash_set` (bool, never expose hash), `country`, `google_oauth_id`
     - Implement field validators: display name (2-100 chars, trimmed), GitHub URL (`https://github.com/{username}`), LinkedIn URL (`https://[www.]linkedin.com/in/{slug}`), country (valid ISO 3166-1 alpha-2 via `pycountry`)
+    - Add new dependencies to `backend/requirements.txt`: `bcrypt`, `pycountry`, `boto3`, `requests` (if not already present)
     - _Requirements: 3.1, 3.3, 3.4, 5.1, 5.2, 5.4, 9.6, 12.2, 12.4, 12.6, 12.7_
 
   - [ ] 1.2 Create tier calculator pure functions (`backend/app/services/tier_calculator.py`)
@@ -51,14 +52,16 @@ Implement a 3-tier daily token system (20/50/100 tokens) driven by profile miles
 
 - [ ] 3. Create Firestore profile client and email verifier service
   - [ ] 3.1 Create profile Firestore client (`backend/app/db/profile_client.py`)
+    - Refactor `backend/app/db/__init__.py` to expose a shared `get_firestore_db()` factory that returns the underlying `firestore.AsyncClient` singleton. Update `FirestoreSessionClient` to use this shared instance instead of creating its own
+    - Implement `ProfileClient` class using the shared `firestore.AsyncClient` from `get_firestore_db()`
     - Implement get-or-create profile (create with defaults including `password_hash=None`, `country=None`, `google_oauth_id=None` if not exists, return existing if exists)
     - Implement update profile fields (display_name, github_url, linkedin_url, country)
     - Implement read profile by email
     - Implement update `password_hash` field
     - Implement update `google_oauth_id` field (set and clear)
     - Implement query profiles by `google_oauth_id` (for Google OAuth login lookup)
-    - Use existing `firestore.AsyncClient` pattern from `firestore_client.py`
     - CRUD operations on `verification_tokens` collection (create, read, delete)
+    - For local mode (`RUN_MODE=local`): implement `SQLiteProfileClient` that stores profiles and verification_tokens in the same SQLite database (`data/juntoai.db`) with separate tables. Add a `get_profile_client()` factory in `backend/app/db/__init__.py` that returns the appropriate implementation based on `RUN_MODE`
     - _Requirements: 1.1, 1.2, 1.3, 9.1, 9.2, 12.3, 12.6, 12.7, 13.4, 13.7_
 
   - [ ] 3.2 Create email verifier service (`backend/app/services/email_verifier.py`)
@@ -161,7 +164,7 @@ Implement a 3-tier daily token system (20/50/100 tokens) driven by profile miles
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
 
   - [ ] 8.2 Update waitlist signup to set initial balance to 20
-    - Modify `joinWaitlist` / waitlist creation to set `token_balance` to 20 instead of 100
+    - Modify `frontend/lib/waitlist.ts` `joinWaitlist()` function: change `token_balance: 100` to `token_balance: 20` in the `newDoc` object (this is a client-side Firestore write via Firebase JS SDK)
     - _Requirements: 6.1_
 
   - [ ]* 8.3 Write property test for tier-aware token reset (Hypothesis)
@@ -184,8 +187,8 @@ Implement a 3-tier daily token system (20/50/100 tokens) driven by profile miles
     - _Requirements: 8.4, 8.5_
 
   - [ ] 10.2 Update token utility functions (`frontend/lib/tokens.ts`)
-    - Modify `resetTokens` to accept `dailyLimit` parameter instead of hardcoded 100
-    - Modify `formatTokenDisplay` to accept `dailyLimit` parameter: `Tokens: {balance} / {dailyLimit}`
+    - Modify `resetTokens(email)` to accept a `dailyLimit` parameter: `resetTokens(email: string, dailyLimit: number)` — writes `token_balance: dailyLimit` to Firestore instead of hardcoded 100
+    - Modify `formatTokenDisplay(balance)` to accept a `dailyLimit` parameter: `formatTokenDisplay(balance: number, dailyLimit: number)` — returns `Tokens: {balance} / {dailyLimit}` instead of hardcoded 100
     - _Requirements: 8.1, 8.2, 8.3_
 
   - [ ] 10.3 Update TokenDisplay component (`frontend/components/TokenDisplay.tsx`)
@@ -200,12 +203,13 @@ Implement a 3-tier daily token system (20/50/100 tokens) driven by profile miles
 - [ ] 11. Update WaitlistForm / Login Form and protected layout
   - [ ] 11.1 Update WaitlistForm / Login Form (`frontend/components/WaitlistForm.tsx`)
     - Set initial token balance to 20 (Tier 1) instead of 100 on signup and reset
-    - Pass tier info (tier=1, dailyLimit=20) to `login` in SessionContext
+    - Change the login flow: after `joinWaitlist()` returns, call `GET /api/v1/profile/{email}` to fetch the user's tier and daily limit. Use the returned `daily_limit` when calling `resetTokens(email, dailyLimit)` if a reset is needed (replaces the current hardcoded `resetTokens(email)` which always resets to 100)
+    - Pass tier info (tier, dailyLimit from profile response) to `login` in SessionContext. For new users with no profile, default to tier=1, dailyLimit=20
     - On email blur/submit: call `GET /api/v1/auth/check-email/{email}` to determine if password field is needed
     - Conditionally show password input field when `has_password` is true
     - On email+password submit: call `POST /api/v1/auth/login` and handle 401 errors inline
     - When `has_password` is false, proceed with existing email-only login flow
-    - Add "Sign in with Google" button alongside email input
+    - Add "Sign in with Google" button alongside email input — add `@react-oauth/google` to `frontend/package.json` dependencies
     - Google sign-in triggers Google Identity Services consent flow, then calls `POST /api/v1/auth/google/login`
     - Handle Google login 404 (no linked account) with inline error message
     - Handle Google consent flow cancellation gracefully (no error shown)
@@ -256,8 +260,9 @@ Implement a 3-tier daily token system (20/50/100 tokens) driven by profile miles
 
 - [ ] 14. Integration wiring and final validation
   - [ ] 14.1 Wire negotiation router to use tier-aware token lookup
-    - Update `start_negotiation` in `backend/app/routers/negotiation.py` to fetch tier from profile when displaying `tokens_remaining`
-    - Update token deduction in `event_stream` finally block to use tier-aware daily limit
+    - Refactor token deduction in `stream_negotiation()` `event_stream` finally block: replace the direct `db._db.collection("waitlist")` access with a proper `ProfileClient` dependency injection via `Depends(get_profile_client)`. Use `TierCalculator` to determine the user's daily limit before deducting tokens
+    - Update `start_negotiation` to fetch tier from profile via `ProfileClient` when returning `tokens_remaining` (replace the current hardcoded fallback of 100)
+    - Add `ProfileClient` as a FastAPI dependency to both `start_negotiation` and `stream_negotiation` endpoints
     - _Requirements: 6.7, 10.1_
 
   - [ ]* 14.2 Write backend integration tests for profile endpoints
@@ -312,3 +317,9 @@ Implement a 3-tier daily token system (20/50/100 tokens) driven by profile miles
 - Google OAuth uses Google Identity Services (GIS) on frontend, backend validates ID tokens against Google's tokeninfo endpoint
 - Country codes use ISO 3166-1 alpha-2 standard, validated via `pycountry` library
 - Google OAuth ID uniqueness enforced via Firestore transaction to prevent race conditions
+- New backend dependencies required: `bcrypt`, `pycountry`, `boto3` (SES), `requests` (Google token validation) — add to `backend/requirements.txt` in Task 1.1
+- New frontend dependency required: `@react-oauth/google` — add to `frontend/package.json` in Task 11.1
+- The `ProfileClient` must work in both cloud (Firestore) and local (SQLite) modes, following the existing `SessionStore` pattern in `backend/app/db/__init__.py`
+- The negotiation router's token deduction currently reaches through `db._db.collection("waitlist")` — Task 14.1 refactors this to use proper `ProfileClient` dependency injection
+- Frontend `joinWaitlist()` in `frontend/lib/waitlist.ts` writes directly to Firestore via Firebase JS SDK — Task 8.2 changes the hardcoded 100 to 20 in this client-side function
+- Frontend `resetTokens()` in `frontend/lib/tokens.ts` writes directly to Firestore — Task 10.2 adds a `dailyLimit` parameter so the caller passes the tier-appropriate limit

@@ -1,10 +1,18 @@
 # Design Document: AI Scenario Builder
 
+## Dependency on Spec 140 (User Profile Token Upgrade)
+
+This feature depends on the profile system and tier-aware token system from Spec 140. Specifically:
+- Custom scenarios are stored as a Firestore sub-collection `profiles/{email}/custom_scenarios` under the user's profile document
+- Token deduction uses the tier-aware daily limit (20/50/100) from Spec 140's `TierCalculator`
+- The builder requires an existing profile document — users must have signed up and have a profile before creating scenarios
+- The `ProfileClient` from Spec 140 is used to verify profile existence before scenario operations
+
 ## Overview
 
 The AI Scenario Builder adds a guided, AI-powered workflow for creating custom `ArenaScenario` JSON configurations through a conversational chatbot interface. Users access it via a "Build Your Own Scenario" entry point in the existing `ScenarioSelector`, which opens a full-screen split-screen modal. The left panel hosts a streaming chatbot (Claude Opus 4.6 via Vertex AI), and the right panel shows a live-updating JSON preview with syntax highlighting. A progress indicator tracks completion across the 7 top-level ArenaScenario sections.
 
-The backend introduces a new FastAPI router (`/api/v1/builder/*`) with 4 endpoints: chat (SSE streaming), save, list, and delete. Chat sessions are managed in-memory with LangGraph state, and completed scenarios are persisted to a `custom_scenarios` Firestore collection keyed by user email + scenario ID. The system enforces the existing 100 tokens/day budget — each builder message costs 1 token.
+The backend introduces a new FastAPI router (`/api/v1/builder/*`) with 4 endpoints: chat (SSE streaming), save, list, and delete. Chat sessions are managed in-memory with LangGraph state, and completed scenarios are persisted as a Firestore sub-collection under the user's profile document (`profiles/{email}/custom_scenarios`). The system enforces the tier-aware token budget from Spec 140 — each builder message costs 1 token from the user's daily allowance (20/50/100 depending on tier).
 
 Before saving, every scenario passes through two validation gates: (1) full Pydantic `ArenaScenario` validation with cross-reference checks, and (2) an AI-powered Health Check Analyzer that evaluates prompt quality, goal tension, budget overlap, toggle effectiveness, turn sanity, stall risk, and regulator feasibility. The health check produces a 0-100 readiness score streamed progressively via SSE. Scenarios scoring below 60 trigger recommendations to iterate before saving.
 
@@ -29,7 +37,9 @@ graph TB
         BAgent[Builder LLM Agent<br/>Claude Opus 4.6]
         HCA[Health Check Analyzer<br/>Claude Opus 4.6]
         SV[Scenario Validator<br/>ArenaScenario Pydantic]
-        CSStore[Custom Scenario Store<br/>Firestore CRUD]
+        CSStore[Custom Scenario Store<br/>Firestore Sub-Collection]
+        PC[ProfileClient<br/>from Spec 140]
+        TC[TierCalculator<br/>from Spec 140]
     end
 
     subgraph External ["External Services"]
@@ -49,13 +59,16 @@ graph TB
     BM -->|"DELETE /builder/scenarios/:id"| BR
 
     BR --> BSM
+    BR --> PC
+    BR --> TC
     BSM --> BAgent
     BAgent -->|"LLM calls"| VAI
     BR --> SV
     BR --> HCA
     HCA -->|"LLM calls"| VAI
     BR --> CSStore
-    CSStore --> FS
+    CSStore -->|"profiles/{email}/custom_scenarios"| FS
+    PC -->|"profiles/{email}"| FS
 
     SS -->|"GET /scenarios"| BR
     CSStore -->|"merged into scenario list"| SS
@@ -67,11 +80,11 @@ graph TB
 
 2. **Single LLM model for both chatbot and health check**: Both use Claude Opus 4.6 via Vertex AI. This simplifies the Vertex AI integration (one model endpoint) and ensures the health check analyzer has the same reasoning capability as the builder chatbot. The health check uses a separate system prompt with few-shot examples from the gold-standard scenarios.
 
-3. **SSE streaming with typed event discriminators**: Following the existing `event_type` pattern from `models/events.py`, builder events use `builder_token`, `builder_json_delta`, `builder_complete`, `builder_error`, and health check events use `builder_health_check_start`, `builder_health_check_finding`, `builder_health_check_complete`. This lets the frontend route events to the correct panel without parsing the payload.
+3. **SSE streaming with typed event discriminators**: Following the existing `event_type` pattern from `models/events.py`, builder events use `builder_token`, `builder_json_delta`, `builder_complete`, `builder_error`, and health check events use `builder_health_check_start`, `builder_health_check_finding`, `builder_health_check_complete`. This lets the frontend route events to the correct panel without parsing the payload. Builder SSE events use the same `format_sse_event(event, event_id)` utility as negotiation events, including sequential `event_id` fields for reconnection support. The frontend SSE client should handle the `id:` field in the wire format.
 
 4. **Scenario validation as a pure function**: The `validate_and_roundtrip` function takes a dict, validates it against `ArenaScenario`, serializes via `pretty_print`, re-parses, and confirms equivalence. This is the same round-trip property used in existing tests, now enforced at save time.
 
-5. **Custom scenarios merged at the API layer, not the registry**: The `ScenarioRegistry` remains read-only for file-based scenarios. Custom scenarios are fetched from Firestore and merged into the scenario list response by the builder router. This avoids mutating the in-memory registry and keeps the separation clean.
+5. **Custom scenarios stored as profile sub-collection**: Custom scenarios live at `profiles/{email}/custom_scenarios/{scenario_id}` in Firestore, making ownership implicit from the document path. This ties scenario ownership to the verified profile from Spec 140 rather than a raw email string. The `ScenarioRegistry` remains read-only for file-based scenarios. Custom scenarios are fetched from the profile sub-collection and merged into the scenario list response by the builder router.
 
 ## Components and Interfaces
 
@@ -177,12 +190,16 @@ Final `readiness_score` = weighted composite:
 
 #### 5. Custom Scenario Store (`backend/app/builder/scenario_store.py`)
 
-Firestore CRUD for user-created scenarios.
+Firestore CRUD for user-created scenarios, stored as a sub-collection under the user's profile document (from Spec 140).
 
 ```python
 class CustomScenarioStore:
-    COLLECTION = "custom_scenarios"
+    SUB_COLLECTION = "custom_scenarios"  # profiles/{email}/custom_scenarios/{id}
     MAX_PER_USER = 20
+
+    def __init__(self, profile_client: ProfileClient):
+        """Requires ProfileClient from Spec 140 to verify profile existence."""
+        self._profile_client = profile_client
 
     async def save(email: str, scenario: ArenaScenario) -> str
     async def list_by_email(email: str) -> list[dict]
@@ -191,11 +208,14 @@ class CustomScenarioStore:
     async def count_by_email(email: str) -> int
 ```
 
-Documents keyed by `{email}_{scenario_id}` with fields:
+Documents stored at `profiles/{email}/custom_scenarios/{scenario_id}` with fields:
 - `scenario_json`: full ArenaScenario dict
-- `email`: owner
 - `created_at`: UTC timestamp
 - `updated_at`: UTC timestamp
+
+Note: The owner email is implicit from the parent document path (`profiles/{email}`), not stored redundantly in the scenario document.
+
+The `CustomScenarioStore` obtains its Firestore `AsyncClient` via the shared `get_firestore_db()` factory from `backend/app/db/__init__.py` (introduced by Spec 140). In local mode (`RUN_MODE=local`), a `SQLiteCustomScenarioStore` implementation stores custom scenarios in the same SQLite database (`data/juntoai.db`) in a `custom_scenarios` table, following the same `get_profile_client()` / `get_session_store()` factory pattern from `backend/app/db/__init__.py`.
 
 ### Frontend Components
 
@@ -210,13 +230,14 @@ interface BuilderModalProps {
   onScenarioSaved: (scenarioId: string) => void;
   email: string;
   tokenBalance: number;
+  dailyLimit: number;  // Tier-aware from Spec 140
 }
 ```
 
 - Split-screen: chatbot left, JSON preview right (stacked below 1024px)
 - Progress indicator at top
 - Close button with unsaved-progress confirmation dialog
-- Token balance display
+- Token balance display with tier-aware daily limit
 
 #### 2. BuilderChat (`frontend/components/builder/BuilderChat.tsx`)
 
@@ -373,11 +394,12 @@ class HealthCheckReport(BaseModel):
 
 ```python
 class CustomScenarioDocument(BaseModel):
+    """Stored at profiles/{email}/custom_scenarios/{scenario_id}"""
     scenario_id: str
-    email: str
     scenario_json: dict  # Full ArenaScenario.model_dump()
     created_at: datetime
     updated_at: datetime
+    # Note: email is NOT stored — it's implicit from the parent profile document path
 ```
 
 ### Frontend TypeScript Types
@@ -449,7 +471,7 @@ interface HealthCheckFullReport {
 
 ### Property 3: Builder SSE event structure and wire format
 
-*For any* builder SSE event model (BuilderTokenEvent, BuilderJsonDeltaEvent, BuilderCompleteEvent, BuilderErrorEvent, HealthCheckStartEvent, HealthCheckFindingEvent, HealthCheckCompleteEvent), formatting it via `format_sse_event` should produce a string matching the pattern `data: <valid JSON>\n\n`, and the parsed JSON should contain an `event_type` field with the correct literal value and all required fields for that event type.
+*For any* builder SSE event model (BuilderTokenEvent, BuilderJsonDeltaEvent, BuilderCompleteEvent, BuilderErrorEvent, HealthCheckStartEvent, HealthCheckFindingEvent, HealthCheckCompleteEvent), formatting it via `format_sse_event(event, event_id)` should produce a string matching the pattern `id: <id>\ndata: <valid JSON>\n\n` (when event_id is provided) or `data: <valid JSON>\n\n` (when event_id is None), and the parsed JSON should contain an `event_type` field with the correct literal value and all required fields for that event type.
 
 **Validates: Requirements 12.1, 12.2, 12.3, 23.1, 23.2, 23.3, 23.4**
 
@@ -473,7 +495,7 @@ interface HealthCheckFullReport {
 
 ### Property 7: Scenario persistence round-trip
 
-*For any* valid `ArenaScenario` and valid email string, saving the scenario to the `CustomScenarioStore` then retrieving it by email and scenario_id should return a document containing `scenario_json`, `email`, `created_at`, and `updated_at` fields, and `load_scenario_from_dict(doc["scenario_json"])` should produce an equivalent `ArenaScenario`.
+*For any* valid `ArenaScenario` and valid email string with an existing profile document, saving the scenario to the `CustomScenarioStore` (at `profiles/{email}/custom_scenarios/{id}`) then retrieving it by email and scenario_id should return a document containing `scenario_json`, `created_at`, and `updated_at` fields, and `load_scenario_from_dict(doc["scenario_json"])` should produce an equivalent `ArenaScenario`.
 
 **Validates: Requirements 7.1, 7.2**
 
@@ -574,6 +596,7 @@ interface HealthCheckFullReport {
 | Error Condition | HTTP Status | Response | Recovery |
 |---|---|---|---|
 | Missing/empty email on any builder endpoint | 401 | `{"detail": "Valid email required"}` | Client prompts user to authenticate |
+| No profile document exists for email | 403 | `{"detail": "Profile required. Please create a profile first."}` | Client redirects to profile page |
 | Token balance exhausted | 429 | `{"detail": "Daily token limit reached. Resets at midnight UTC."}` | Builder_Modal displays limit message, disables input |
 | Session not found (invalid session_id) | 404 | `{"detail": "Builder session not found"}` | Client starts a new session |
 | Session message limit exceeded (50 messages) | 429 | `{"detail": "Session message limit reached (50). Please save or start a new session."}` | Builder_Chatbot displays limit message |

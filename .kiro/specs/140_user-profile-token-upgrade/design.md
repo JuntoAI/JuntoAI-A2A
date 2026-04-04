@@ -23,7 +23,7 @@ Additionally, the system supports:
 4. **Amazon SES for email** — aligns with existing AWS usage patterns and avoids adding a new third-party dependency.
 5. **bcrypt for password hashing** — industry-standard adaptive hashing algorithm. Cost factor auto-adjusts. No need for a separate salt column since bcrypt embeds the salt in the hash.
 6. **Google OAuth via Google Identity Services (GIS)** — frontend uses the GIS JavaScript library for the consent flow, backend validates ID tokens against Google's `tokeninfo` endpoint. No Firebase Auth dependency — keeps auth self-managed.
-7. **Conditional password prompt** — the login form calls `GET /api/v1/auth/check-email/{email}` to determine whether to show a password field. This avoids leaking whether an account exists (the check only returns `has_password`, not account existence).
+7. **Conditional password prompt** — the login form calls `GET /api/v1/auth/check-email/{email}` to determine whether to show a password field. The endpoint returns `{has_password: false}` for both "no profile exists" and "profile exists but no password set" — this avoids leaking account existence to unauthenticated callers. Note: this does not fully prevent email enumeration (timing differences may exist), but it avoids explicit confirmation.
 8. **Country as ISO 3166-1 alpha-2** — standardized, compact (2 chars), and maps cleanly to country names for the leaderboard UI.
 
 ## Architecture
@@ -445,6 +445,8 @@ Endpoints:
 - CRUD operations on `profiles` collection
 - CRUD operations on `verification_tokens` collection
 - Uses existing Firestore AsyncClient pattern from `firestore_client.py`
+- Shares the underlying `firestore.AsyncClient` instance via a module-level factory in `backend/app/db/__init__.py` (`get_firestore_db()`) to avoid creating multiple Firestore connections. The existing `FirestoreSessionClient._db` is refactored to use this shared instance
+- In local mode (`RUN_MODE=local`), `ProfileClient` uses a SQLite-backed implementation that stores profiles and verification tokens in the same `data/juntoai.db` database, keeping the local development experience zero-cloud
 
 ### Frontend Components
 
@@ -482,8 +484,14 @@ Endpoints:
 
 #### 6. Updated Token Functions (`frontend/lib/tokens.ts`)
 
-- `resetTokens` accepts `dailyLimit` parameter instead of hardcoded 100
+- `resetTokens` accepts `dailyLimit` parameter instead of hardcoded 100 — the caller (WaitlistForm) must pass the tier-appropriate limit
 - `formatTokenDisplay` accepts `dailyLimit` parameter
+- The frontend token reset flow changes: on login, the WaitlistForm calls the backend `GET /api/v1/profile/{email}` to fetch the user's tier and daily limit, then passes that limit to `resetTokens` if a reset is needed. This replaces the current pattern of hardcoding 100
+
+#### 7. Updated Waitlist Functions (`frontend/lib/waitlist.ts`)
+
+- `joinWaitlist` sets initial `token_balance` to 20 (Tier 1) instead of 100
+- This is a direct change to the `newDoc` object in `joinWaitlist()` — the function writes directly to Firestore via the Firebase JS SDK
 
 ## Data Models
 

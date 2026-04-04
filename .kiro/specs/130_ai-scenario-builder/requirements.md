@@ -1,8 +1,12 @@
 # Requirements Document
 
+## Dependency
+
+This spec depends on **Spec 140 (User Profile Token Upgrade)** being fully implemented. The scenario builder requires the `profiles` Firestore collection, tier-aware token system (20/50/100 tokens/day), and verified user identity from Spec 140. Custom scenarios are stored as a sub-collection under the user's profile document, ensuring ownership is tied to a verified identity rather than a raw email string.
+
 ## Introduction
 
-An AI-powered interactive scenario builder that lets users create custom ArenaScenario JSON configurations through a guided chatbot conversation. The builder integrates into the existing Arena Selector as a "Build Your Own Scenario" option, opens a split-screen modal with an AI chatbot on the left and a live JSON preview on the right, and persists completed scenarios to Firestore so users can reuse them. The chatbot is powered by Claude Opus 4.6 via Vertex AI and walks users through every section of the ArenaScenario schema — metadata, agents, toggles, negotiation params, and outcome receipt — producing JSON that passes full Pydantic validation including cross-reference checks.
+An AI-powered interactive scenario builder that lets users create custom ArenaScenario JSON configurations through a guided chatbot conversation. The builder integrates into the existing Arena Selector as a "Build Your Own Scenario" option, opens a split-screen modal with an AI chatbot on the left and a live JSON preview on the right, and persists completed scenarios as a Firestore sub-collection under the user's profile document (from Spec 140) so users can reuse them. The chatbot is powered by Claude Opus 4.6 via Vertex AI and walks users through every section of the ArenaScenario schema — metadata, agents, toggles, negotiation params, and outcome receipt — producing JSON that passes full Pydantic validation including cross-reference checks.
 
 ## Glossary
 
@@ -14,7 +18,8 @@ An AI-powered interactive scenario builder that lets users create custom ArenaSc
 - **ArenaScenario**: The Pydantic V2 model (`backend/app/scenarios/models.py`) that defines the complete scenario JSON schema with cross-reference validation
 - **ScenarioSelector**: The existing frontend dropdown component (`frontend/components/arena/ScenarioSelector.tsx`) that lists available scenarios
 - **ScenarioRegistry**: The existing backend class (`backend/app/scenarios/registry.py`) that discovers and indexes scenario JSON files
-- **Custom_Scenario_Store**: The Firestore collection that persists user-created scenarios keyed by user email and scenario ID
+- **Custom_Scenario_Store**: The Firestore sub-collection `profiles/{email}/custom_scenarios` that persists user-created scenarios under the user's profile document (from Spec 140). Requires an existing profile document — the builder is only accessible to users with a verified profile (Tier 2+ from Spec 140)
+- **Profile_Document**: The Firestore document in the `profiles` collection (from Spec 140) keyed by user email, containing the user's identity, verification status, and tier information. Custom scenarios are stored as a sub-collection under this document
 - **LinkedIn_Persona_Generator**: The subsystem that accepts a public LinkedIn profile URL and generates an AI agent persona based on the person's professional background
 - **Health_Check_Analyzer**: The AI-powered subsystem (Claude Opus 4.6 via Vertex AI) that performs simulation readiness analysis on a completed ArenaScenario, evaluating prompt quality, goal tension, budget overlap, toggle effectiveness, turn sanity, stall risk, and regulator feasibility to produce a structured readiness report with actionable recommendations
 
@@ -94,11 +99,12 @@ An AI-powered interactive scenario builder that lets users create custom ArenaSc
 
 #### Acceptance Criteria
 
-1. WHEN a scenario passes validation, THE Scenario_Builder_API SHALL store the scenario JSON in the Custom_Scenario_Store Firestore collection keyed by the user's email and a generated scenario ID
-2. THE Custom_Scenario_Store SHALL store each scenario document with fields: scenario_json (the full ArenaScenario dict), email (owner), created_at (UTC timestamp), and updated_at (UTC timestamp)
+1. WHEN a scenario passes validation, THE Scenario_Builder_API SHALL store the scenario JSON in the Custom_Scenario_Store Firestore sub-collection `profiles/{email}/custom_scenarios` with a generated scenario ID as the document key
+2. THE Custom_Scenario_Store SHALL store each scenario document with fields: scenario_json (the full ArenaScenario dict), created_at (UTC timestamp), and updated_at (UTC timestamp). The owner email is implicit from the parent profile document path
 3. WHEN the user loads the Arena page, THE Scenario_Builder_API SHALL return the user's custom scenarios alongside the pre-built scenarios from the ScenarioRegistry
 4. WHEN the user selects a custom scenario from the ScenarioSelector, THE system SHALL load and use the custom scenario identically to a pre-built scenario for negotiation initialization
-5. THE Scenario_Builder_API SHALL enforce a maximum of 20 custom scenarios per user email
+5. THE Scenario_Builder_API SHALL enforce a maximum of 20 custom scenarios per user profile
+6. THE Scenario_Builder_API SHALL require that the user has an existing Profile_Document (from Spec 140) before allowing scenario creation. If no profile exists, the endpoint SHALL return HTTP 403 with a message directing the user to create a profile first
 
 ### Requirement 8: LinkedIn Persona Generation
 
@@ -128,9 +134,9 @@ An AI-powered interactive scenario builder that lets users create custom ArenaSc
 
 #### Acceptance Criteria
 
-1. WHEN a user sends a message in the Builder_Chatbot, THE Scenario_Builder_API SHALL deduct 1 token from the user's daily token balance (same 100 tokens/day pool used for negotiations)
+1. WHEN a user sends a message in the Builder_Chatbot, THE Scenario_Builder_API SHALL deduct 1 token from the user's daily token balance (same tier-aware token pool from Spec 140: 20/50/100 tokens/day depending on user tier)
 2. IF the user's token balance reaches 0, THEN THE Scenario_Builder_API SHALL reject further builder messages with an HTTP 429 response and THE Builder_Chatbot SHALL display a message indicating the daily token limit has been reached
-3. WHILE the Builder_Modal is open, THE Builder_Modal SHALL display the user's current token balance
+3. WHILE the Builder_Modal is open, THE Builder_Modal SHALL display the user's current token balance and daily limit (tier-aware from Spec 140)
 
 ### Requirement 11: Backend API Endpoints
 

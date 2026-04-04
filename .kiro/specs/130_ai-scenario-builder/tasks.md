@@ -1,8 +1,15 @@
 # Implementation Plan: AI Scenario Builder
 
+## Dependency
+
+This spec requires **Spec 140 (User Profile Token Upgrade)** to be fully implemented before starting. The builder depends on:
+- `profiles` Firestore collection and `ProfileClient` for user identity verification
+- `TierCalculator` for tier-aware token deduction (20/50/100 tokens/day)
+- Custom scenarios stored as sub-collection `profiles/{email}/custom_scenarios`
+
 ## Overview
 
-Incremental implementation of the AI-powered scenario builder: foundational backend models and SSE events first, then session management and LLM agent, then health check analyzer with sub-computations, then Firestore persistence, then API router with all endpoints, then frontend components (modal, chat, preview, progress, health report), then ScenarioSelector updates, then integration wiring. Each task builds on the previous — nothing is left orphaned.
+Incremental implementation of the AI-powered scenario builder: foundational backend models and SSE events first, then session management and LLM agent, then health check analyzer with sub-computations, then Firestore persistence (as profile sub-collection), then API router with all endpoints, then frontend components (modal, chat, preview, progress, health report), then ScenarioSelector updates, then integration wiring. Each task builds on the previous — nothing is left orphaned.
 
 ## Tasks
 
@@ -25,7 +32,7 @@ Incremental implementation of the AI-powered scenario builder: foundational back
   - [ ]* 1.3 Write property test: SSE event structure and wire format (Property 3)
     - **Property 3: Builder SSE event structure and wire format**
     - Create `backend/tests/property/test_builder_properties.py`
-    - For each builder SSE event model, verify `format_sse_event` produces `data: <valid JSON>\n\n` with correct `event_type` literal and all required fields
+    - For each builder SSE event model, verify `format_sse_event(event, event_id)` produces `id: <id>\ndata: <valid JSON>\n\n` with correct `event_type` literal and all required fields (note: the existing `format_sse_event` includes an `id:` field when `event_id` is provided — builder events use this for reconnection support)
     - Use Hypothesis `st.one_of()` strategy generating all 7 event types
     - **Validates: Requirements 12.1, 12.2, 12.3, 23.1, 23.2, 23.3, 23.4**
 
@@ -202,18 +209,22 @@ Incremental implementation of the AI-powered scenario builder: foundational back
 
 - [ ] 9. Custom Scenario Store (Firestore CRUD)
   - [ ] 9.1 Implement `CustomScenarioStore` (`backend/app/builder/scenario_store.py`)
-    - Implement `async save(email, scenario: ArenaScenario) -> str` — generates scenario_id, stores document keyed by `{email}_{scenario_id}`, enforces MAX_PER_USER=20
+    - Implement using Firestore sub-collection: `profiles/{email}/custom_scenarios/{scenario_id}`
+    - Obtain Firestore `AsyncClient` via the shared `get_firestore_db()` factory from `backend/app/db/__init__.py` (introduced by Spec 140) — do NOT create a new Firestore client instance
+    - Constructor takes `ProfileClient` (from Spec 140) dependency to verify profile existence
+    - Implement `async save(email, scenario: ArenaScenario) -> str` — verify profile exists (403 if not), generate scenario_id, store document at `profiles/{email}/custom_scenarios/{scenario_id}`, enforce MAX_PER_USER=20
     - Implement `async list_by_email(email) -> list[dict]`
     - Implement `async get(email, scenario_id) -> dict | None`
     - Implement `async delete(email, scenario_id) -> bool`
     - Implement `async count_by_email(email) -> int`
-    - Document fields: `scenario_json`, `email`, `created_at`, `updated_at`
-    - _Requirements: 7.1, 7.2, 7.5_
+    - Document fields: `scenario_json`, `created_at`, `updated_at` (email is implicit from parent path, NOT stored in document)
+    - For local mode (`RUN_MODE=local`): implement `SQLiteCustomScenarioStore` that stores custom scenarios in the same SQLite database (`data/juntoai.db`) in a `custom_scenarios` table with columns: `scenario_id`, `email`, `scenario_json` (JSON text), `created_at`, `updated_at`. Add a `get_custom_scenario_store()` factory in `backend/app/db/__init__.py`
+    - _Requirements: 7.1, 7.2, 7.5, 7.6_
 
   - [ ]* 9.2 Write property test: Scenario persistence round-trip (Property 7)
     - **Property 7: Scenario persistence round-trip**
-    - For any valid ArenaScenario and email, save then retrieve produces equivalent scenario via `load_scenario_from_dict`
-    - Mock Firestore client
+    - For any valid ArenaScenario and email with an existing profile, save then retrieve from `profiles/{email}/custom_scenarios` produces equivalent scenario via `load_scenario_from_dict`
+    - Mock Firestore client and ProfileClient
     - **Validates: Requirements 7.1, 7.2**
 
   - [ ]* 9.3 Write property test: Custom scenario limit enforcement (Property 8)
@@ -222,10 +233,12 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - **Validates: Requirements 7.5**
 
   - [ ]* 9.4 Write unit tests for CustomScenarioStore
-    - Test save, list, get, delete, count with mocked Firestore
+    - Test save, list, get, delete, count with mocked Firestore and ProfileClient
     - Test limit enforcement at boundary (19, 20, 21)
-    - Test document structure includes all required fields
-    - _Requirements: 7.1, 7.2, 7.3, 7.5_
+    - Test document structure includes all required fields (scenario_json, created_at, updated_at — no email field)
+    - Test save fails with 403 when no profile document exists
+    - Test sub-collection path is `profiles/{email}/custom_scenarios/{scenario_id}`
+    - _Requirements: 7.1, 7.2, 7.3, 7.5, 7.6_
 
 - [ ] 10. Checkpoint — Ensure all backend component tests pass
   - Ensure all tests pass, ask the user if questions arise.
@@ -235,16 +248,16 @@ Incremental implementation of the AI-powered scenario builder: foundational back
   - [ ] 11.1 Implement builder router (`backend/app/routers/builder.py`)
     - Create FastAPI router mounted at `/api/v1/builder`
     - Define request/response models: `BuilderChatRequest`, `BuilderSaveRequest`, `BuilderSaveResponse`
-    - `POST /builder/chat` — validate email (401 if missing), check token balance (429 if zero), deduct 1 token, create/get session, call `BuilderLLMAgent.stream_response`, return `StreamingResponse` with SSE events
-    - `POST /builder/save` — validate email, validate scenario against `ArenaScenario` (422 on failure with specific errors), perform round-trip validation via `pretty_print` + re-parse, run `HealthCheckAnalyzer.analyze` streaming SSE events, persist via `CustomScenarioStore.save`, return `BuilderSaveResponse`
+    - `POST /builder/chat` — validate email (401 if missing), verify profile exists via ProfileClient (403 if not), check token balance using tier-aware system from Spec 140 (429 if zero), deduct 1 token, create/get session, call `BuilderLLMAgent.stream_response`, return `StreamingResponse` with SSE events
+    - `POST /builder/save` — validate email, verify profile exists, validate scenario against `ArenaScenario` (422 on failure with specific errors), perform round-trip validation via `pretty_print` + re-parse, run `HealthCheckAnalyzer.analyze` streaming SSE events, persist via `CustomScenarioStore.save` (sub-collection under profile), return `BuilderSaveResponse`
     - `GET /builder/scenarios?email=` — validate email, return `CustomScenarioStore.list_by_email`
     - `DELETE /builder/scenarios/{scenario_id}?email=` — validate email, delete via `CustomScenarioStore.delete`, 404 if not found
-    - All endpoints return 401 for missing/empty email
-    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 6.1, 6.2, 6.3, 6.4, 10.1, 10.2, 14.1, 14.3, 14.4, 14.5_
+    - All endpoints return 401 for missing/empty email, 403 for missing profile
+    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 6.1, 6.2, 6.3, 6.4, 7.6, 10.1, 10.2, 14.1, 14.3, 14.4, 14.5_
 
   - [ ] 11.2 Register builder router in FastAPI app (`backend/app/main.py`)
     - Import builder router and add `api_router.include_router(builder_router)`
-    - Add `DELETE` to CORS `allow_methods` list
+    - Ensure `DELETE` is in CORS `allow_methods` list (Spec 140 will have already added `PUT` and `DELETE` — verify they are present, add if not)
     - _Requirements: 11.1_
 
   - [ ]* 11.3 Write property test: ArenaScenario validation error specificity (Property 6)
@@ -275,13 +288,13 @@ Incremental implementation of the AI-powered scenario builder: foundational back
 
 
   - [ ]* 11.8 Write integration tests for builder router
-    - Test `POST /builder/chat`: valid request returns SSE stream, missing email returns 401, zero tokens returns 429
-    - Test `POST /builder/save`: valid scenario saves and returns summary, invalid scenario returns 422 with errors, scenario limit returns 409
+    - Test `POST /builder/chat`: valid request returns SSE stream, missing email returns 401, missing profile returns 403, zero tokens returns 429
+    - Test `POST /builder/save`: valid scenario saves and returns summary, invalid scenario returns 422 with errors, scenario limit returns 409, missing profile returns 403
     - Test `GET /builder/scenarios`: returns user's scenarios, empty list for new user
     - Test `DELETE /builder/scenarios/{id}`: deletes owned scenario, 404 for non-existent
     - Test round-trip: save then retrieve then `load_scenario_from_dict` then `create_initial_state`
-    - Mock Firestore and Vertex AI
-    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 7.4_
+    - Mock Firestore, Vertex AI, and ProfileClient (from Spec 140)
+    - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 7.4, 7.6_
 
   - [ ]* 11.9 Write property test: Custom scenario usability for negotiation (Property 9)
     - **Property 9: Custom scenario usability for negotiation**
@@ -421,6 +434,14 @@ Incremental implementation of the AI-powered scenario builder: foundational back
 
 ## Notes
 
+- **Spec 140 must be completed before starting this spec** — the profile system, tier-aware tokens, and `ProfileClient` are prerequisites
+- Custom scenarios are stored at `profiles/{email}/custom_scenarios/{scenario_id}` (Firestore sub-collection), NOT in a separate top-level collection
+- The `CustomScenarioStore` takes a `ProfileClient` dependency and verifies profile existence before any write operation
+- The `CustomScenarioStore` obtains its Firestore `AsyncClient` via the shared `get_firestore_db()` factory from `backend/app/db/__init__.py` (introduced by Spec 140) — it does NOT create its own Firestore client
+- Local mode (`RUN_MODE=local`): `SQLiteCustomScenarioStore` stores custom scenarios in the same SQLite database (`data/juntoai.db`), following the existing `SessionStore` pattern. The builder is fully functional in local mode
+- Token deduction uses the tier-aware daily limit from Spec 140 (20/50/100), not a hardcoded 100
+- Builder SSE events use the same `format_sse_event(event, event_id)` utility as negotiation events, including sequential event IDs for reconnection support
+- CORS: Spec 140 adds `PUT` and `DELETE` to `allow_methods` before this spec runs. Task 11.2 should verify they are present rather than blindly adding
 - Tasks marked with `*` are optional and can be skipped for faster MVP
 - Each task references specific requirements for traceability
 - Checkpoints ensure incremental validation
