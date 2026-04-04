@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL || "https://app.juntoai.org"
   ),
   title: {
-    default: "JuntoAI — AI Agent Negotiation Sandbox | A2A Protocol",
+    default: "JuntoAI | AI Agent Negotiation Sandbox | A2A Protocol",
     template: "%s | JuntoAI",
   },
   description:
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "/",
     siteName: "JuntoAI A2A Protocol Sandbox",
-    title: "JuntoAI — AI Agent Negotiation Sandbox",
+    title: "JuntoAI | AI Agent Negotiation Sandbox",
     description:
       "Watch autonomous AI agents negotiate deals in real time. Pick a scenario, flip hidden variables, and see how information asymmetry changes the outcome.",
     images: [
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "JuntoAI A2A Protocol Sandbox — AI agents negotiating in real time",
+        alt: "JuntoAI A2A Protocol Sandbox - AI agents negotiating in real time",
       },
     ],
   },
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@JuntoAI",
     creator: "@JuntoAI",
-    title: "JuntoAI — AI Agent Negotiation Sandbox",
+    title: "JuntoAI | AI Agent Negotiation Sandbox",
     description:
       "Watch autonomous AI agents negotiate deals in real time. Config-driven scenarios with hidden variables that visibly alter outcomes.",
     images: ["/og-image.png"],

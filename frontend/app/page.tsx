@@ -70,96 +70,102 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <main className="flex min-h-screen flex-col items-center bg-brand-offwhite pt-20">
-        {/* Hero Section */}
-        <section className="mx-auto w-full max-w-[1200px] px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center text-center">
-            <h1 className="text-4xl font-bold tracking-tight text-brand-charcoal sm:text-5xl lg:text-6xl">
-              AI Negotiation Sandbox.{" "}
-              <span className="text-brand-blue">Find the Win&#8209;Win.</span>
-            </h1>
+      <main className="flex min-h-screen flex-col items-center">
+        {/* Hero Section — off-white */}
+        <section className="w-full bg-brand-offwhite pt-20 pb-12">
+          <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center text-center">
+              <h1 className="text-4xl font-bold tracking-tight text-brand-charcoal sm:text-5xl lg:text-6xl">
+                AI Negotiation Sandbox.{" "}
+                <span className="text-brand-blue">Find the Win&#8209;Win.</span>
+              </h1>
 
-            <p className="mt-4 max-w-2xl text-base leading-relaxed text-brand-charcoal/70 sm:text-lg">
-              Real negotiations aren&apos;t about one side winning. They&apos;re
-              about finding outcomes everyone can live with. JuntoAI A2A
-              simulates that process with autonomous AI agents working through
-              scenarios in real time.
-            </p>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-brand-charcoal/70 sm:text-lg">
+                Real negotiations aren&apos;t about one side winning. They&apos;re
+                about finding outcomes everyone can live with. JuntoAI A2A
+                simulates that process with autonomous AI agents working through
+                scenarios in real time.
+              </p>
 
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-charcoal/50">
-              Pick a scenario, flip the hidden variables, and watch how a single
-              piece of information reshapes the entire conversation.
-            </p>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-charcoal/50">
+                Pick a scenario, flip the hidden variables, and watch how a single
+                piece of information reshapes the entire conversation.
+              </p>
 
-            <div id="waitlist" className="mt-8 w-full max-w-md">
-              <WaitlistForm />
+              <div id="waitlist" className="mt-8 w-full max-w-md">
+                <WaitlistForm />
+              </div>
             </div>
           </div>
         </section>
 
-        {/* Scenario Banner — full viewport width breakout */}
-        <div className="mt-12 w-full">
+        {/* Scenario Banner — light gray */}
+        <section className="w-full bg-brand-gray py-6">
           <ScenarioBanner />
-        </div>
+        </section>
 
-        {/* Value Proposition Cards */}
-        <section className="mx-auto w-full max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8">
-          <div className="grid gap-6 sm:grid-cols-3">
-            {VALUE_PROPS.map((prop) => {
-              const Icon = prop.icon;
-              return (
-                <div
-                  key={prop.title}
-                  className="flex flex-col items-center rounded-xl bg-white p-6 text-center shadow-sm"
-                >
+        {/* Value Proposition Cards — off-white */}
+        <section className="w-full bg-brand-offwhite py-16">
+          <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-6 sm:grid-cols-3">
+              {VALUE_PROPS.map((prop) => {
+                const Icon = prop.icon;
+                return (
                   <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-full ${prop.iconBg}`}
+                    key={prop.title}
+                    className="flex flex-col items-center rounded-xl bg-white p-6 text-center shadow-sm"
                   >
-                    <Icon className={`h-6 w-6 ${prop.iconColor}`} />
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-full ${prop.iconBg}`}
+                    >
+                      <Icon className={`h-6 w-6 ${prop.iconColor}`} />
+                    </div>
+                    <h3 className="mt-4 text-sm font-semibold text-brand-charcoal">
+                      {prop.title}
+                    </h3>
+                    <p className="mt-2 text-xs leading-relaxed text-brand-charcoal/60">
+                      {prop.description}
+                    </p>
                   </div>
-                  <h3 className="mt-4 text-sm font-semibold text-brand-charcoal">
-                    {prop.title}
-                  </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-brand-charcoal/60">
-                    {prop.description}
-                  </p>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </section>
 
-        {/* GitHub Community CTA */}
-        <section className="mx-auto w-full max-w-[1200px] px-4 pb-16 sm:px-6 lg:px-8">
-          <div
-            className="relative overflow-hidden rounded-xl p-8 text-center sm:p-12"
-            style={{ background: "var(--gradient)" }}
-          >
-            {/* Subtle overlay for text readability */}
-            <div className="absolute inset-0 bg-white/90" />
+        {/* GitHub Community CTA — light gray */}
+        <section className="w-full bg-brand-gray py-16">
+          <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+            <div
+              className="relative overflow-hidden rounded-xl p-8 text-center sm:p-12"
+              style={{ background: "var(--gradient)" }}
+            >
+              {/* Subtle overlay for text readability */}
+              <div className="absolute inset-0 bg-white/90" />
 
-            <div className="relative z-10 flex flex-col items-center">
-              <Github className="h-10 w-10 text-brand-charcoal" />
+              <div className="relative z-10 flex flex-col items-center">
+                <Github className="h-10 w-10 text-brand-charcoal" />
 
-              <h2 className="mt-4 text-2xl font-bold text-brand-charcoal sm:text-3xl">
-                Built in Public. Join the Community.
-              </h2>
+                <h2 className="mt-4 text-2xl font-bold text-brand-charcoal sm:text-3xl">
+                  Built in Public. Join the Community.
+                </h2>
 
-              <p className="mt-3 max-w-lg text-sm leading-relaxed text-brand-charcoal/70">
-                Clone the repo, run it locally, contribute new negotiation
-                scenarios, or build custom agent plugins. The entire stack is
-                open source.
-              </p>
+                <p className="mt-3 max-w-lg text-sm leading-relaxed text-brand-charcoal/70">
+                  Clone the repo, run it locally, contribute new negotiation
+                  scenarios, or build custom agent plugins. The entire stack is
+                  open source.
+                </p>
 
-              <a
-                href="https://github.com/JuntoAI/JuntoAI-A2A"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-charcoal px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-              >
-                <Github className="h-4 w-4" />
-                View on GitHub
-              </a>
+                <a
+                  href="https://github.com/JuntoAI/JuntoAI-A2A"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-charcoal px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  <Github className="h-4 w-4" />
+                  View on GitHub
+                </a>
+              </div>
             </div>
           </div>
         </section>
