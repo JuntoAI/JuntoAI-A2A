@@ -18,7 +18,6 @@ import { AgentCard } from "@/components/arena/AgentCard";
 import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
 import { AdvancedConfigModal } from "@/components/arena/AdvancedConfigModal";
-import { MilestoneSummariesToggle } from "@/components/arena/MilestoneSummariesToggle";
 import { Spinner } from "@/components/ui/Spinner";
 
 function ArenaPageContent() {
@@ -273,6 +272,7 @@ function ArenaPageContent() {
                   hasCustomPrompt={!!customPrompts[agent.role]?.trim()}
                   modelOverride={modelOverrides[agent.role] ?? null}
                   hasStructuredMemory={structuredMemoryRoles[agent.role] ?? false}
+                  hasMilestoneSummaries={milestoneSummariesEnabled && (structuredMemoryRoles[agent.role] ?? false)}
                   onAdvancedConfig={() =>
                     setAdvancedConfigAgent({
                       name: agent.name,
@@ -308,18 +308,6 @@ function ArenaPageContent() {
             </section>
           )}
 
-          {/* Advanced Options */}
-          <section>
-            <h2 className="mb-3 text-lg font-semibold text-gray-800">
-              Advanced Options
-            </h2>
-            <MilestoneSummariesToggle
-              enabled={milestoneSummariesEnabled}
-              structuredMemoryEnabled={isStructuredMemoryOn}
-              onChange={handleMilestoneSummariesChange}
-            />
-          </section>
-
         </>
       )}
 
@@ -348,6 +336,8 @@ function ArenaPageContent() {
           initialCustomPrompt={customPrompts[advancedConfigAgent.role] ?? ""}
           initialModelOverride={modelOverrides[advancedConfigAgent.role] ?? null}
           initialStructuredMemory={structuredMemoryRoles[advancedConfigAgent.role] ?? false}
+          milestoneSummariesEnabled={milestoneSummariesEnabled}
+          onMilestoneSummariesChange={handleMilestoneSummariesChange}
           onSave={(customPrompt, modelOverride, structuredMemory) => {
             const role = advancedConfigAgent.role;
             setCustomPrompts((prev) => {

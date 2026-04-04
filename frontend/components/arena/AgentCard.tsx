@@ -22,6 +22,7 @@ export interface AgentCardProps {
   hasCustomPrompt?: boolean;
   modelOverride?: string | null;
   hasStructuredMemory?: boolean;
+  hasMilestoneSummaries?: boolean;
   onAdvancedConfig?: () => void;
 }
 
@@ -34,6 +35,7 @@ export function AgentCard({
   hasCustomPrompt = false,
   modelOverride = null,
   hasStructuredMemory = false,
+  hasMilestoneSummaries = false,
   onAdvancedConfig = () => {},
 }: AgentCardProps) {
   const color = AGENT_COLORS[index % AGENT_COLORS.length];
@@ -67,6 +69,11 @@ export function AgentCard({
       {hasStructuredMemory && (
         <p className="mt-1 text-xs text-green-600">
           ✦ Structured Memory
+        </p>
+      )}
+      {hasMilestoneSummaries && (
+        <p className="mt-1 text-xs text-blue-500">
+          ✦ Milestone Summaries
         </p>
       )}
       <button
