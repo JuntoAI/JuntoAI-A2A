@@ -60,6 +60,8 @@ describe("SessionContext (cloud mode)", () => {
     expect(result.current.tokenBalance).toBe(0);
     expect(result.current.lastResetDate).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
+    // isHydrated must stay true so the protected layout redirect fires
+    expect(result.current.isHydrated).toBe(true);
 
     expect(sessionStorage.getItem("junto_email")).toBeNull();
     expect(sessionStorage.getItem("junto_token_balance")).toBeNull();

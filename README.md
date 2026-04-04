@@ -28,7 +28,7 @@
 - [🛠️ Developing with Kiro](#-developing-with-kiro)
 - [🤝 Contributing](#-contributing)
 - [📄 License](#-license)
-- [📋 Changelog](CHANGELOG.md)
+- [📋 Changelog](#-changelog)
 
 ---
 
@@ -426,7 +426,9 @@ Kiro is recommended but not required. Contributors can use any IDE — Kiro just
 
 ## 🤝 Contributing
 
-Contributions are welcome! Check out the [open issues](https://github.com/Juntoai/a2a/issues) or propose something new.
+We love contributions! Read the **[Contributing Guide](./CONTRIBUTING.md)** to get started — it covers the fork-and-PR workflow, local setup, test commands, and everything you need to open your first PR.
+
+All pull requests are automatically tested by GitHub Actions CI. Both backend (pytest) and frontend (Vitest) suites must pass with 70% coverage before merge.
 
 **Ways to contribute:**
 
@@ -436,11 +438,11 @@ Contributions are welcome! Check out the [open issues](https://github.com/Juntoa
 - **Documentation** — Improve the README, add examples, fix typos.
 - **Agent strategies** — Share creative persona prompts and negotiation tactics.
 
-**Branch strategy:**
+**Get involved:**
 
-1. Fork the repo
-2. Create a `feature/*` branch from `main`
-3. Submit a pull request to `main`
+- 🆕 **First contribution?** Browse [`good first issue`](https://github.com/Juntoai/a2a/issues?q=label%3A%22good+first+issue%22) for curated starter tasks.
+- 💬 **Join the community** — Ask questions and coordinate with other contributors on [WhatsApp](https://chat.whatsapp.com/CZblOXj7aV3LMSKCwSUxWR).
+- 📜 **Code of Conduct** — Please read our [Code of Conduct](./CODE_OF_CONDUCT.md). We're committed to a welcoming, inclusive community.
 
 > Scenario contributions are JSON-only — drop a file in `backend/app/scenarios/data/` and open a PR. No code changes required.
 
