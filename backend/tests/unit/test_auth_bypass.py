@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from hypothesis import given, settings as hypothesis_settings
 from hypothesis import strategies as st
 
-from app.db import get_session_store
+from app.db import get_profile_client, get_session_store
 from app.db.base import SessionStore
 from app.main import app
 from app.middleware import get_event_buffer, get_sse_tracker
@@ -112,10 +112,16 @@ def test_local_mode_accepts_any_email(email: str):
     mock_registry = _make_mock_registry()
     mock_buffer = _make_mock_event_buffer()
 
+    # Mock profile client for stream_negotiation dependency
+    mock_pc = MagicMock()
+    mock_pc.get_profile = AsyncMock(return_value=None)
+    mock_pc._db = MagicMock()
+
     app.dependency_overrides[get_session_store] = lambda: mock_db
     app.dependency_overrides[get_sse_tracker] = lambda: mock_tracker
     app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
     app.dependency_overrides[get_event_buffer] = lambda: mock_buffer
+    app.dependency_overrides[get_profile_client] = lambda: mock_pc
 
     try:
         with patch("app.routers.negotiation.settings") as mock_settings, \

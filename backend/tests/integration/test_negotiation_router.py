@@ -14,7 +14,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from app.db import get_session_store
+from app.db import get_profile_client, get_session_store
 from app.main import app
 from app.orchestrator import model_router
 from app.scenarios.models import AgentDefinition, ArenaScenario
@@ -140,6 +140,23 @@ def _build_mock_db():
     return db, stored_data
 
 
+def _build_mock_profile_client():
+    """Build a mock ProfileClient for dependency injection."""
+    pc = MagicMock()
+    pc.get_profile = AsyncMock(return_value=None)
+
+    # Mock _db for waitlist access in start_negotiation
+    waitlist_doc = MagicMock()
+    waitlist_doc.exists = True
+    waitlist_doc.to_dict.return_value = {"token_balance": 100}
+    waitlist_ref = MagicMock()
+    waitlist_ref.get = AsyncMock(return_value=waitlist_doc)
+    pc._db = MagicMock()
+    pc._db.collection.return_value = MagicMock()
+    pc._db.collection.return_value.document.return_value = waitlist_ref
+
+    return pc
+
 
 # ---------------------------------------------------------------------------
 # Feature: agent-advanced-config
@@ -163,9 +180,11 @@ async def test_invalid_model_override_returns_422(invalid_mid, role):
     """Feature: agent-advanced-config, Property 3: Invalid model override rejection"""
     mock_registry = _build_mock_registry()
     mock_db, _ = _build_mock_db()
+    mock_pc = _build_mock_profile_client()
 
     app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
     app.dependency_overrides[get_session_store] = lambda: mock_db
+    app.dependency_overrides[get_profile_client] = lambda: mock_pc
 
     try:
         async with httpx.AsyncClient(
@@ -195,6 +214,7 @@ async def test_invalid_model_override_returns_422(invalid_mid, role):
     finally:
         app.dependency_overrides.pop(get_scenario_registry, None)
         app.dependency_overrides.pop(get_session_store, None)
+        app.dependency_overrides.pop(get_profile_client, None)
 
 
 # ---------------------------------------------------------------------------
@@ -219,9 +239,11 @@ async def test_unknown_role_keys_filtered_from_stored_state(unknown_roles, promp
     """Feature: agent-advanced-config, Property 4: Unknown agent role keys are silently ignored"""
     mock_registry = _build_mock_registry()
     mock_db, stored_data = _build_mock_db()
+    mock_pc = _build_mock_profile_client()
 
     app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
     app.dependency_overrides[get_session_store] = lambda: mock_db
+    app.dependency_overrides[get_profile_client] = lambda: mock_pc
 
     try:
         # Build custom_prompts and model_overrides with unknown role keys
@@ -283,3 +305,4 @@ async def test_unknown_role_keys_filtered_from_stored_state(unknown_roles, promp
     finally:
         app.dependency_overrides.pop(get_scenario_registry, None)
         app.dependency_overrides.pop(get_session_store, None)
+        app.dependency_overrides.pop(get_profile_client, None)

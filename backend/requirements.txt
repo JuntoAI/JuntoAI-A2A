@@ -19,6 +19,12 @@ aiosqlite
 litellm
 langchain-community
 
+# Auth & Profile
+bcrypt
+pycountry
+boto3
+requests
+
 # Testing
 pytest
 pytest-asyncio

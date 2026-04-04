@@ -37,6 +37,18 @@ vi.mock("../../lib/tokens", () => ({
   resetTokens: vi.fn(),
 }));
 
+// Mock auth module — checkEmail returns no password by default
+vi.mock("../../lib/auth", () => ({
+  checkEmail: vi.fn(() => Promise.resolve({ has_password: false })),
+  loginWithPassword: vi.fn(),
+  loginWithGoogle: vi.fn(),
+}));
+
+// Mock profile module
+vi.mock("../../lib/profile", () => ({
+  getProfile: vi.fn(() => Promise.resolve({ tier: 1, daily_limit: 20 })),
+}));
+
 import { SessionProvider } from "../../context/SessionContext";
 import WaitlistForm from "../../components/WaitlistForm";
 
@@ -102,11 +114,9 @@ describe("Property 5: Error display on Firestore failure", () => {
           const form = container.querySelector("form")!;
           fireEvent.submit(form);
 
-          // joinWaitlist should have been called
-          expect(mockJoinWaitlist).toHaveBeenCalledWith("test@example.com");
-
-          // Wait for the async error to appear
+          // Wait for the async error to appear (joinWaitlist is called after checkEmail resolves)
           await waitFor(() => {
+            expect(mockJoinWaitlist).toHaveBeenCalledWith("test@example.com");
             const errorMsg = view.getByRole("alert");
             expect(errorMsg).toHaveTextContent(
               "Something went wrong. Please try again.",
