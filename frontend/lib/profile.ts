@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+// Client-side calls use relative URLs to go through the Next.js API proxy
+// (frontend/app/api/v1/[...path]/route.ts) which adds IAM auth for Cloud Run.
+const API_URL = "";
 
 export interface ProfileResponse {
   display_name: string;
