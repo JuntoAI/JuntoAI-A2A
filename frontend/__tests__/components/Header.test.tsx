@@ -1,0 +1,148 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+import { createElement } from "react";
+
+// ---------------------------------------------------------------------------
+// Mocks — declared before imports
+// ---------------------------------------------------------------------------
+
+let mockSessionState: {
+  email: string | null;
+  tokenBalance: number;
+  lastResetDate: string | null;
+  isAuthenticated: boolean;
+  isHydrated: boolean;
+  login: ReturnType<typeof vi.fn>;
+  logout: ReturnType<typeof vi.fn>;
+  updateTokenBalance: ReturnType<typeof vi.fn>;
+};
+
+vi.mock("@/context/SessionContext", () => ({
+  useSession: () => mockSessionState,
+}));
+
+vi.mock("@/components/TokenDisplay", () => ({
+  default: () => createElement("div", { "data-testid": "token-display" }, "50 tokens"),
+}));
+
+vi.mock("next/image", () => ({
+  default: (props: Record<string, unknown>) =>
+    createElement("img", {
+      src: props.src,
+      alt: props.alt,
+      width: props.width,
+      height: props.height,
+      "data-testid": "header-logo",
+    }),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) =>
+    createElement("a", { href, ...rest }, children),
+}));
+
+import Header from "@/components/Header";
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("Header Component", () => {
+  beforeEach(() => {
+    cleanup();
+    mockSessionState = {
+      email: null,
+      tokenBalance: 0,
+      lastResetDate: null,
+      isAuthenticated: false,
+      isHydrated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+      updateTokenBalance: vi.fn(),
+    };
+  });
+
+  // --- Logo rendering ---
+
+  it("renders logo image with correct src and alt text", () => {
+    render(createElement(Header));
+    const logo = screen.getByTestId("header-logo");
+    expect(logo).toHaveAttribute("src", "/a2a-logo-400x200.png");
+    expect(logo).toHaveAttribute("alt", "JuntoAI logo");
+  });
+
+  it("logo links to home page", () => {
+    render(createElement(Header));
+    const logo = screen.getByTestId("header-logo");
+    const link = logo.closest("a");
+    expect(link).toHaveAttribute("href", "/");
+  });
+
+  it("logo height does not exceed 40px", () => {
+    render(createElement(Header));
+    const logo = screen.getByTestId("header-logo");
+    const height = Number(logo.getAttribute("height"));
+    expect(height).toBeLessThanOrEqual(40);
+  });
+
+  // --- Navigation links ---
+
+  it("contains link to juntoai.org", () => {
+    render(createElement(Header));
+    const links = screen.getAllByRole("link").filter(
+      (el) => el.getAttribute("href") === "https://juntoai.org",
+    );
+    expect(links.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("contains link to GitHub repo", () => {
+    render(createElement(Header));
+    const links = screen.getAllByRole("link").filter(
+      (el) => el.getAttribute("href") === "https://github.com/JuntoAI/JuntoAI-A2A",
+    );
+    expect(links.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- Positioning ---
+
+  it("has sticky top-0 z-50 positioning classes", () => {
+    const { container } = render(createElement(Header));
+    const header = container.querySelector("header");
+    expect(header).not.toBeNull();
+    expect(header!.className).toContain("sticky");
+    expect(header!.className).toContain("top-0");
+    expect(header!.className).toContain("z-50");
+  });
+
+  // --- Unauthenticated state ---
+
+  it("shows CTA button when unauthenticated", () => {
+    mockSessionState.isAuthenticated = false;
+    mockSessionState.isHydrated = true;
+    render(createElement(Header));
+    const cta = screen.getByText(/join waitlist/i);
+    expect(cta).toBeInTheDocument();
+  });
+
+  // --- Authenticated state ---
+
+  it("shows email, token display, and logout button when authenticated", () => {
+    mockSessionState.email = "test@example.com";
+    mockSessionState.tokenBalance = 50;
+    mockSessionState.isAuthenticated = true;
+    mockSessionState.isHydrated = true;
+    render(createElement(Header));
+
+    expect(screen.getByText("test@example.com")).toBeInTheDocument();
+    expect(screen.getByTestId("token-display")).toBeInTheDocument();
+    expect(screen.getByLabelText("Logout")).toBeInTheDocument();
+  });
+
+  it("does not show CTA button when authenticated", () => {
+    mockSessionState.email = "test@example.com";
+    mockSessionState.isAuthenticated = true;
+    mockSessionState.isHydrated = true;
+    render(createElement(Header));
+    expect(screen.queryByText(/join waitlist/i)).not.toBeInTheDocument();
+  });
+});
