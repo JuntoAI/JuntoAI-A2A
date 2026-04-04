@@ -18,7 +18,9 @@ const baseProps: AdvancedConfigModalProps = {
   availableModels: defaultModels,
   initialCustomPrompt: "",
   initialModelOverride: null,
-  initialStructuredMemory: false,
+  initialMemoryStrategy: "full_transcript",
+  milestoneSummariesEnabled: false,
+  onMilestoneSummariesChange: vi.fn(),
   onSave: vi.fn(),
   onCancel: vi.fn(),
 };
@@ -91,7 +93,7 @@ describe("AdvancedConfigModal", () => {
     it("calls onSave with empty prompt and null model override for defaults", () => {
       const { onSave } = renderModal();
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
-      expect(onSave).toHaveBeenCalledWith("", null, false);
+      expect(onSave).toHaveBeenCalledWith("", null, "full_transcript");
     });
 
     it("calls onSave with typed prompt and selected model override", () => {
@@ -103,7 +105,7 @@ describe("AdvancedConfigModal", () => {
       fireEvent.change(select, { target: { value: "claude-3-5-sonnet" } });
 
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
-      expect(onSave).toHaveBeenCalledWith("Be firm", "claude-3-5-sonnet", false);
+      expect(onSave).toHaveBeenCalledWith("Be firm", "claude-3-5-sonnet", "full_transcript");
     });
 
     it("calls onSave with null model override when default model is re-selected", () => {
@@ -112,7 +114,7 @@ describe("AdvancedConfigModal", () => {
       fireEvent.change(select, { target: { value: "gemini-3-flash-preview" } });
 
       fireEvent.click(screen.getByRole("button", { name: /save/i }));
-      expect(onSave).toHaveBeenCalledWith("", null, false);
+      expect(onSave).toHaveBeenCalledWith("", null, "full_transcript");
     });
   });
 

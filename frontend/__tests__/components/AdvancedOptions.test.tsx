@@ -99,17 +99,13 @@ async function selectScenario(scenarioId = "talent_war") {
     });
   });
   await waitFor(() => {
-    // Wait for agent cards to render — look for the heading
     expect(screen.getByRole("heading", { name: "Agents" })).toBeInTheDocument();
   });
 }
 
 /** Open the Advanced Config modal for a given agent */
 async function openAdvancedConfig(agentName: string) {
-  // Find all "Advanced Config" buttons and click the one inside the card
-  // that contains the agent name as a heading
   const buttons = screen.getAllByRole("button", { name: /Advanced Config/i });
-  // Find the button whose parent card contains the agent name heading
   let targetBtn: HTMLElement | null = null;
   for (const btn of buttons) {
     const card = btn.closest("div[style]");
@@ -125,11 +121,17 @@ async function openAdvancedConfig(agentName: string) {
   });
 }
 
+/** Select a memory strategy radio button in the open modal */
+function selectMemoryStrategy(strategy: string) {
+  const radio = document.getElementById(`memory-${strategy}`) as HTMLInputElement;
+  fireEvent.click(radio);
+}
+
 // ---------------------------------------------------------------------------
-// Tests — Per-Agent Structured Memory in Advanced Config Modal
+// Tests — Per-Agent Memory Strategy in Advanced Config Modal
 // ---------------------------------------------------------------------------
 
-describe("Per-Agent Structured Memory Toggle", () => {
+describe("Per-Agent Memory Strategy Radio Group", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSessionState = {
@@ -147,22 +149,22 @@ describe("Per-Agent Structured Memory Toggle", () => {
     vi.mocked(api.fetchAvailableModels).mockResolvedValue([]);
   });
 
-  it("shows structured memory toggle inside Advanced Config modal", async () => {
+  it("shows memory strategy radio group inside Advanced Config modal", async () => {
     render(<ArenaPage />);
     await selectScenario();
     await openAdvancedConfig("Recruiter");
 
-    const toggle = document.getElementById("structured-memory-toggle");
-    expect(toggle).toBeInTheDocument();
+    const radio = document.getElementById("memory-full_transcript");
+    expect(radio).toBeInTheDocument();
   });
 
-  it("defaults the structured memory toggle to off in the modal", async () => {
+  it("defaults the memory strategy to full_transcript in the modal", async () => {
     render(<ArenaPage />);
     await selectScenario();
     await openAdvancedConfig("Recruiter");
 
-    const toggle = document.getElementById("structured-memory-toggle") as HTMLInputElement;
-    expect(toggle).not.toBeChecked();
+    const radio = document.getElementById("memory-full_transcript") as HTMLInputElement;
+    expect(radio).toBeChecked();
   });
 
   it("passes structured_memory_roles for enabled agents only", async () => {
@@ -175,10 +177,9 @@ describe("Per-Agent Structured Memory Toggle", () => {
     render(<ArenaPage />);
     await selectScenario();
 
-    // Open Recruiter's Advanced Config and enable structured memory
+    // Open Recruiter's Advanced Config and select structured memory
     await openAdvancedConfig("Recruiter");
-    const toggle = document.getElementById("structured-memory-toggle") as HTMLInputElement;
-    fireEvent.click(toggle);
+    selectMemoryStrategy("structured");
     fireEvent.click(screen.getByRole("button", { name: /Save/i }));
 
     // Start negotiation
@@ -195,27 +196,29 @@ describe("Per-Agent Structured Memory Toggle", () => {
         undefined,
         ["Recruiter"],  // Only the Recruiter's role
         false,
+        undefined,
       );
     });
   });
 
-  it("shows milestone summaries toggle inside Advanced Config modal", async () => {
+  it("shows memory strategy options inside Advanced Config modal", async () => {
     render(<ArenaPage />);
     await selectScenario();
     await openAdvancedConfig("Recruiter");
 
-    const toggle = document.getElementById("milestone-summaries-toggle");
-    expect(toggle).toBeInTheDocument();
+    expect(document.getElementById("memory-none")).toBeInTheDocument();
+    expect(document.getElementById("memory-full_transcript")).toBeInTheDocument();
+    expect(document.getElementById("memory-structured")).toBeInTheDocument();
+    expect(document.getElementById("memory-structured_milestones")).toBeInTheDocument();
   });
 
-  it("resets structured memory on scenario change", async () => {
+  it("resets memory strategy on scenario change", async () => {
     render(<ArenaPage />);
     await selectScenario();
 
-    // Enable memory for Recruiter
+    // Enable structured memory for Recruiter
     await openAdvancedConfig("Recruiter");
-    const toggle = document.getElementById("structured-memory-toggle") as HTMLInputElement;
-    fireEvent.click(toggle);
+    selectMemoryStrategy("structured");
     fireEvent.click(screen.getByRole("button", { name: /Save/i }));
 
     // Verify indicator shows on the Recruiter card only

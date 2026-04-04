@@ -41,6 +41,7 @@ class NegotiationState(TypedDict):
     milestone_summaries: dict[str, list[dict[str, Any]]]
     sliding_window_size: int
     milestone_interval: int
+    no_memory_roles: list[str]
 
 
 def create_initial_state(
@@ -53,6 +54,7 @@ def create_initial_state(
     structured_memory_enabled: bool = False,
     structured_memory_roles: list[str] | None = None,
     milestone_summaries_enabled: bool = False,
+    no_memory_roles: list[str] | None = None,
 ) -> NegotiationState:
     """Build the initial NegotiationState from a scenario config dict.
 
@@ -143,4 +145,5 @@ def create_initial_state(
         milestone_summaries=milestone_summaries,
         sliding_window_size=sliding_window_size,
         milestone_interval=milestone_interval,
+        no_memory_roles=list(no_memory_roles or []),
     )
