@@ -6,6 +6,17 @@ Each entry corresponds to a completed spec — shipped when the last task was fi
 
 ---
 
+## Landing Page Redesign (Spec 180) — 2026-04-04
+
+- Shared Header component: persistent sticky header with logo, nav links, auth-aware state (email/tokens/logout vs Join Waitlist CTA)
+- Header integrated into root layout; inline header bar removed from protected layout — auth-guard logic preserved
+- Landing page restructured: Hero → ScenarioBanner → Value Props → GitHub CTA in centered max-w-[1200px] container
+- Value proposition cards redesigned with Lucide React icons, brand color tinted backgrounds, responsive 3-column grid
+- GitHub community CTA section with gradient accent, GitHub icon, and external link to public repo
+- All color references use brand-* Tailwind tokens or CSS custom properties — zero inline hex values
+- Mobile-responsive: compact header below 768px, stacked cards below 640px, no horizontal overflow at 320px minimum
+- Unit tests for Header component (logo, nav links, auth states) and landing page (section order, value props, GitHub CTA, brand colors)
+
 ## Hybrid Agent Memory (Spec 110) — 2026-04-04
 
 - Milestone summary generator: lightweight LLM call per agent at configurable turn intervals produces ≤300-token strategic summaries capturing key positions, concessions, disputes, and trajectory

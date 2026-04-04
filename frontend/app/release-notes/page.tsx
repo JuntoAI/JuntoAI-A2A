@@ -9,6 +9,21 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Landing Page Redesign",
+    specId: "180",
+    date: "2026-04-04",
+    items: [
+      "Shared Header component: persistent sticky header with logo, nav links, auth-aware state (email/tokens/logout vs Join Waitlist CTA)",
+      "Header integrated into root layout; inline header bar removed from protected layout — auth-guard logic preserved",
+      "Landing page restructured: Hero → ScenarioBanner → Value Props → GitHub CTA in centered max-w-[1200px] container",
+      "Value proposition cards redesigned with Lucide React icons, brand color tinted backgrounds, responsive 3-column grid",
+      "GitHub community CTA section with gradient accent, GitHub icon, and external link to public repo",
+      "All color references use brand-* Tailwind tokens or CSS custom properties — zero inline hex values",
+      "Mobile-responsive: compact header below 768px, stacked cards below 640px, no horizontal overflow at 320px minimum",
+      "Unit tests for Header component (logo, nav links, auth states) and landing page (section order, value props, GitHub CTA, brand colors)",
+    ],
+  },
+  {
     title: "Hybrid Agent Memory",
     specId: "110",
     date: "2026-04-04",
