@@ -6,6 +6,23 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## User Profile & Token Upgrade (Spec 140) — 2026-04-04
+
+- 3-tier daily token system: Tier 1 (20 tokens/day) on signup, Tier 2 (50) on email verification, Tier 3 (100) on full profile completion
+- Profile page accessible via email link in header: editable display name, GitHub URL, LinkedIn URL, country dropdown (ISO 3166-1 alpha-2)
+- Profile document auto-created on first access with safe defaults; stored in dedicated `profiles` Firestore collection
+- Email verification via Amazon SES: UUID tokens with 24h TTL, click-through validation, automatic Tier 2 upgrade
+- Tier 3 is permanent once earned — `profile_completed_at` timestamp is write-once, never cleared
+- Password-based account protection: bcrypt hashing, conditional password prompt on login for accounts with passwords set
+- Google OAuth account linking: link/unlink on profile page, Google sign-in button on login form, ID token validation via Google tokeninfo endpoint
+- Auth router: set-password, login, check-email, google/link, google/login, google/unlink endpoints
+- Profile router: GET/PUT profile, POST verify-email, GET verify token endpoints with Pydantic V2 validation
+- Country field for upcoming leaderboard feature — validated via `pycountry`, stored as ISO 3166-1 alpha-2
+- Tier-aware token reset: midnight UTC reset uses profile tier (20/50/100) instead of hardcoded 100
+- Frontend SessionContext updated with tier/dailyLimit fields; TokenDisplay shows dynamic `X / {dailyLimit}`
+- Dual-mode support: SQLiteProfileClient for local mode, FirestoreProfileClient for cloud — same `get_profile_client()` factory pattern
+- Property tests (18 Hypothesis/fast-check properties): profile validation, tier determination, bcrypt round-trip, URL format, country codes, token display, Google OAuth uniqueness
+
 ## Landing Page Redesign (Spec 180) - 2026-04-04
 
 - Shared Header component: persistent sticky header with logo, nav links, auth-aware state (email/tokens/logout vs Join Waitlist CTA)

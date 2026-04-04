@@ -9,6 +9,26 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "User Profile & Token Upgrade",
+    specId: "140",
+    date: "2026-04-04",
+    items: [
+      "3-tier daily token system: Tier 1 (20/day) on signup, Tier 2 (50) on email verification, Tier 3 (100) on full profile completion",
+      "Profile page accessible via email link in header: display name, GitHub URL, LinkedIn URL, country dropdown",
+      "Email verification via Amazon SES with UUID tokens, 24h TTL, and automatic Tier 2 upgrade on click-through",
+      "Tier 3 is permanent once earned — profile_completed_at timestamp is write-once",
+      "Password-based account protection with bcrypt hashing and conditional password prompt on login",
+      "Google OAuth account linking: link/unlink on profile page, Google sign-in on login form",
+      "Auth endpoints: set-password, login, check-email, google/link, google/login, google/unlink",
+      "Profile endpoints: GET/PUT profile, POST verify-email, GET verify token with Pydantic V2 validation",
+      "Country field (ISO 3166-1 alpha-2) for upcoming leaderboard — validated via pycountry",
+      "Tier-aware token reset at midnight UTC uses profile tier instead of hardcoded 100",
+      "Frontend SessionContext updated with tier/dailyLimit; TokenDisplay shows dynamic X / {dailyLimit}",
+      "Dual-mode support: SQLiteProfileClient for local, FirestoreProfileClient for cloud",
+      "18 property tests (Hypothesis + fast-check): profile validation, tier logic, bcrypt, URLs, country codes, OAuth uniqueness",
+    ],
+  },
+  {
     title: "Landing Page Redesign",
     specId: "180",
     date: "2026-04-04",
