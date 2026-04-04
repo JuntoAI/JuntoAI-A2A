@@ -24,6 +24,8 @@ steps:
       - --build-arg=NEXT_PUBLIC_FIREBASE_PROJECT_ID=${_PROJECT_ID}
       - --build-arg=NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
       - --build-arg=NEXT_PUBLIC_RUN_MODE=cloud
+      - --build-arg=NEXT_PUBLIC_GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}
+      - --build-arg=NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app
     waitFor: ["-"]
 
   # --- Deploy new revisions with NO traffic (parallel after builds) ---
@@ -38,6 +40,8 @@ steps:
         GOOGLE_CLOUD_PROJECT: "${_PROJECT_ID}"
         VERTEX_AI_LOCATION: "${_REGION}"
         RUN_MODE: "cloud"
+        SES_SENDER_EMAIL: "noreply@juntoai.com"
+        AWS_SES_REGION: "us-east-1"
         EOF
     waitFor: ["-"]
 
@@ -67,6 +71,8 @@ steps:
       - ${_BACKEND_SA_EMAIL}
       - --env-vars-file
       - /workspace/backend-env.yaml
+      - --set-secrets
+      - AWS_ACCESS_KEY_ID=aws-ses-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-ses-secret-access-key:latest
       - --timeout
       - "1200"
       - --min-instances
@@ -142,3 +148,4 @@ substitutions:
   _FRONTEND_SA_EMAIL: frontend-sa@juntoai-a2a-mvp.iam.gserviceaccount.com
   _FIREBASE_API_KEY: ""
   _FIREBASE_APP_ID: ""
+  _GOOGLE_CLIENT_ID: ""

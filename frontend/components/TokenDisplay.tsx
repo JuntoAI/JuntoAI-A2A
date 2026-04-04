@@ -6,7 +6,7 @@ import { isLocalMode } from "@/lib/runMode";
 import { formatTokenDisplay } from "@/lib/tokens";
 
 export default function TokenDisplay() {
-  const { tokenBalance } = useSession();
+  const { tokenBalance, dailyLimit } = useSession();
 
   if (isLocalMode) {
     return (
@@ -26,7 +26,7 @@ export default function TokenDisplay() {
       title="Each negotiation costs 1 token. Tokens reset daily at midnight UTC."
     >
       <Coins className="h-4 w-4 text-yellow-500" />
-      <span>{formatTokenDisplay(tokenBalance)}</span>
+      <span>{formatTokenDisplay(tokenBalance, dailyLimit)}</span>
     </div>
   );
 }

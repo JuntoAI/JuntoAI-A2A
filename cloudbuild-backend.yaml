@@ -21,6 +21,8 @@ steps:
         GOOGLE_CLOUD_PROJECT: "${_PROJECT_ID}"
         VERTEX_AI_LOCATION: "${_REGION}"
         RUN_MODE: "cloud"
+        SES_SENDER_EMAIL: "noreply@juntoai.com"
+        AWS_SES_REGION: "us-east-1"
         EOF
     waitFor: ["-"]
 
@@ -40,6 +42,8 @@ steps:
       - ${_BACKEND_SA_EMAIL}
       - --env-vars-file
       - /workspace/backend-env.yaml
+      - --set-secrets
+      - AWS_ACCESS_KEY_ID=aws-ses-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-ses-secret-access-key:latest
       - --no-traffic
       - --tag
       - canary

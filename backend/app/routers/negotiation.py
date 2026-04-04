@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 
 from app.config import settings
-from app.db import get_session_store
+from app.db import get_profile_client, get_session_store
 from app.db.base import SessionStore
 from app.middleware import get_event_buffer, get_sse_tracker
 from app.middleware.event_buffer import SSEEventBuffer
@@ -27,6 +27,7 @@ from app.orchestrator.graph import run_negotiation
 from app.orchestrator.state import create_initial_state
 from app.scenarios.registry import ScenarioRegistry
 from app.scenarios.router import get_scenario_registry
+from app.services.tier_calculator import calculate_tier, get_daily_limit
 from app.utils.sse import format_sse_event
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ async def start_negotiation(
     body: StartNegotiationRequest,
     db: SessionStore = Depends(get_session_store),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
+    profile_client=Depends(get_profile_client),
 ):
     """Create a new negotiation session.
 
@@ -154,9 +156,27 @@ async def start_negotiation(
 
     # 7. Return session info (tokens deducted after negotiation completes)
     if settings.RUN_MODE == "cloud":
-        waitlist_ref = db._db.collection("waitlist").document(body.email.lower().strip())  # type: ignore[attr-defined]
+        waitlist_ref = profile_client._db.collection("waitlist").document(body.email.lower().strip())
         waitlist_doc = await waitlist_ref.get()
-        tokens_remaining = waitlist_doc.to_dict().get("token_balance", 100) if waitlist_doc.exists else 100
+        if waitlist_doc.exists:
+            tokens_remaining = waitlist_doc.to_dict().get("token_balance", 0)
+        else:
+            tokens_remaining = 0
+
+        # Determine tier-aware daily limit from profile
+        profile = await profile_client.get_profile(body.email.lower().strip())
+        if profile is not None:
+            tier = calculate_tier(
+                profile.get("profile_completed_at"),
+                profile.get("email_verified", False),
+            )
+            daily_limit = get_daily_limit(tier)
+        else:
+            daily_limit = get_daily_limit(1)  # Tier 1 default
+
+        # If no waitlist doc existed, fall back to the tier daily limit
+        if not waitlist_doc.exists:
+            tokens_remaining = daily_limit
     else:
         tokens_remaining = 999  # unlimited in local mode
 
@@ -614,6 +634,7 @@ async def stream_negotiation(
     tracker: SSEConnectionTracker = Depends(get_sse_tracker),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
     event_buffer: SSEEventBuffer = Depends(get_event_buffer),
+    profile_client=Depends(get_profile_client),
     last_event_id: int | None = Query(None, alias="last_event_id"),
 ):
     """Open an SSE stream for a negotiation session.
@@ -754,7 +775,7 @@ async def stream_negotiation(
                 try:
                     # Scale: 1 user token per 1000 AI tokens (rounded up)
                     user_tokens_cost = max(1, (ai_tokens_used + 999) // 1000)
-                    wl_ref = db._db.collection("waitlist").document(email.lower().strip())  # type: ignore[attr-defined]
+                    wl_ref = profile_client._db.collection("waitlist").document(email.lower().strip())
                     wl_doc = await wl_ref.get()
                     if wl_doc.exists:
                         balance = wl_doc.to_dict().get("token_balance", 0)
