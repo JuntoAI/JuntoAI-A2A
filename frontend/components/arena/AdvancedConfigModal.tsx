@@ -29,6 +29,8 @@ export function AdvancedConfigModal({
   initialCustomPrompt,
   initialModelOverride,
   initialStructuredMemory,
+  milestoneSummariesEnabled,
+  onMilestoneSummariesChange,
   onSave,
   onCancel,
 }: AdvancedConfigModalProps) {
@@ -205,7 +207,7 @@ export function AdvancedConfigModal({
         </div>
 
         {/* Structured Memory */}
-        <div className="mb-6">
+        <div className="mb-4">
           <label
             htmlFor="structured-memory-toggle"
             className="flex cursor-pointer items-center gap-3 text-sm text-gray-700"
@@ -222,6 +224,41 @@ export function AdvancedConfigModal({
               <p className="mt-0.5 text-xs text-gray-500">
                 This agent maintains structured recall of offers, concessions, and tactics instead of replaying full history each turn
               </p>
+            </div>
+          </label>
+        </div>
+
+        {/* Milestone Summaries (shared across all agents) */}
+        <div className="mb-6">
+          <label
+            htmlFor="milestone-summaries-toggle"
+            className={`flex items-center gap-3 text-sm ${
+              !structuredMemory ? "cursor-not-allowed text-gray-400" : "cursor-pointer text-gray-700"
+            }`}
+          >
+            <input
+              id="milestone-summaries-toggle"
+              type="checkbox"
+              checked={milestoneSummariesEnabled}
+              disabled={!structuredMemory}
+              onChange={(e) => onMilestoneSummariesChange(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-brand-blue focus:ring-brand-blue disabled:opacity-50"
+            />
+            <div>
+              <span className="font-medium">Milestone Summaries</span>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Periodic strategic summaries compress negotiation history and cap token usage for long negotiations
+              </p>
+              {!structuredMemory && (
+                <p className="mt-1 text-xs text-amber-600" data-testid="milestone-dependency-hint">
+                  Enable Structured Agent Memory first
+                </p>
+              )}
+              {structuredMemory && milestoneSummariesEnabled && (
+                <p className="mt-1 text-xs text-blue-500">
+                  Applies to all agents in this session
+                </p>
+              )}
             </div>
           </label>
         </div>

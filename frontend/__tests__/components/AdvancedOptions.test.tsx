@@ -199,12 +199,13 @@ describe("Per-Agent Structured Memory Toggle", () => {
     });
   });
 
-  it("shows Advanced Options section with milestone summaries toggle", async () => {
+  it("shows milestone summaries toggle inside Advanced Config modal", async () => {
     render(<ArenaPage />);
     await selectScenario();
+    await openAdvancedConfig("Recruiter");
 
-    expect(screen.getByText("Advanced Options")).toBeInTheDocument();
-    expect(screen.getByLabelText(/Milestone Summaries/i)).toBeInTheDocument();
+    const toggle = document.getElementById("milestone-summaries-toggle");
+    expect(toggle).toBeInTheDocument();
   });
 
   it("resets structured memory on scenario change", async () => {
