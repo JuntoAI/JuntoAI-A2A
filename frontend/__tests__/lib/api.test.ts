@@ -145,6 +145,7 @@ describe("startNegotiation", () => {
           structured_memory_enabled: false,
           structured_memory_roles: [],
           milestone_summaries_enabled: false,
+          no_memory_roles: [],
         }),
       },
     );
@@ -196,6 +197,7 @@ describe("startNegotiation", () => {
           structured_memory_enabled: false,
           structured_memory_roles: [],
           milestone_summaries_enabled: false,
+          no_memory_roles: [],
         }),
       },
     );

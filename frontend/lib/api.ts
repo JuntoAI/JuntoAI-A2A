@@ -117,6 +117,7 @@ export async function startNegotiation(
   modelOverrides?: Record<string, string>,
   structuredMemoryRoles?: string[],
   milestoneSummariesEnabled?: boolean,
+  noMemoryRoles?: string[],
 ): Promise<StartNegotiationResponse> {
   const body: Record<string, unknown> = {
     email,
@@ -133,6 +134,7 @@ export async function startNegotiation(
   }
 
   body.milestone_summaries_enabled = milestoneSummariesEnabled ?? false;
+  body.no_memory_roles = noMemoryRoles ?? [];
 
   if (customPrompts && Object.keys(customPrompts).length > 0) {
     body.custom_prompts = customPrompts;

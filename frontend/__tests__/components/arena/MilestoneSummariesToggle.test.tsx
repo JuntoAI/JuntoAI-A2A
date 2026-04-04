@@ -122,15 +122,9 @@ async function openAdvancedConfig(agentName: string) {
   });
 }
 
-async function enableStructuredMemoryForAgent(agentName: string) {
-  await openAdvancedConfig(agentName);
-  // Use the specific ID to avoid matching the milestone toggle's dependency hint text
-  const toggle = document.getElementById("structured-memory-toggle") as HTMLInputElement;
-  fireEvent.click(toggle);
-  fireEvent.click(screen.getByRole("button", { name: /Save/i }));
-  await waitFor(() => {
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
+function selectMemoryStrategy(strategy: string) {
+  const radio = document.getElementById(`memory-${strategy}`) as HTMLInputElement;
+  fireEvent.click(radio);
 }
 
 // ---------------------------------------------------------------------------
@@ -238,95 +232,87 @@ describe("MilestoneSummariesToggle (integration with ArenaPage)", () => {
     vi.mocked(api.fetchAvailableModels).mockResolvedValue([]);
   });
 
-  it("shows milestone summaries toggle inside Advanced Config modal", async () => {
+  it("shows memory strategy radio group inside Advanced Config modal", async () => {
     render(<ArenaPage />);
     await selectScenario();
     await openAdvancedConfig("Recruiter");
-    const toggle = document.getElementById("milestone-summaries-toggle");
-    expect(toggle).toBeInTheDocument();
+    const radio = document.getElementById("memory-structured_milestones");
+    expect(radio).toBeInTheDocument();
   });
 
-  it("milestone toggle is disabled when structured memory is off in modal", async () => {
+  it("structured_milestones radio is not selected by default", async () => {
     render(<ArenaPage />);
     await selectScenario();
     await openAdvancedConfig("Recruiter");
-    const toggle = document.getElementById("milestone-summaries-toggle") as HTMLInputElement;
-    expect(toggle).toBeDisabled();
-    expect(screen.getByTestId("milestone-dependency-hint")).toBeInTheDocument();
+    const radio = document.getElementById("memory-structured_milestones") as HTMLInputElement;
+    expect(radio).not.toBeChecked();
+    // full_transcript should be the default
+    const defaultRadio = document.getElementById("memory-full_transcript") as HTMLInputElement;
+    expect(defaultRadio).toBeChecked();
   });
 
-  it("milestone toggle becomes enabled after enabling structured memory in same modal", async () => {
+  it("selecting structured_milestones radio enables milestones in one step", async () => {
     render(<ArenaPage />);
     await selectScenario();
     await openAdvancedConfig("Recruiter");
 
-    // Enable structured memory first
-    const memToggle = document.getElementById("structured-memory-toggle") as HTMLInputElement;
-    fireEvent.click(memToggle);
+    // Select structured_milestones directly — no two-step flow needed
+    selectMemoryStrategy("structured_milestones");
 
-    // Save to persist structured memory, then reopen
+    // Save
+    fireEvent.click(screen.getByRole("button", { name: /Save/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    // Reopen and verify it persisted
+    await openAdvancedConfig("Recruiter");
+    const radio = document.getElementById("memory-structured_milestones") as HTMLInputElement;
+    expect(radio).toBeChecked();
+  });
+
+  it("enabling structured_milestones is reflected when reopening", async () => {
+    render(<ArenaPage />);
+    await selectScenario();
+
+    // Select structured_milestones for Recruiter
+    await openAdvancedConfig("Recruiter");
+    selectMemoryStrategy("structured_milestones");
+
+    // Close and reopen — structured_milestones should still be selected
     fireEvent.click(screen.getByRole("button", { name: /Save/i }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     await openAdvancedConfig("Recruiter");
-    const msToggle = document.getElementById("milestone-summaries-toggle") as HTMLInputElement;
-    expect(msToggle).not.toBeDisabled();
+    const radio = document.getElementById("memory-structured_milestones") as HTMLInputElement;
+    expect(radio).toBeChecked();
   });
 
-  it("enabling milestone summaries in modal is reflected when reopening", async () => {
+  it("shows milestone indicator on agent card when structured_milestones is selected", async () => {
     render(<ArenaPage />);
     await selectScenario();
 
-    // Enable structured memory for Recruiter first
-    await enableStructuredMemoryForAgent("Recruiter");
-
-    // Reopen and enable milestone summaries
+    // Select structured_milestones for Recruiter
     await openAdvancedConfig("Recruiter");
-    const msToggle = document.getElementById("milestone-summaries-toggle") as HTMLInputElement;
-    fireEvent.click(msToggle);
-
-    // Close and reopen — milestone should still be checked
+    selectMemoryStrategy("structured_milestones");
     fireEvent.click(screen.getByRole("button", { name: /Save/i }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
-    await openAdvancedConfig("Recruiter");
-    const msToggle2 = document.getElementById("milestone-summaries-toggle") as HTMLInputElement;
-    expect(msToggle2).toBeChecked();
+    // Recruiter card should show the milestone indicator
+    expect(screen.getByText("✦ Structured Memory + Milestones")).toBeInTheDocument();
   });
 
-  it("shows milestone summaries indicator on agent card when enabled", async () => {
+  it("scenario change resets memory strategy", async () => {
     render(<ArenaPage />);
     await selectScenario();
 
-    // Enable structured memory for Recruiter
-    await enableStructuredMemoryForAgent("Recruiter");
-
-    // Enable milestone summaries
+    // Select structured_milestones for Recruiter
     await openAdvancedConfig("Recruiter");
-    const msToggle = document.getElementById("milestone-summaries-toggle") as HTMLInputElement;
-    fireEvent.click(msToggle);
-    fireEvent.click(screen.getByRole("button", { name: /Save/i }));
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
-
-    // Recruiter card should show the indicator (has structured memory)
-    expect(screen.getByText("✦ Milestone Summaries")).toBeInTheDocument();
-  });
-
-  it("scenario change resets milestone summaries", async () => {
-    render(<ArenaPage />);
-    await selectScenario();
-
-    // Enable structured memory and milestone summaries
-    await enableStructuredMemoryForAgent("Recruiter");
-    await openAdvancedConfig("Recruiter");
-    const msToggle = document.getElementById("milestone-summaries-toggle") as HTMLInputElement;
-    fireEvent.click(msToggle);
+    selectMemoryStrategy("structured_milestones");
     fireEvent.click(screen.getByRole("button", { name: /Save/i }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -351,6 +337,6 @@ describe("MilestoneSummariesToggle (integration with ArenaPage)", () => {
     });
 
     // Milestone indicator should be gone
-    expect(screen.queryByText("✦ Milestone Summaries")).not.toBeInTheDocument();
+    expect(screen.queryByText("✦ Structured Memory + Milestones")).not.toBeInTheDocument();
   });
 });
