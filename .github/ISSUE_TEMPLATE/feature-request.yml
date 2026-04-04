@@ -1,0 +1,36 @@
+name: Feature Request
+description: Suggest a new feature for JuntoAI A2A
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please fill out the fields below so we can understand your idea and evaluate it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the feature
+      description: A clear and concise description of the feature you'd like to see.
+      placeholder: Tell us about the feature...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem it solves
+      description: What problem does this feature solve? Why is it needed?
+      placeholder: Describe the problem or pain point this feature addresses...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: How should this feature work? Describe your ideal implementation.
+      placeholder: Describe how you think this feature should work...
+    validations:
+      required: true
