@@ -9,6 +9,21 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Developer Community Infrastructure",
+    specId: "160",
+    date: "2026-04-04",
+    items: [
+      "GitHub Actions PR CI pipeline: parallel backend pytest + frontend Vitest jobs on every PR to main, 70% coverage enforced",
+      "CONTRIBUTING.md with fork-and-PR workflow, local dev setup, test commands, and scenario contribution guide (JSON-only)",
+      "CODE_OF_CONDUCT.md based on Contributor Covenant v2.1 with enforcement contact and community scope",
+      "GitHub issue templates: structured YAML forms for bug reports and feature requests, blank issues disabled",
+      "Pull request template with change-type checkboxes, related-issue linking, and pre-merge checklist",
+      "Contributor onboarding labels documented: good first issue, scenario-contribution, help wanted",
+      "README community section updated with links to CONTRIBUTING.md, CODE_OF_CONDUCT.md, WhatsApp channel, and good first issue view",
+      "Branch protection guidance: main protected, CI must pass before merge, no direct pushes",
+    ],
+  },
+  {
     title: "User Profile & Token Upgrade",
     specId: "140",
     date: "2026-04-04",
