@@ -10,12 +10,21 @@ This feature introduces a 3-tier daily token system that rewards user engagement
 
 Tier 3 is permanent once earned (`profile_completed_at` timestamp). The system introduces a new `profiles` Firestore collection, email verification via Amazon SES, a profile management page, and tier-aware token reset logic.
 
+Additionally, the system supports:
+- **Password-based account protection**: Users can set a password after email verification. Returning users with a password are prompted on the login form. Passwords are hashed with bcrypt.
+- **Country field**: Each profile stores an ISO 3166-1 alpha-2 country code for an upcoming country-based performance leaderboard.
+- **Google OAuth account linking**: Users can link their Google account post-creation, enabling "Sign in with Google" as an alternative login method.
+
 ### Key Design Decisions
 
 1. **Separate `profiles` collection** rather than extending `waitlist` documents — keeps profile data decoupled and supports future user-centric features (preferences, custom scenarios).
 2. **Permanent Tier 3** — once `profile_completed_at` is set, it's never cleared. This avoids punishing users who later edit their profile and simplifies tier determination to a single timestamp check.
 3. **Backend-authoritative tier calculation** — the frontend never computes tier. It always fetches the tier from the backend to prevent client-side manipulation.
 4. **Amazon SES for email** — aligns with existing AWS usage patterns and avoids adding a new third-party dependency.
+5. **bcrypt for password hashing** — industry-standard adaptive hashing algorithm. Cost factor auto-adjusts. No need for a separate salt column since bcrypt embeds the salt in the hash.
+6. **Google OAuth via Google Identity Services (GIS)** — frontend uses the GIS JavaScript library for the consent flow, backend validates ID tokens against Google's `tokeninfo` endpoint. No Firebase Auth dependency — keeps auth self-managed.
+7. **Conditional password prompt** — the login form calls `GET /api/v1/auth/check-email/{email}` to determine whether to show a password field. This avoids leaking whether an account exists (the check only returns `has_password`, not account existence).
+8. **Country as ISO 3166-1 alpha-2** — standardized, compact (2 chars), and maps cleanly to country names for the leaderboard UI.
 
 ## Architecture
 
@@ -23,14 +32,18 @@ Tier 3 is permanent once earned (`profile_completed_at` timestamp). The system i
 graph TD
     subgraph Frontend ["Frontend (Next.js 14)"]
         PP[Profile Page]
+        LF[Login Form]
         TD[TokenDisplay]
         WF[WaitlistForm]
         SC[SessionContext]
+        GIS[Google Identity Services]
     end
 
     subgraph Backend ["Backend (FastAPI)"]
         PR[Profile Router]
+        AR[Auth Router]
         PS[Profile Service]
+        AS[Auth Service]
         EV[Email Verifier]
         TC[Tier Calculator]
         NR[Negotiation Router]
@@ -44,12 +57,24 @@ graph TD
 
     subgraph External
         SES[Amazon SES]
+        GAPI[Google Token Endpoint]
     end
 
     PP -->|GET/PUT profile| PR
     PP -->|POST verify-email| PR
+    PP -->|link/unlink Google| AR
+    PP -->|set/change password| AR
+    LF -->|check-email| AR
+    LF -->|login with password| AR
+    LF -->|Google sign-in| AR
+    LF -->|Google ID token| GIS
+    GIS -->|consent flow| GAPI
     PR --> PS
     PR --> EV
+    AR --> AS
+    AS -->|bcrypt hash/verify| AS
+    AS -->|validate Google token| GAPI
+    AS --> PC
     PS --> PC
     PS --> TC
     TC --> PC
@@ -125,6 +150,99 @@ sequenceDiagram
     end
 ```
 
+### Request Flow: Password-Based Login
+
+```mermaid
+sequenceDiagram
+    participant U as User (Browser)
+    participant FE as Login Form
+    participant BE as FastAPI Backend
+    participant FS as Firestore
+
+    U->>FE: Enter email address
+    FE->>BE: GET /api/v1/auth/check-email/{email}
+    BE->>FS: Read profiles/{email}
+    alt password_hash is non-null
+        BE-->>FE: {has_password: true}
+        FE->>FE: Show password input field
+        U->>FE: Enter password, click Login
+        FE->>BE: POST /api/v1/auth/login {email, password}
+        BE->>FS: Read profiles/{email}
+        BE->>BE: bcrypt.checkpw(password, stored_hash)
+        alt Password matches
+            BE->>FS: Read waitlist/{email} (tier + balance)
+            BE-->>FE: 200 OK {email, tier, daily_limit, token_balance}
+            FE->>FE: Update SessionContext, redirect to arena
+        else Password does not match
+            BE-->>FE: 401 {detail: "Invalid password"}
+            FE->>U: Show error message
+        end
+    else password_hash is null or no profile
+        BE-->>FE: {has_password: false}
+        FE->>FE: Proceed with email-only login flow
+    end
+```
+
+### Request Flow: Google OAuth Account Linking
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant FE as Profile Page
+    participant GIS as Google Identity Services
+    participant BE as FastAPI Backend
+    participant FS as Firestore
+    participant GAPI as Google Token Endpoint
+
+    U->>FE: Click "Link Google Account"
+    FE->>GIS: Initiate OAuth consent flow
+    GIS->>U: Google consent screen
+    U->>GIS: Approve consent
+    GIS-->>FE: Google ID token (JWT)
+    FE->>BE: POST /api/v1/auth/google/link {id_token, email}
+    BE->>GAPI: Validate ID token
+    GAPI-->>BE: {sub, email, ...} (token claims)
+    BE->>FS: Check if google_oauth_id already linked to another profile
+    alt google_oauth_id is unique
+        BE->>FS: Set profiles/{email}.google_oauth_id = sub
+        BE-->>FE: 200 OK {google_oauth_id, google_email}
+        FE->>U: Show linked Google account info
+    else google_oauth_id already linked
+        BE-->>FE: 409 {detail: "Google account already linked to another profile"}
+        FE->>U: Show error message
+    end
+```
+
+### Request Flow: Google OAuth Login
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant FE as Login Form
+    participant GIS as Google Identity Services
+    participant BE as FastAPI Backend
+    participant FS as Firestore
+    participant GAPI as Google Token Endpoint
+
+    U->>FE: Click "Sign in with Google"
+    FE->>GIS: Initiate OAuth consent flow
+    GIS->>U: Google consent screen
+    U->>GIS: Approve consent
+    GIS-->>FE: Google ID token (JWT)
+    FE->>BE: POST /api/v1/auth/google/login {id_token}
+    BE->>GAPI: Validate ID token
+    GAPI-->>BE: {sub, email, ...} (token claims)
+    BE->>FS: Query profiles where google_oauth_id == sub
+    alt Profile found
+        BE->>FS: Read waitlist/{email} (tier + balance)
+        BE-->>FE: 200 OK {email, tier, daily_limit, token_balance}
+        FE->>FE: Update SessionContext, redirect to arena
+    else No profile found
+        BE-->>FE: 404 {detail: "No linked account found for this Google account"}
+        FE->>U: Show error message
+    end
+```
+
 ## Components and Interfaces
 
 ### Backend Components
@@ -144,12 +262,16 @@ class ProfileDocument(BaseModel):
     linkedin_url: str | None = None
     profile_completed_at: datetime | None = None
     created_at: datetime | None = None
+    password_hash: str | None = None
+    country: str | None = None
+    google_oauth_id: str | None = None
 
 class ProfileUpdateRequest(BaseModel):
     """Request body for PUT /api/v1/profile/{email}."""
     display_name: str | None = None
     github_url: str | None = None
     linkedin_url: str | None = None
+    country: str | None = None
 
     @field_validator("display_name")
     @classmethod
@@ -181,6 +303,17 @@ class ProfileUpdateRequest(BaseModel):
             raise ValueError("LinkedIn URL must match https://linkedin.com/in/{slug}")
         return v
 
+    @field_validator("country")
+    @classmethod
+    def validate_country(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        # Validate against ISO 3166-1 alpha-2 codes
+        import pycountry
+        if pycountry.countries.get(alpha_2=v.upper()) is None:
+            raise ValueError(f"Invalid country code: {v}. Must be a valid ISO 3166-1 alpha-2 code.")
+        return v.upper()
+
 class ProfileResponse(BaseModel):
     """Response body for profile endpoints."""
     display_name: str
@@ -189,12 +322,67 @@ class ProfileResponse(BaseModel):
     linkedin_url: str | None
     profile_completed_at: datetime | None
     created_at: datetime | None
+    password_hash_set: bool  # True if password_hash is non-null (never expose hash)
+    country: str | None
+    google_oauth_id: str | None
     tier: int
     daily_limit: int
     token_balance: int
 ```
 
-#### 2. Tier Calculator (`backend/app/services/tier_calculator.py`)
+#### 2. Auth Pydantic Models (`backend/app/models/auth.py`)
+
+```python
+from pydantic import BaseModel, field_validator
+
+class SetPasswordRequest(BaseModel):
+    """Request body for POST /api/v1/auth/set-password."""
+    email: str
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8 or len(v) > 128:
+            raise ValueError("Password must be between 8 and 128 characters")
+        return v
+
+class ChangePasswordRequest(BaseModel):
+    """Request body for password change."""
+    email: str
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, v: str) -> str:
+        if len(v) < 8 or len(v) > 128:
+            raise ValueError("Password must be between 8 and 128 characters")
+        return v
+
+class LoginRequest(BaseModel):
+    """Request body for POST /api/v1/auth/login."""
+    email: str
+    password: str
+
+class GoogleTokenRequest(BaseModel):
+    """Request body for Google OAuth endpoints."""
+    id_token: str
+    email: str | None = None  # Required for link, optional for login
+
+class CheckEmailResponse(BaseModel):
+    """Response for GET /api/v1/auth/check-email/{email}."""
+    has_password: bool
+
+class LoginResponse(BaseModel):
+    """Response for successful login."""
+    email: str
+    tier: int
+    daily_limit: int
+    token_balance: int
+```
+
+#### 3. Tier Calculator (`backend/app/services/tier_calculator.py`)
 
 Pure function, no side effects — easy to test:
 
@@ -220,22 +408,39 @@ def is_profile_complete(display_name: str, email_verified: bool, github_url: str
     return has_display_name and email_verified and has_professional_link
 ```
 
-#### 3. Profile Router (`backend/app/routers/profile.py`)
+#### 4. Profile Router (`backend/app/routers/profile.py`)
 
 Endpoints:
-- `GET /api/v1/profile/{email}` — returns profile + tier info
-- `PUT /api/v1/profile/{email}` — updates profile, evaluates completeness, triggers tier upgrade
+- `GET /api/v1/profile/{email}` — returns profile + tier info (includes `country`, `password_hash_set`, `google_oauth_id`)
+- `PUT /api/v1/profile/{email}` — updates profile (display_name, github_url, linkedin_url, country), evaluates completeness, triggers tier upgrade
 - `POST /api/v1/profile/{email}/verify-email` — sends verification email
 - `GET /api/v1/profile/verify/{token}` — validates verification token
 
-#### 4. Email Verifier Service (`backend/app/services/email_verifier.py`)
+#### 5. Auth Router (`backend/app/routers/auth.py`)
+
+Endpoints:
+- `POST /api/v1/auth/set-password` — hash password with bcrypt, store in profile
+- `POST /api/v1/auth/login` — verify password against stored hash, return session
+- `GET /api/v1/auth/check-email/{email}` — return whether email has a password set
+- `POST /api/v1/auth/google/link` — validate Google ID token, store `google_oauth_id`
+- `POST /api/v1/auth/google/login` — validate Google ID token, lookup by `google_oauth_id`, return session
+- `DELETE /api/v1/auth/google/link/{email}` — remove `google_oauth_id` from profile
+
+#### 6. Auth Service (`backend/app/services/auth_service.py`)
+
+- Password hashing via `bcrypt.hashpw(password.encode(), bcrypt.gensalt())`
+- Password verification via `bcrypt.checkpw(password.encode(), stored_hash.encode())`
+- Google ID token validation via `requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={token}")` — returns claims including `sub` (Google user ID) and `email`
+- Google OAuth ID uniqueness check: query `profiles` collection for existing `google_oauth_id` before linking
+
+#### 7. Email Verifier Service (`backend/app/services/email_verifier.py`)
 
 - Generates UUID-based verification tokens with 24h TTL
 - Stores tokens in `verification_tokens` Firestore collection
 - Sends email via Amazon SES (boto3)
 - Validates tokens on click-through
 
-#### 5. Profile Firestore Client (`backend/app/db/profile_client.py`)
+#### 8. Profile Firestore Client (`backend/app/db/profile_client.py`)
 
 - CRUD operations on `profiles` collection
 - CRUD operations on `verification_tokens` collection
@@ -245,8 +450,10 @@ Endpoints:
 
 #### 1. Profile Page (`frontend/app/(protected)/profile/page.tsx`)
 
-- Form with fields: display name, GitHub URL, LinkedIn URL
+- Form with fields: display name, GitHub URL, LinkedIn URL, country (dropdown)
 - Email verification status + "Verify Email" button
+- Password section: "Set Password" button (visible when email verified and no password set), "Change Password" form (visible when password already set)
+- Google OAuth section: "Link Google Account" button (visible when email verified and no Google linked), linked Google account info + "Unlink Google Account" button (visible when Google linked)
 - Progress indicator showing completion steps
 - Save button triggers `PUT /api/v1/profile/{email}`
 
@@ -264,10 +471,14 @@ Endpoints:
 
 - Email in header becomes a clickable link to `/profile`
 
-#### 5. Updated WaitlistForm (`frontend/components/WaitlistForm.tsx`)
+#### 5. Updated WaitlistForm / Login Form (`frontend/components/WaitlistForm.tsx`)
 
 - Sets initial token balance to 20 (Tier 1) instead of 100
 - Stores tier info in SessionContext on login
+- On email blur/submit: calls `GET /api/v1/auth/check-email/{email}` to check if password is required
+- Conditionally shows password input field when `has_password` is true
+- Displays "Sign in with Google" button alongside email input
+- Google sign-in triggers Google Identity Services consent flow, then calls `POST /api/v1/auth/google/login`
 
 #### 6. Updated Token Functions (`frontend/lib/tokens.ts`)
 
@@ -288,6 +499,9 @@ Endpoints:
 | `linkedin_url` | string \| null | `null` | LinkedIn profile URL |
 | `profile_completed_at` | timestamp \| null | `null` | When Tier 3 was first achieved (permanent) |
 | `created_at` | timestamp | server timestamp | Document creation time |
+| `password_hash` | string \| null | `null` | bcrypt-hashed password (null if not set) |
+| `country` | string \| null | `null` | ISO 3166-1 alpha-2 country code |
+| `google_oauth_id` | string \| null | `null` | Google account `sub` claim (null if not linked) |
 
 Document key: user's email address (lowercase, trimmed)
 
@@ -332,7 +546,7 @@ This is evaluated:
 
 ### Property 1: Profile initialization defaults
 
-*For any* valid email address, when a new profile document is created, the resulting document SHALL have `display_name` equal to `""`, `email_verified` equal to `false`, `github_url` equal to `null`, `linkedin_url` equal to `null`, `profile_completed_at` equal to `null`, and `created_at` set to a non-null timestamp.
+*For any* valid email address, when a new profile document is created, the resulting document SHALL have `display_name` equal to `""`, `email_verified` equal to `false`, `github_url` equal to `null`, `linkedin_url` equal to `null`, `profile_completed_at` equal to `null`, `created_at` set to a non-null timestamp, `password_hash` equal to `null`, `country` equal to `null`, and `google_oauth_id` equal to `null`.
 
 **Validates: Requirements 1.1, 1.2**
 
@@ -362,9 +576,9 @@ This is evaluated:
 
 ### Property 6: Profile field persistence round-trip
 
-*For any* valid profile update (valid display name, valid GitHub URL, valid LinkedIn URL), storing the update and then reading the profile back SHALL return the same field values that were submitted.
+*For any* valid profile update (valid display name, valid GitHub URL, valid LinkedIn URL, valid country code), storing the update and then reading the profile back SHALL return the same field values that were submitted.
 
-**Validates: Requirements 3.2, 5.3**
+**Validates: Requirements 3.2, 5.3, 12.3, 12.6, 12.7**
 
 ### Property 7: Tier determination
 
@@ -414,6 +628,30 @@ This is evaluated:
 
 **Validates: Requirements 6.1**
 
+### Property 15: Password length validation
+
+*For any* string input, the password validator SHALL accept the input if and only if the string length is between 8 and 128 characters (inclusive). Strings outside this range SHALL be rejected with a validation error.
+
+**Validates: Requirements 11.2, 11.4**
+
+### Property 16: Bcrypt password hash round-trip
+
+*For any* valid password (8-128 characters), hashing it with bcrypt and then verifying the original password against the hash SHALL return true. Verifying any different password against the same hash SHALL return false.
+
+**Validates: Requirements 11.3, 11.7, 11.8**
+
+### Property 17: Country code validation
+
+*For any* string input, the country code validator SHALL accept the input if and only if it is a valid ISO 3166-1 alpha-2 country code (e.g., "US", "DE", "JP"). All non-matching inputs SHALL be rejected with a validation error.
+
+**Validates: Requirements 12.2, 12.4**
+
+### Property 18: Google OAuth ID uniqueness constraint
+
+*For any* two distinct email addresses, if the first email's profile has a `google_oauth_id` set to a given value, attempting to link the same `google_oauth_id` to the second email's profile SHALL be rejected with a 409 conflict error.
+
+**Validates: Requirements 13.5**
+
 ## Error Handling
 
 ### Backend Error Responses
@@ -424,9 +662,18 @@ This is evaluated:
 | Invalid display name length | 422 | `{"detail": "Display name must be between 2 and 100 characters"}` |
 | Invalid GitHub URL format | 422 | `{"detail": "GitHub URL must match https://github.com/{username}"}` |
 | Invalid LinkedIn URL format | 422 | `{"detail": "LinkedIn URL must match https://linkedin.com/in/{slug}"}` |
+| Invalid country code | 422 | `{"detail": "Invalid country code: {value}. Must be a valid ISO 3166-1 alpha-2 code."}` |
+| Invalid password length | 422 | `{"detail": "Password must be between 8 and 128 characters"}` |
+| Invalid password on login | 401 | `{"detail": "Invalid password"}` |
+| Invalid current password on change | 401 | `{"detail": "Invalid current password"}` |
+| Email has no password set (login attempt) | 400 | `{"detail": "No password set for this account"}` |
+| Google ID token validation failed | 401 | `{"detail": "Invalid Google ID token"}` |
+| Google account already linked | 409 | `{"detail": "Google account already linked to another profile"}` |
+| No linked account for Google login | 404 | `{"detail": "No linked account found for this Google account"}` |
 | Expired verification token | 410 | `{"detail": "Verification link has expired", "resend": true}` |
 | Invalid verification token | 404 | `{"detail": "Invalid verification link"}` |
 | SES email delivery failure | 502 | `{"detail": "Failed to send verification email. Please try again."}` |
+| Google token endpoint unavailable | 502 | `{"detail": "Failed to validate Google account. Please try again."}` |
 | Firestore unavailable | 503 | `{"detail": "Database unavailable"}` |
 
 ### Frontend Error Handling
@@ -434,6 +681,9 @@ This is evaluated:
 - Profile API errors display inline validation messages below the relevant form field
 - Network errors show a toast notification with retry option
 - Email verification errors show a dedicated error state with "Resend" button
+- Password errors (wrong password on login, wrong current password on change) display inline error below the password field
+- Google OAuth errors (already linked, no linked account) display inline error messages
+- Google consent flow cancellation is handled gracefully (no error shown, user can retry)
 - Session expiry redirects to landing page
 
 ### Resilience Patterns
@@ -441,6 +691,9 @@ This is evaluated:
 - **SES failure**: Return error to user, do not mark email as verified. User can retry.
 - **Firestore failure during tier upgrade**: Use Firestore transaction to ensure atomicity — either both profile and waitlist updates succeed, or neither does.
 - **Race condition on profile completion**: Use Firestore transaction with conditional check on `profile_completed_at` being null before setting it, preventing double-upgrade.
+- **Google token endpoint failure**: Return 502 to user. Do not store any `google_oauth_id`. User can retry.
+- **Google OAuth ID race condition**: Use Firestore transaction to check uniqueness of `google_oauth_id` before storing, preventing two profiles from linking the same Google account simultaneously.
+- **bcrypt timing attacks**: bcrypt's constant-time comparison is built-in. No additional mitigation needed.
 
 ## Testing Strategy
 
@@ -465,12 +718,12 @@ This feature requires both unit tests and property-based tests:
 
 | Test | Property | Description |
 |------|----------|-------------|
-| `test_prop_profile_defaults` | Property 1 | Generate random emails, verify all default fields |
+| `test_prop_profile_defaults` | Property 1 | Generate random emails, verify all default fields (incl. password_hash, country, google_oauth_id) |
 | `test_prop_profile_idempotency` | Property 2 | Create profile, modify, re-create, verify preserved |
 | `test_prop_display_name_validation` | Property 3 | Generate random strings, verify accept/reject boundary |
 | `test_prop_display_name_trimming` | Property 4 | Generate strings with whitespace padding, verify trim |
 | `test_prop_url_validation` | Property 5 | Generate random URLs, verify GitHub/LinkedIn pattern matching |
-| `test_prop_profile_round_trip` | Property 6 | Generate valid updates, store, read back, verify equality |
+| `test_prop_profile_round_trip` | Property 6 | Generate valid updates (incl. country), store, read back, verify equality |
 | `test_prop_tier_determination` | Property 7 | Generate all combos of profile_completed_at/email_verified |
 | `test_prop_profile_completeness` | Property 8 | Generate all combos of profile fields, verify completeness logic |
 | `test_prop_tier_upgrade_on_completion` | Property 9 | Generate profiles transitioning to complete, verify upgrade |
@@ -479,6 +732,10 @@ This feature requires both unit tests and property-based tests:
 | `test_prop_tier_aware_reset` | Property 12 | Generate users at each tier, verify correct reset balance |
 | `test_prop_token_display_format` | Property 13 | Generate random balance/limit pairs, verify format string |
 | `test_prop_signup_initial_balance` | Property 14 | Generate random emails, verify initial balance is 20 |
+| `test_prop_password_length_validation` | Property 15 | Generate random strings, verify accept/reject at 8-128 boundary |
+| `test_prop_bcrypt_hash_round_trip` | Property 16 | Generate valid passwords, hash with bcrypt, verify round-trip |
+| `test_prop_country_code_validation` | Property 17 | Generate random strings, verify only valid ISO 3166-1 alpha-2 codes accepted |
+| `test_prop_google_oauth_id_uniqueness` | Property 18 | Generate two emails + one google_oauth_id, verify second link attempt fails |
 
 Each correctness property MUST be implemented by a SINGLE property-based test.
 
@@ -489,6 +746,13 @@ Each correctness property MUST be implemented by a SINGLE property-based test.
 - Expired/invalid verification token handling
 - Pydantic model serialization round-trips
 - SES mock integration for email sending
+- Auth endpoint integration tests (set-password, login, check-email, password change)
+- Auth login with correct/incorrect password (401 response)
+- Auth check-email returns correct `has_password` flag
+- Google OAuth link/unlink/login endpoint integration tests (mock Google token endpoint)
+- Google OAuth 409 conflict when linking already-linked account
+- Google OAuth 404 when no linked account found on login
+- Country field validation in PUT profile (valid/invalid codes)
 
 ### Frontend Testing (TypeScript)
 
@@ -506,10 +770,17 @@ Each correctness property MUST be implemented by a SINGLE property-based test.
 
 **Unit/Component tests**:
 
-- Profile page renders all fields (example tests for 2.1-2.4)
+- Profile page renders all fields including country dropdown and Google OAuth section (example tests for 2.1-2.4, 2.6)
 - TokenDisplay shows correct tier limit (example tests for 8.1-8.3)
 - WaitlistForm sets initial balance to 20
 - SessionContext stores and retrieves tier/dailyLimit
 - Protected layout email links to /profile
 - Unauthenticated redirect (2.5)
 - Tier upgrade updates display without refresh (8.4)
+- Login form conditionally shows password field based on check-email response (11.5, 11.6)
+- Login form displays "Sign in with Google" button (13.11)
+- Profile page shows "Set Password" option when email verified (11.1)
+- Profile page shows "Link Google Account" button when email verified (13.1)
+- Profile page shows linked Google account info and unlink button (13.6)
+- Country dropdown renders with ISO 3166-1 alpha-2 codes (12.1)
+- Country name displayed on profile view (12.5)

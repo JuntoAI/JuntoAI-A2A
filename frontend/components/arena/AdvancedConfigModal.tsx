@@ -12,6 +12,8 @@ export interface AdvancedConfigModalProps {
   initialCustomPrompt: string;
   initialModelOverride: string | null;
   initialStructuredMemory: boolean;
+  milestoneSummariesEnabled: boolean;
+  onMilestoneSummariesChange: (enabled: boolean) => void;
   onSave: (customPrompt: string, modelOverride: string | null, structuredMemory: boolean) => void;
   onCancel: () => void;
 }
