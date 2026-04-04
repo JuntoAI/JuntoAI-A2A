@@ -323,18 +323,51 @@ def _build_prompt(agent_config: dict[str, Any], state: NegotiationState) -> tupl
             user_parts.append("Structured memory:")
             user_parts.extend(mem_parts)
 
-        # Sliding window: last 3 history entries (or all if fewer)
-        window = history[-3:] if history else []
-        if window:
-            user_parts.append("Recent negotiation messages:")
-            for entry in window:
-                entry_role = entry.get("role", "unknown")
-                content = entry.get("content", {})
-                if isinstance(content, dict):
-                    display = content.get("public_message") or content.get("reasoning") or content.get("observation") or str(content)
-                else:
-                    display = str(content)
-                user_parts.append(f"  [{entry_role}]: {display}")
+        # Determine sliding window size from state (configurable, default 3)
+        sliding_window_size = state.get("sliding_window_size", 3)
+
+        # Milestone summaries: when enabled and milestones exist for this
+        # agent, exclude full history and include summaries + sliding window.
+        # When enabled but no milestones yet, fall through to full history
+        # via the sliding window (spec 100 behavior).
+        milestone_summaries_enabled = state.get("milestone_summaries_enabled", False)
+        agent_milestones = state.get("milestone_summaries", {}).get(role, [])
+        has_milestones = milestone_summaries_enabled and len(agent_milestones) > 0
+
+        if has_milestones:
+            # Include milestone summaries between structured memory and sliding window
+            user_parts.append("Milestone summaries:")
+            for ms in agent_milestones:
+                turn_num = ms.get("turn_number", 0)
+                summary_text = ms.get("summary", "")
+                user_parts.append(f"  Strategic summary as of turn {turn_num}: {summary_text}")
+
+            # Sliding window: last N history entries only
+            window = history[-sliding_window_size:] if history else []
+            if window:
+                user_parts.append("Recent negotiation messages:")
+                for entry in window:
+                    entry_role = entry.get("role", "unknown")
+                    content = entry.get("content", {})
+                    if isinstance(content, dict):
+                        display = content.get("public_message") or content.get("reasoning") or content.get("observation") or str(content)
+                    else:
+                        display = str(content)
+                    user_parts.append(f"  [{entry_role}]: {display}")
+        else:
+            # No milestones yet (or milestones disabled): include full
+            # history as sliding window (spec 100 behavior)
+            window = history[-sliding_window_size:] if history else []
+            if window:
+                user_parts.append("Recent negotiation messages:")
+                for entry in window:
+                    entry_role = entry.get("role", "unknown")
+                    content = entry.get("content", {})
+                    if isinstance(content, dict):
+                        display = content.get("public_message") or content.get("reasoning") or content.get("observation") or str(content)
+                    else:
+                        display = str(content)
+                    user_parts.append(f"  [{entry_role}]: {display}")
     else:
         # Full history mode (default / backward compatible)
         if history:

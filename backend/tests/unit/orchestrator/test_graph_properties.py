@@ -14,6 +14,8 @@ from typing import Any
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+import pytest
+
 from app.orchestrator.graph import (
     DISPATCHER_NODE,
     _check_agreement,
@@ -198,10 +200,11 @@ class TestP9DispatcherTerminalRouting:
 
     @settings(max_examples=200)
     @given(status=st_terminal_status)
-    def test_dispatcher_node_returns_empty_on_terminal(self, status: str):
+    @pytest.mark.asyncio
+    async def test_dispatcher_node_returns_empty_on_terminal(self, status: str):
         """**Validates: Requirements 5.3**"""
         state = _make_state(deal_status=status)
-        assert _dispatcher(state) == {}
+        assert await _dispatcher(state) == {}
 
 
 # ===========================================================================
@@ -221,7 +224,8 @@ class TestP10DealStatusInvariant:
         turn_count=st.integers(min_value=0, max_value=50),
         max_turns=st.integers(min_value=1, max_value=50),
     )
-    def test_dispatcher_produces_valid_status(self, turn_count: int, max_turns: int):
+    @pytest.mark.asyncio
+    async def test_dispatcher_produces_valid_status(self, turn_count: int, max_turns: int):
         """**Validates: Requirements 8.6**"""
         agent_states = {
             "A": _negotiator_agent_state("A", 100.0),
@@ -235,20 +239,21 @@ class TestP10DealStatusInvariant:
             turn_order=["A", "B"],
             current_speaker="A",
         )
-        delta = _dispatcher(state)
+        delta = await _dispatcher(state)
         if "deal_status" in delta:
             assert delta["deal_status"] in VALID_STATUSES
 
     @settings(max_examples=200)
     @given(status=st_terminal_status)
-    def test_terminal_status_unchanged_by_dispatcher(self, status: str):
+    @pytest.mark.asyncio
+    async def test_terminal_status_unchanged_by_dispatcher(self, status: str):
         """**Validates: Requirements 8.6**
 
         Once deal_status leaves Negotiating, dispatcher returns empty dict
         (no status change).
         """
         state = _make_state(deal_status=status)
-        delta = _dispatcher(state)
+        delta = await _dispatcher(state)
         assert "deal_status" not in delta
 
     @settings(max_examples=200)
@@ -256,14 +261,15 @@ class TestP10DealStatusInvariant:
         turn_count=st.integers(min_value=0, max_value=100),
         max_turns=st.integers(min_value=1, max_value=100),
     )
-    def test_dispatcher_only_transitions_from_negotiating(self, turn_count: int, max_turns: int):
+    @pytest.mark.asyncio
+    async def test_dispatcher_only_transitions_from_negotiating(self, turn_count: int, max_turns: int):
         """**Validates: Requirements 8.6**"""
         state = _make_state(
             deal_status="Negotiating",
             turn_count=turn_count,
             max_turns=max_turns,
         )
-        delta = _dispatcher(state)
+        delta = await _dispatcher(state)
         if "deal_status" in delta:
             assert delta["deal_status"] in {"Failed", "Agreed"}
 

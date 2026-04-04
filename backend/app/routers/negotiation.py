@@ -46,6 +46,7 @@ class StartNegotiationRequest(BaseModel):
     model_overrides: dict[str, str] = Field(default_factory=dict)
     structured_memory_enabled: bool = Field(default=False)
     structured_memory_roles: list[str] = Field(default_factory=list)
+    milestone_summaries_enabled: bool = Field(default=False)
 
     @model_validator(mode="after")
     def validate_custom_prompt_lengths(self) -> "StartNegotiationRequest":
@@ -116,6 +117,11 @@ async def start_negotiation(
             hidden_context[toggle.target_agent_role] = toggle.hidden_context_payload
 
     # 5. Create session state
+    # Enforce dependency: milestone summaries require structured memory
+    structured_memory_enabled = body.structured_memory_enabled
+    if body.milestone_summaries_enabled:
+        structured_memory_enabled = True
+
     session_id = uuid.uuid4().hex
     state = NegotiationStateModel(
         session_id=session_id,
@@ -128,8 +134,9 @@ async def start_negotiation(
         hidden_context=hidden_context,
         custom_prompts=filtered_custom_prompts,
         model_overrides=filtered_model_overrides,
-        structured_memory_enabled=body.structured_memory_enabled,
+        structured_memory_enabled=structured_memory_enabled,
         structured_memory_roles=body.structured_memory_roles,
+        milestone_summaries_enabled=body.milestone_summaries_enabled,
     )
 
     # 6. Persist session
@@ -684,6 +691,7 @@ async def stream_negotiation(
         model_overrides=state.model_overrides,
         structured_memory_enabled=state.structured_memory_enabled,
         structured_memory_roles=state.structured_memory_roles,
+        milestone_summaries_enabled=state.milestone_summaries_enabled,
     )
 
     # 7. Build the async event stream generator

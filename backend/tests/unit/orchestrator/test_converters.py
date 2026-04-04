@@ -39,6 +39,15 @@ def _full_state(**overrides) -> NegotiationState:
         "active_toggles": ["secret_offer"],
         "total_tokens_used": 0,
         "stall_diagnosis": None,
+        "custom_prompts": {},
+        "model_overrides": {},
+        "structured_memory_enabled": False,
+        "structured_memory_roles": [],
+        "agent_memories": {},
+        "milestone_summaries_enabled": False,
+        "milestone_summaries": {},
+        "sliding_window_size": 3,
+        "milestone_interval": 4,
     }
     defaults.update(overrides)
     return NegotiationState(**defaults)
@@ -222,3 +231,149 @@ class TestConverterEdgeCases:
         restored = from_pydantic(model)
 
         assert restored["agent_states"] == agent_states
+
+
+# ---------------------------------------------------------------------------
+# Milestone field round-trip tests
+# ---------------------------------------------------------------------------
+
+
+class TestMilestoneFieldsRoundTrip:
+    """Validates: Requirements 2.8, 10.1, 10.3"""
+
+    def test_to_pydantic_passes_milestone_fields(self):
+        summaries = {
+            "Buyer": [{"turn_number": 4, "summary": "Buyer opened at 500k"}],
+        }
+        state = _full_state(
+            milestone_summaries_enabled=True,
+            milestone_summaries=summaries,
+            sliding_window_size=5,
+            milestone_interval=6,
+        )
+        model = to_pydantic(state)
+
+        assert model.milestone_summaries_enabled is True
+        assert model.milestone_summaries == summaries
+        assert model.sliding_window_size == 5
+        assert model.milestone_interval == 6
+
+    def test_from_pydantic_passes_milestone_fields(self):
+        summaries = {
+            "Seller": [{"turn_number": 8, "summary": "Seller conceded on price"}],
+        }
+        model = NegotiationStateModel(
+            session_id="s",
+            scenario_id="sc",
+            turn_order=["Buyer", "Seller"],
+            turn_order_index=0,
+            agent_states={},
+            milestone_summaries_enabled=True,
+            milestone_summaries=summaries,
+            sliding_window_size=7,
+            milestone_interval=3,
+        )
+        state = from_pydantic(model)
+
+        assert state["milestone_summaries_enabled"] is True
+        assert state["milestone_summaries"] == summaries
+        assert state["sliding_window_size"] == 7
+        assert state["milestone_interval"] == 3
+
+    def test_round_trip_preserves_all_milestone_fields(self):
+        summaries = {
+            "Buyer": [
+                {"turn_number": 4, "summary": "Initial positions established"},
+                {"turn_number": 8, "summary": "Progress on salary band"},
+            ],
+            "Seller": [
+                {"turn_number": 4, "summary": "Buyer seems flexible on timeline"},
+            ],
+        }
+        state = _full_state(
+            milestone_summaries_enabled=True,
+            milestone_summaries=summaries,
+            sliding_window_size=5,
+            milestone_interval=4,
+        )
+        restored = from_pydantic(to_pydantic(state))
+
+        assert restored["milestone_summaries_enabled"] is True
+        assert restored["milestone_summaries"] == summaries
+        assert restored["sliding_window_size"] == 5
+        assert restored["milestone_interval"] == 4
+
+    def test_round_trip_disabled_milestone_fields(self):
+        state = _full_state(
+            milestone_summaries_enabled=False,
+            milestone_summaries={},
+            sliding_window_size=3,
+            milestone_interval=4,
+        )
+        restored = from_pydantic(to_pydantic(state))
+
+        assert restored["milestone_summaries_enabled"] is False
+        assert restored["milestone_summaries"] == {}
+        assert restored["sliding_window_size"] == 3
+        assert restored["milestone_interval"] == 4
+
+    def test_round_trip_empty_summaries_list_per_role(self):
+        """When milestones enabled but no summaries generated yet."""
+        summaries = {"Buyer": [], "Seller": []}
+        state = _full_state(
+            milestone_summaries_enabled=True,
+            milestone_summaries=summaries,
+        )
+        restored = from_pydantic(to_pydantic(state))
+
+        assert restored["milestone_summaries"] == summaries
+
+
+class TestMilestoneFieldsDefaults:
+    """Validates: Requirements 9.3, 9.4 — backward compatibility when fields absent."""
+
+    def test_to_pydantic_defaults_when_milestone_fields_absent(self):
+        """Simulate a legacy state dict without milestone fields — .get() defaults kick in."""
+        legacy_state: dict = {
+            "session_id": "sess-legacy",
+            "scenario_id": "scen-legacy",
+            "turn_count": 0,
+            "max_turns": 10,
+            "current_speaker": "Buyer",
+            "deal_status": "Negotiating",
+            "current_offer": 0.0,
+            "history": [],
+            "hidden_context": {},
+            "warning_count": 0,
+            "agreement_threshold": 5000.0,
+            "scenario_config": {},
+            "turn_order": ["Buyer"],
+            "turn_order_index": 0,
+            "agent_states": {},
+            "active_toggles": [],
+            "total_tokens_used": 0,
+            "stall_diagnosis": None,
+        }
+        # Pass as plain dict — milestone keys are missing
+        model = to_pydantic(legacy_state)  # type: ignore[arg-type]
+
+        assert model.milestone_summaries_enabled is False
+        assert model.milestone_summaries == {}
+        assert model.sliding_window_size == 3
+        assert model.milestone_interval == 4
+
+    def test_from_pydantic_defaults_when_model_uses_defaults(self):
+        """NegotiationStateModel with no milestone fields set uses Pydantic defaults."""
+        model = NegotiationStateModel(
+            session_id="s",
+            scenario_id="sc",
+            turn_order=["A"],
+            turn_order_index=0,
+            agent_states={},
+        )
+        state = from_pydantic(model)
+
+        assert state["milestone_summaries_enabled"] is False
+        assert state["milestone_summaries"] == {}
+        assert state["sliding_window_size"] == 3
+        assert state["milestone_interval"] == 4

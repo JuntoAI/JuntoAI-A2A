@@ -152,7 +152,8 @@ describe("Per-Agent Structured Memory Toggle", () => {
     await selectScenario();
     await openAdvancedConfig("Recruiter");
 
-    expect(screen.getByLabelText(/Structured Agent Memory/i)).toBeInTheDocument();
+    const toggle = document.getElementById("structured-memory-toggle");
+    expect(toggle).toBeInTheDocument();
   });
 
   it("defaults the structured memory toggle to off in the modal", async () => {
@@ -160,7 +161,7 @@ describe("Per-Agent Structured Memory Toggle", () => {
     await selectScenario();
     await openAdvancedConfig("Recruiter");
 
-    const toggle = screen.getByLabelText(/Structured Agent Memory/i);
+    const toggle = document.getElementById("structured-memory-toggle") as HTMLInputElement;
     expect(toggle).not.toBeChecked();
   });
 
@@ -176,7 +177,8 @@ describe("Per-Agent Structured Memory Toggle", () => {
 
     // Open Recruiter's Advanced Config and enable structured memory
     await openAdvancedConfig("Recruiter");
-    fireEvent.click(screen.getByLabelText(/Structured Agent Memory/i));
+    const toggle = document.getElementById("structured-memory-toggle") as HTMLInputElement;
+    fireEvent.click(toggle);
     fireEvent.click(screen.getByRole("button", { name: /Save/i }));
 
     // Start negotiation
@@ -192,16 +194,17 @@ describe("Per-Agent Structured Memory Toggle", () => {
         undefined,
         undefined,
         ["Recruiter"],  // Only the Recruiter's role
+        false,
       );
     });
   });
 
-  it("does not include Advanced Options section on the page", async () => {
+  it("shows Advanced Options section with milestone summaries toggle", async () => {
     render(<ArenaPage />);
     await selectScenario();
 
-    // The old global "Advanced Options" section should no longer exist
-    expect(screen.queryByText("Advanced Options")).not.toBeInTheDocument();
+    expect(screen.getByText("Advanced Options")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Milestone Summaries/i)).toBeInTheDocument();
   });
 
   it("resets structured memory on scenario change", async () => {
@@ -210,7 +213,8 @@ describe("Per-Agent Structured Memory Toggle", () => {
 
     // Enable memory for Recruiter
     await openAdvancedConfig("Recruiter");
-    fireEvent.click(screen.getByLabelText(/Structured Agent Memory/i));
+    const toggle = document.getElementById("structured-memory-toggle") as HTMLInputElement;
+    fireEvent.click(toggle);
     fireEvent.click(screen.getByRole("button", { name: /Save/i }));
 
     // Verify indicator shows on the Recruiter card only

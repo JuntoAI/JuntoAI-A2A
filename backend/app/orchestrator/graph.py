@@ -16,6 +16,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from app.orchestrator.agent_node import create_agent_node
+from app.orchestrator.milestone_generator import generate_milestones
 from app.orchestrator.stall_detector import detect_stall
 from app.orchestrator.state import NegotiationState
 
@@ -70,13 +71,14 @@ def build_graph(scenario_config: dict[str, Any]) -> CompiledStateGraph:
 # ---------------------------------------------------------------------------
 
 
-def _dispatcher(state: NegotiationState) -> dict[str, Any]:
+async def _dispatcher(state: NegotiationState) -> dict[str, Any]:
     """Central routing node — modifies state on terminal conditions.
 
     * If ``deal_status`` is already terminal → return ``{}`` (no changes).
     * If ``turn_count >= max_turns`` → set ``deal_status`` to ``"Failed"``.
     * If all negotiators have converged → set ``deal_status`` to ``"Agreed"``.
     * If stall detected → set ``deal_status`` to ``"Failed"`` with stall info.
+    * If milestone generation is due → generate and merge summaries.
     * Otherwise → return ``{}`` (routing handled by ``_route_dispatcher``).
     """
     if state["deal_status"] != "Negotiating":
@@ -94,15 +96,6 @@ def _dispatcher(state: NegotiationState) -> dict[str, Any]:
         }
 
     if _check_agreement(state):
-        # Return fields needed by _snapshot_to_events to build a rich
-        # summary (participant_summaries, outcome text, etc.).  The
-        # dispatcher delta is the only snapshot for agreement — agent
-        # nodes don't set deal_status to "Agreed" — so we must carry
-        # the data forward here.  ``history`` uses Annotated[list, add]
-        # so we cannot include it (LangGraph would append a duplicate);
-        # instead we pass ``agent_states`` which is sufficient for
-        # _build_participant_summaries when combined with the full
-        # history available via the accumulated-state path.
         return {
             "deal_status": "Agreed",
             "current_offer": state["current_offer"],
@@ -132,7 +125,32 @@ def _dispatcher(state: NegotiationState) -> dict[str, Any]:
             "max_turns": state["max_turns"],
         }
 
-    return {}
+    # Milestone generation — triggered after turn advancement when
+    # turn_count is a non-zero multiple of milestone_interval.
+    delta: dict[str, Any] = {}
+    if _should_generate_milestones(state):
+        try:
+            milestone_delta = await generate_milestones(state)
+            delta.update(milestone_delta)
+        except Exception:
+            logger.exception(
+                "Milestone generation failed for session %s. "
+                "Continuing without milestones.",
+                state.get("session_id", "?"),
+            )
+
+    return delta
+
+
+def _should_generate_milestones(state: NegotiationState) -> bool:
+    """Return True if milestone generation should be triggered this turn."""
+    if not state.get("milestone_summaries_enabled", False):
+        return False
+    turn_count = state.get("turn_count", 0)
+    if turn_count == 0:
+        return False
+    milestone_interval = state.get("milestone_interval", 4)
+    return turn_count % milestone_interval == 0
 
 
 def _route_dispatcher(state: NegotiationState) -> str:

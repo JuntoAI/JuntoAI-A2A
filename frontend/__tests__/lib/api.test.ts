@@ -144,6 +144,7 @@ describe("startNegotiation", () => {
           active_toggles: ["competing_offer"],
           structured_memory_enabled: false,
           structured_memory_roles: [],
+          milestone_summaries_enabled: false,
         }),
       },
     );
@@ -194,8 +195,79 @@ describe("startNegotiation", () => {
           active_toggles: [],
           structured_memory_enabled: false,
           structured_memory_roles: [],
+          milestone_summaries_enabled: false,
         }),
       },
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// startNegotiation — milestone_summaries_enabled
+// ---------------------------------------------------------------------------
+
+describe("startNegotiation milestone_summaries_enabled", () => {
+  it("includes milestone_summaries_enabled=true in request body when enabled", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({ session_id: "s1", tokens_remaining: 90, max_turns: 15 }),
+    );
+
+    await startNegotiation(
+      "user@test.com",
+      "talent_war",
+      ["competing_offer"],
+      undefined,
+      undefined,
+      ["recruiter"],
+      true,
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/v1/negotiation/start",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"milestone_summaries_enabled":true'),
+      }),
+    );
+  });
+
+  it("includes milestone_summaries_enabled=false when toggle is off", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({ session_id: "s2", tokens_remaining: 95, max_turns: 10 }),
+    );
+
+    await startNegotiation(
+      "user@test.com",
+      "ma_buyout",
+      [],
+      undefined,
+      undefined,
+      [],
+      false,
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/v1/negotiation/start",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"milestone_summaries_enabled":false'),
+      }),
+    );
+  });
+
+  it("defaults milestone_summaries_enabled to false when parameter is omitted", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      jsonResponse({ session_id: "s3", tokens_remaining: 100, max_turns: 10 }),
+    );
+
+    await startNegotiation("a@b.com", "b2b_sales", []);
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/v1/negotiation/start",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"milestone_summaries_enabled":false'),
+      }),
     );
   });
 });

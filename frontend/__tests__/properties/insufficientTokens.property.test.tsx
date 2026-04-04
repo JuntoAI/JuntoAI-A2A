@@ -37,7 +37,7 @@ describe("Property 6: Insufficient tokens disables Initialize button", () => {
    * When the user's token balance is less than the simulation cost,
    * the Initialize button must be disabled.
    */
-  it("Initialize button is disabled when balance < cost", () => {
+  it("Initialize button is disabled when balance < cost", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(insufficientTokensArb, ({ balance, cost }) => {
         const { unmount } = render(

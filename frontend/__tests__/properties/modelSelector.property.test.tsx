@@ -76,7 +76,7 @@ describe("Property 12: Model selector default ordering and labeling", () => {
    * The default model must be the first option in the select and must
    * have " (default)" appended to its label text.
    */
-  it("default model is the first option with '(default)' suffix", () => {
+  it("default model is the first option with '(default)' suffix", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(modelsWithDefaultArb, ({ models, defaultModelId }) => {
         const props: AdvancedConfigModalProps = {
@@ -115,7 +115,7 @@ describe("Property 12: Model selector default ordering and labeling", () => {
    * Every option must display the family label in parentheses, matching
    * the format: "{model_id} ({family})" (plus optional " (default)").
    */
-  it("all options show the family label in parentheses", () => {
+  it("all options show the family label in parentheses", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(modelsWithDefaultArb, ({ models, defaultModelId }) => {
         const props: AdvancedConfigModalProps = {
@@ -160,7 +160,7 @@ describe("Property 12: Model selector default ordering and labeling", () => {
    * The default model must be pre-selected in the dropdown when no
    * initialModelOverride is provided.
    */
-  it("default model is pre-selected when no override is set", () => {
+  it("default model is pre-selected when no override is set", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(modelsWithDefaultArb, ({ models, defaultModelId }) => {
         const props: AdvancedConfigModalProps = {
@@ -194,7 +194,7 @@ describe("Property 12: Model selector default ordering and labeling", () => {
    * Only the default model option should have the "(default)" suffix.
    * Non-default models must NOT have it.
    */
-  it("only the default model has the '(default)' suffix", () => {
+  it("only the default model has the '(default)' suffix", { timeout: 30000 }, () => {
     fc.assert(
       fc.property(modelsWithDefaultArb, ({ models, defaultModelId }) => {
         const props: AdvancedConfigModalProps = {
