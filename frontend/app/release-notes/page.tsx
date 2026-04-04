@@ -9,6 +9,24 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Hybrid Agent Memory",
+    specId: "110",
+    date: "2026-04-04",
+    items: [
+      "Milestone summary generator: lightweight LLM call per agent at configurable turn intervals produces ≤300-token strategic summaries",
+      "Configurable sliding window: sliding_window_size scenario parameter (default 3) replaces hardcoded window from spec 100",
+      "Full history elimination: after first milestone, prompt excludes all raw history beyond the sliding window — bounded token cost per turn",
+      "milestone_interval scenario parameter (default 4) controls turn cycles between summary generations",
+      "Milestone summaries include agent-private reasoning context for perspective-aware compression",
+      "Non-blocking failure: LLM failure for one agent's summary does not block others or the negotiation",
+      "Dispatcher integration: milestone generation triggers after turn advancement, before next agent node",
+      "Milestone Summaries toggle in Advanced Options — auto-enables structured memory, visually disabled when structured memory is off",
+      "Server-side dependency enforcement: milestone_summaries_enabled=True forces structured_memory_enabled=True",
+      "Full backward compatibility: disabled by default, missing fields default safely, existing sessions unaffected",
+      "Property tests: NegotiationParams round-trip, state initialization, milestone serialization round-trip, prompt token boundedness",
+    ],
+  },
+  {
     title: "Structured Agent Memory",
     specId: "100",
     date: "2026-04-03",
