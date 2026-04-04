@@ -1,10 +1,10 @@
 # Contributing to JuntoAI A2A
 
-Welcome, and thanks for your interest in contributing to JuntoAI A2A! Whether you're fixing a bug, proposing a feature, adding a new negotiation scenario, or improving docs — we're glad you're here.
+Welcome, and thanks for your interest in contributing to JuntoAI A2A! Whether you're fixing a bug, proposing a feature, adding a new negotiation scenario, or improving docs - we're glad you're here.
 
 All contributors are expected to follow our [Code of Conduct](./CODE_OF_CONDUCT.md). Please read it before participating.
 
-## Getting Started — Fork & PR Workflow
+## Getting Started - Fork & PR Workflow
 
 We use a standard fork-and-PR workflow:
 
@@ -80,15 +80,15 @@ This runs the Vitest suite with coverage. The 70% coverage threshold is enforced
 
 We welcome several types of contributions:
 
-- **Scenario Configs** — JSON-only negotiation scenarios (no code changes required)
-- **Bug Fixes** — Fixing issues in the backend, frontend, or infrastructure
-- **Feature Proposals** — New capabilities or improvements (open an issue first to discuss)
-- **Documentation** — README updates, guide improvements, inline code docs
-- **Agent Strategies** — New agent behaviors and negotiation tactics
+- **Scenario Configs** - JSON-only negotiation scenarios (no code changes required)
+- **Bug Fixes** - Fixing issues in the backend, frontend, or infrastructure
+- **Feature Proposals** - New capabilities or improvements (open an issue first to discuss)
+- **Documentation** - README updates, guide improvements, inline code docs
+- **Agent Strategies** - New agent behaviors and negotiation tactics
 
 ## Scenario Contributions
 
-Adding a new negotiation scenario is the easiest way to contribute — no code changes needed.
+Adding a new negotiation scenario is the easiest way to contribute - no code changes needed.
 
 1. Create a new JSON file following the existing scenario format in `backend/app/scenarios/data/`.
 2. Drop your file into `backend/app/scenarios/data/`.
@@ -109,7 +109,7 @@ That's it. Look at the existing `.scenario.json` files in that directory for the
 
 The `main` branch is protected:
 
-- All changes must go through a pull request — **no direct pushes to `main`**.
+- All changes must go through a pull request - **no direct pushes to `main`**.
 - The GitHub Actions CI pipeline must pass before a PR can be merged.
 - Keep your feature branches short-lived and focused.
 
@@ -119,7 +119,7 @@ We use GitHub labels to organize issues and help contributors find work:
 
 | Label | Description |
 | ----- | ----------- |
-| `good first issue` | Curated for new contributors — clear scope, minimal context required. |
+| `good first issue` | Curated for new contributors - clear scope, minimal context required. |
 | `scenario-contribution` | Adding a new negotiation scenario JSON config to `backend/app/scenarios/data/`. |
 | `help wanted` | Maintainers are actively seeking community contributions on these issues. |
 
