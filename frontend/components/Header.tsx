@@ -83,12 +83,13 @@ export default function Header() {
 
           {showAuth && (
             <>
-              <span
-                className="hidden truncate max-w-[160px] text-sm text-gray-600 md:inline"
+              <Link
+                href="/profile"
+                className="hidden truncate max-w-[160px] text-sm text-gray-600 hover:text-brand-blue hover:underline transition-colors md:inline"
                 title={email ?? ""}
               >
                 {email}
-              </span>
+              </Link>
               <TokenDisplay />
               <button
                 onClick={logout}
