@@ -47,6 +47,7 @@ class StartNegotiationRequest(BaseModel):
     structured_memory_enabled: bool = Field(default=False)
     structured_memory_roles: list[str] = Field(default_factory=list)
     milestone_summaries_enabled: bool = Field(default=False)
+    no_memory_roles: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_custom_prompt_lengths(self) -> "StartNegotiationRequest":
@@ -137,6 +138,7 @@ async def start_negotiation(
         structured_memory_enabled=structured_memory_enabled,
         structured_memory_roles=body.structured_memory_roles,
         milestone_summaries_enabled=body.milestone_summaries_enabled,
+        no_memory_roles=body.no_memory_roles,
     )
 
     # 6. Persist session
@@ -692,6 +694,7 @@ async def stream_negotiation(
         structured_memory_enabled=state.structured_memory_enabled,
         structured_memory_roles=state.structured_memory_roles,
         milestone_summaries_enabled=state.milestone_summaries_enabled,
+        no_memory_roles=state.no_memory_roles,
     )
 
     # 7. Build the async event stream generator
