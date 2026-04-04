@@ -128,12 +128,11 @@ describe("Header Component", () => {
 
   // --- Unauthenticated state ---
 
-  it("shows CTA button when unauthenticated", () => {
+  it("does not show waitlist CTA in header", () => {
     mockSessionState.isAuthenticated = false;
     mockSessionState.isHydrated = true;
     render(createElement(Header));
-    const cta = screen.getByText(/join waitlist/i);
-    expect(cta).toBeInTheDocument();
+    expect(screen.queryByText(/join waitlist/i)).not.toBeInTheDocument();
   });
 
   // --- Authenticated state ---
@@ -150,7 +149,7 @@ describe("Header Component", () => {
     expect(screen.getByLabelText("Logout")).toBeInTheDocument();
   });
 
-  it("does not show CTA button when authenticated", () => {
+  it("does not show waitlist CTA when authenticated either", () => {
     mockSessionState.email = "test@example.com";
     mockSessionState.isAuthenticated = true;
     mockSessionState.isHydrated = true;

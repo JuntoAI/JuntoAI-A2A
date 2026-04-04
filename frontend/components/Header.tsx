@@ -81,7 +81,7 @@ export default function Header() {
             </div>
           )}
 
-          {showAuth ? (
+          {showAuth && (
             <>
               <span
                 className="hidden truncate max-w-[160px] text-sm text-gray-600 md:inline"
@@ -99,13 +99,6 @@ export default function Header() {
                 <span className="hidden md:inline">Logout</span>
               </button>
             </>
-          ) : (
-            <a
-              href="#waitlist"
-              className="rounded-md bg-brand-blue px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-            >
-              Join Waitlist
-            </a>
           )}
         </div>
       </div>
