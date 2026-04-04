@@ -1,4 +1,4 @@
-# ⚔️ Local Battle Arena — Development Guide
+# ⚔️ Local Battle Arena - Development Guide
 
 Run the full JuntoAI A2A stack on your machine with zero GCP dependencies.
 
@@ -27,7 +27,7 @@ That's it. No `.env` file needed, no API keys. It spins up:
 - Backend on `localhost:8000`
 - Frontend on `localhost:3000`
 
-Open [http://localhost:3000](http://localhost:3000) — you'll land straight on the Arena Selector (no waitlist gate).
+Open [http://localhost:3000](http://localhost:3000) - you'll land straight on the Arena Selector (no waitlist gate).
 
 First run takes a few minutes since it pulls the Ollama model (~4GB for `llama3.1`). Subsequent runs are instant thanks to the `ollama-data` volume.
 
@@ -54,7 +54,7 @@ docker compose up
 | Service | Port | Description |
 |---------|------|-------------|
 | `ollama` | `11434` | Ollama LLM server (auto-starts, persists models) |
-| `ollama-pull` | — | Init service that pulls `${OLLAMA_MODEL:-llama3.1}` before backend starts |
+| `ollama-pull` | - | Init service that pulls `${OLLAMA_MODEL:-llama3.1}` before backend starts |
 | `backend` | `8000` | FastAPI orchestrator, LangGraph agents, SSE streaming |
 | `frontend` | `3000` | Next.js Glass Box UI, Arena Selector |
 
@@ -83,9 +83,9 @@ Local mode uses [LiteLLM](https://docs.litellm.ai/) to route `model_id` values f
 | `OLLAMA_BASE_URL` | Ollama API endpoint | `http://ollama:11434` (default) |
 
 **Resolution order:**
-1. `LLM_MODEL_OVERRIDE` — if set, every agent uses this model
-2. `MODEL_MAP` — per-model-id JSON overrides
-3. Default mapping — built-in translations per provider
+1. `LLM_MODEL_OVERRIDE` - if set, every agent uses this model
+2. `MODEL_MAP` - per-model-id JSON overrides
+3. Default mapping - built-in translations per provider
 4. Provider default + warning
 
 ### Default Model Mappings
@@ -99,7 +99,7 @@ Local mode uses [LiteLLM](https://docs.litellm.ai/) to route `model_id` values f
 
 ## Scenario Configs Work Everywhere
 
-The same scenario JSON files in `backend/app/scenarios/data/` work in both cloud and local modes without modification. The orchestrator reads the scenario config identically — only the underlying LLM provider and database change based on `RUN_MODE`.
+The same scenario JSON files in `backend/app/scenarios/data/` work in both cloud and local modes without modification. The orchestrator reads the scenario config identically - only the underlying LLM provider and database change based on `RUN_MODE`.
 
 ---
 
@@ -116,8 +116,8 @@ All variables have sensible defaults for zero-config Ollama operation. Copy `.en
 | `SQLITE_DB_PATH` | `data/juntoai.db` | SQLite file path |
 | `LLM_MODEL_OVERRIDE` | _(empty)_ | Force single model for all agents |
 | `MODEL_MAP` | _(empty)_ | JSON per-model-id overrides |
-| `OPENAI_API_KEY` | — | Required when `LLM_PROVIDER=openai` |
-| `ANTHROPIC_API_KEY` | — | Required when `LLM_PROVIDER=anthropic` |
+| `OPENAI_API_KEY` | - | Required when `LLM_PROVIDER=openai` |
+| `ANTHROPIC_API_KEY` | - | Required when `LLM_PROVIDER=anthropic` |
 
 ---
 
@@ -136,7 +136,7 @@ AZURE_API_KEY=your-azure-key
 AZURE_API_BASE=https://your-resource.openai.azure.com/
 ```
 
-Your scenario configs stay unchanged — LiteLLM handles provider-specific API formatting, auth, and model routing.
+Your scenario configs stay unchanged - LiteLLM handles provider-specific API formatting, auth, and model routing.
 
 ---
 

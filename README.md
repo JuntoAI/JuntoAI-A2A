@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">JuntoAI A2A — Agent-to-Agent Negotiation Engine</h1>
+  <h1 align="center">JuntoAI A2A - Agent-to-Agent Negotiation Engine</h1>
 </p>
 
 <p align="center">
@@ -11,21 +11,39 @@
   <a href="https://kiro.dev"><img src="https://img.shields.io/badge/built%20with-Kiro-blue.svg" alt="Built with Kiro" /></a>
 </p>
 
-> **Built with [Kiro](https://kiro.dev)** — JuntoAI A2A was primarily developed using Kiro, the AI-powered IDE. Kiro's specs-driven workflow, steering files, and automation hooks shaped every feature in this repo. [Learn more about Kiro →](https://kiro.dev)
+> **Built with [Kiro](https://kiro.dev)** - JuntoAI A2A was primarily developed using Kiro, the AI-powered IDE. Kiro's specs-driven workflow, steering files, and automation hooks shaped every feature in this repo. [Learn more about Kiro →](https://kiro.dev)
 
 ---
 
-**JuntoAI A2A is a config-driven scenario engine and universal protocol-level execution layer for professional negotiations.** It is not a chatbot. Drop a JSON scenario file into the repo, and autonomous AI agents — powered by Gemini, Claude, or any LiteLLM-supported provider — negotiate in real time while a Glass Box UI streams their inner reasoning and public messages to your browser. Toggle a single hidden variable (a secret competing offer, a compliance constraint) and watch the deal outcome shift. A2A proves that AI negotiation is controllable, observable, and reproducible.
+**JuntoAI A2A is a config-driven scenario engine and universal protocol-level execution layer for professional negotiations.** It is not a chatbot. Drop a JSON scenario file into the repo, and autonomous AI agents - powered by Gemini, Claude, or any LiteLLM-supported provider - negotiate in real time while a Glass Box UI streams their inner reasoning and public messages to your browser. Toggle a single hidden variable (a secret competing offer, a compliance constraint) and watch the deal outcome shift. A2A proves that AI negotiation is controllable, observable, and reproducible.
 
 ## 📑 Table of Contents
 
-- [🏗️ Architecture](#-architecture)
+- [📑 Table of Contents](#-table-of-contents)
+- [🏗️ Architecture](#️-architecture)
 - [🚀 Quick Start](#-quick-start)
-- [⚔️ Local Battle Arena](#-local-battle-arena)
-- [⚙️ Environment Configuration](#-environment-configuration)
+- [⚔️ Local Battle Arena](#️-local-battle-arena)
+- [⚙️ Environment Configuration](#️-environment-configuration)
+    - [Run Mode](#run-mode)
+    - [LLM Provider](#llm-provider)
+    - [Database](#database)
+    - [Frontend](#frontend)
+    - [Backend](#backend)
+  - [Provider-Specific Examples](#provider-specific-examples)
+  - [Force a Single Model for All Agents](#force-a-single-model-for-all-agents)
 - [🤖 Connect Your Own Agents](#-connect-your-own-agents)
+  - [Scenario Config Schema](#scenario-config-schema)
+  - [Agent Object Schema](#agent-object-schema)
+  - [Example Scenario](#example-scenario)
+  - [Model ID Mapping](#model-id-mapping)
+  - [LiteLLM Provider-Agnostic Routing](#litellm-provider-agnostic-routing)
 - [🏆 Leaderboard](#-leaderboard)
-- [🛠️ Developing with Kiro](#-developing-with-kiro)
+- [🛠️ Developing with Kiro](#️-developing-with-kiro)
+  - [`.kiro/` Directory Structure](#kiro-directory-structure)
+  - [Steering Files](#steering-files)
+  - [Specs Workflow](#specs-workflow)
+  - [Hooks](#hooks)
+  - [Contributor Guidance](#contributor-guidance)
 - [🤝 Contributing](#-contributing)
 - [📄 License](#-license)
 - [📋 Changelog](#-changelog)
@@ -120,7 +138,7 @@ That's it. Docker Compose spins up Ollama (auto-pulls `llama3.1`), the FastAPI b
 
 ## ⚔️ Local Battle Arena
 
-When `RUN_MODE=local` (the default), the entire cloud stack is swapped for lightweight local alternatives — zero GCP dependencies:
+When `RUN_MODE=local` (the default), the entire cloud stack is swapped for lightweight local alternatives - zero GCP dependencies:
 
 | Component | Cloud Mode | Local Mode |
 |-----------|-----------|------------|
@@ -129,15 +147,15 @@ When `RUN_MODE=local` (the default), the entire cloud stack is swapped for light
 | Auth | Waitlist + tokens | Bypassed |
 | Hosting | GCP Cloud Run | Docker Compose |
 
-The same scenario JSON files work in both modes without modification — only the underlying LLM provider and database change.
+The same scenario JSON files work in both modes without modification - only the underlying LLM provider and database change.
 
-📖 **[Full Local Development Guide →](LOCAL_DEVELOPMENT.md)** — Docker Compose services, model mapping, default mappings table, environment variables, LiteLLM provider routing, and auth bypass details.
+📖 **[Full Local Development Guide →](LOCAL_DEVELOPMENT.md)** - Docker Compose services, model mapping, default mappings table, environment variables, LiteLLM provider routing, and auth bypass details.
 
 <!-- Task 3: Environment Configuration and Connect Your Own Agents -->
 
 ## ⚙️ Environment Configuration
 
-Every configurable value lives in a single `.env` file at the monorepo root. No `.env` file is needed for the default Ollama setup — copy `.env.example` to `.env` only when you want to override defaults.
+Every configurable value lives in a single `.env` file at the monorepo root. No `.env` file is needed for the default Ollama setup - copy `.env.example` to `.env` only when you want to override defaults.
 
 <details>
 <summary><strong>Full Environment Variable Reference</strong> (click to expand)</summary>
@@ -154,26 +172,26 @@ Every configurable value lives in a single `.env` file at the monorepo root. No 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `LLM_PROVIDER` | Optional | `ollama` | LLM backend: `openai`, `anthropic`, `ollama`, or `vertexai` |
-| `OPENAI_API_KEY` | Conditional | — | Required when `LLM_PROVIDER=openai` |
-| `ANTHROPIC_API_KEY` | Conditional | — | Required when `LLM_PROVIDER=anthropic` |
-| `LLM_MODEL_OVERRIDE` | Optional | — | Force every agent to use this single model (ignores scenario `model_id`) |
-| `MODEL_MAP` | Optional | — | JSON object mapping scenario `model_id` → provider model name |
+| `OPENAI_API_KEY` | Conditional | - | Required when `LLM_PROVIDER=openai` |
+| `ANTHROPIC_API_KEY` | Conditional | - | Required when `LLM_PROVIDER=anthropic` |
+| `LLM_MODEL_OVERRIDE` | Optional | - | Force every agent to use this single model (ignores scenario `model_id`) |
+| `MODEL_MAP` | Optional | - | JSON object mapping scenario `model_id` → provider model name |
 
 #### Database
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `GOOGLE_CLOUD_PROJECT` | Cloud only | — | GCP project ID for Firestore and Vertex AI |
-| `FIRESTORE_EMULATOR_HOST` | Optional | — | Firestore emulator address (e.g. `localhost:8080`) for local testing |
+| `GOOGLE_CLOUD_PROJECT` | Cloud only | - | GCP project ID for Firestore and Vertex AI |
+| `FIRESTORE_EMULATOR_HOST` | Optional | - | Firestore emulator address (e.g. `localhost:8080`) for local testing |
 
 #### Frontend
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `NEXT_PUBLIC_SITE_URL` | Optional | `https://app.juntoai.org` | Canonical site URL for SEO and metadata |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Optional | — | Firebase API key for client-side Firestore |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Optional | — | Firebase project ID |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Optional | — | Firebase app ID |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Optional | - | Firebase API key for client-side Firestore |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Optional | - | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Optional | - | Firebase app ID |
 | `BACKEND_URL` | Optional | `http://localhost:8000` | Backend origin for server-side API proxy (never exposed to browser) |
 
 #### Backend
@@ -213,7 +231,7 @@ LLM_PROVIDER=ollama
 
 ### Force a Single Model for All Agents
 
-Use `LLM_MODEL_OVERRIDE` to make every agent use the same model — great for cost savings during development:
+Use `LLM_MODEL_OVERRIDE` to make every agent use the same model - great for cost savings during development:
 
 ```bash
 LLM_MODEL_OVERRIDE=gpt-4o-mini
@@ -223,7 +241,7 @@ When set, this overrides all `model_id` values in every scenario config. Remove 
 
 ## 🤖 Connect Your Own Agents
 
-Add a new negotiation scenario by dropping a single JSON file into `backend/app/scenarios/data/` — zero code changes. The orchestrator discovers it automatically on startup.
+Add a new negotiation scenario by dropping a single JSON file into `backend/app/scenarios/data/` - zero code changes. The orchestrator discovers it automatically on startup.
 
 ### Scenario Config Schema
 
@@ -247,7 +265,7 @@ Each entry in the `agents` array defines one AI agent:
 |-------|------|-------------|
 | `role` | string | Unique role identifier (e.g. `"Developer"`, `"CTO"`) |
 | `name` | string | Display name for the agent |
-| `type` | `"negotiator"` \| `"regulator"` \| `"observer"` | Agent type — controls output schema |
+| `type` | `"negotiator"` \| `"regulator"` \| `"observer"` | Agent type - controls output schema |
 | `persona_prompt` | string | System prompt defining the agent's personality and strategy |
 | `goals` | string[] | List of objectives the agent tries to achieve |
 | `budget` | `{min, max, target}` | Financial constraints (min ≤ max, all ≥ 0) |
@@ -359,13 +377,13 @@ AZURE_API_KEY=your-azure-key
 AZURE_API_BASE=https://your-resource.openai.azure.com/
 ```
 
-LiteLLM handles the provider-specific API formatting, auth, and model routing — your scenario configs stay unchanged.
+LiteLLM handles the provider-specific API formatting, auth, and model routing - your scenario configs stay unchanged.
 
 <!-- Task 4: Leaderboard, Developing with Kiro, Contributing, License -->
 
 ## 🏆 Leaderboard
 
-> **Coming Soon** — The agent leaderboard is on the roadmap. The infrastructure below describes how it will work.
+> **Coming Soon** - The agent leaderboard is on the roadmap. The infrastructure below describes how it will work.
 
 Run the same scenario with different agent configurations and compare results across four evaluation dimensions:
 
@@ -376,11 +394,11 @@ Run the same scenario with different agent configurations and compare results ac
 | **Humanization Quality** | Natural language fluency, strategic reasoning depth, persuasion techniques |
 | **Regulator Compliance** | Number of compliance warnings received (fewer = better) |
 
-**Want to compete?** Submit your agent configurations — scenario JSON files with custom `persona_prompt` values and `model_id` choices — by opening a PR to `backend/app/scenarios/data/`. See [Connect Your Own Agents](#-connect-your-own-agents) for the schema.
+**Want to compete?** Submit your agent configurations - scenario JSON files with custom `persona_prompt` values and `model_id` choices - by opening a PR to `backend/app/scenarios/data/`. See [Connect Your Own Agents](#-connect-your-own-agents) for the schema.
 
 ## 🛠️ Developing with Kiro
 
-[Kiro](https://kiro.dev) is the AI-powered IDE used to build JuntoAI A2A. Open the monorepo root in Kiro and it automatically reads the project context files — no manual configuration needed.
+[Kiro](https://kiro.dev) is the AI-powered IDE used to build JuntoAI A2A. Open the monorepo root in Kiro and it automatically reads the project context files - no manual configuration needed.
 
 ### `.kiro/` Directory Structure
 
@@ -406,15 +424,15 @@ Kiro reads these files automatically so AI assistance is tuned to the project's 
 
 Each numbered directory in `.kiro/specs/` represents a feature designed and built through Kiro's requirements-first process:
 
-- `080_a2a-local-battle-arena` — Docker Compose local mode with SQLite + LiteLLM
-- `100_structured-agent-memory` — Structured memory for agent state
-- `110_hybrid-agent-memory` — Hybrid memory combining structured and unstructured approaches
-- `120_world-class-readme-contributor-hub` — This README and contributor experience
-- `130_ai-scenario-builder` — AI-assisted scenario creation
+- `080_a2a-local-battle-arena` - Docker Compose local mode with SQLite + LiteLLM
+- `100_structured-agent-memory` - Structured memory for agent state
+- `110_hybrid-agent-memory` - Hybrid memory combining structured and unstructured approaches
+- `120_world-class-readme-contributor-hub` - This README and contributor experience
+- `130_ai-scenario-builder` - AI-assisted scenario creation
 
 ### Hooks
 
-The `.kiro/hooks/` directory contains automation hooks. Currently: `spec-release-notes.kiro.hook` — generates release notes when a spec is completed.
+The `.kiro/hooks/` directory contains automation hooks. Currently: `spec-release-notes.kiro.hook` - generates release notes when a spec is completed.
 
 ### Contributor Guidance
 
@@ -422,29 +440,29 @@ The `.kiro/hooks/` directory contains automation hooks. Currently: `spec-release
 - **Consistent AI assistance** → Steering files ensure every contributor gets the same context
 - **Automation** → Hooks handle repetitive tasks like release notes
 
-Kiro is recommended but not required. Contributors can use any IDE — Kiro just provides the richest AI-assisted experience for this repo thanks to the pre-configured context files.
+Kiro is recommended but not required. Contributors can use any IDE - Kiro just provides the richest AI-assisted experience for this repo thanks to the pre-configured context files.
 
 ## 🤝 Contributing
 
-We love contributions! Read the **[Contributing Guide](./CONTRIBUTING.md)** to get started — it covers the fork-and-PR workflow, local setup, test commands, and everything you need to open your first PR.
+We love contributions! Read the **[Contributing Guide](./CONTRIBUTING.md)** to get started - it covers the fork-and-PR workflow, local setup, test commands, and everything you need to open your first PR.
 
 All pull requests are automatically tested by GitHub Actions CI. Both backend (pytest) and frontend (Vitest) suites must pass with 70% coverage before merge.
 
 **Ways to contribute:**
 
-- **Scenario configs** — Add new negotiation scenarios (JSON-only, no code changes). See [Connect Your Own Agents](#-connect-your-own-agents).
-- **Bug reports** — Found something broken? Open an issue with reproduction steps.
-- **Feature proposals** — Have an idea? Open an issue describing the use case.
-- **Documentation** — Improve the README, add examples, fix typos.
-- **Agent strategies** — Share creative persona prompts and negotiation tactics.
+- **Scenario configs** - Add new negotiation scenarios (JSON-only, no code changes). See [Connect Your Own Agents](#-connect-your-own-agents).
+- **Bug reports** - Found something broken? Open an issue with reproduction steps.
+- **Feature proposals** - Have an idea? Open an issue describing the use case.
+- **Documentation** - Improve the README, add examples, fix typos.
+- **Agent strategies** - Share creative persona prompts and negotiation tactics.
 
 **Get involved:**
 
 - 🆕 **First contribution?** Browse [`good first issue`](https://github.com/Juntoai/a2a/issues?q=label%3A%22good+first+issue%22) for curated starter tasks.
-- 💬 **Join the community** — Ask questions and coordinate with other contributors on [WhatsApp](https://chat.whatsapp.com/CZblOXj7aV3LMSKCwSUxWR).
-- 📜 **Code of Conduct** — Please read our [Code of Conduct](./CODE_OF_CONDUCT.md). We're committed to a welcoming, inclusive community.
+- 💬 **Join the community** - Ask questions and coordinate with other contributors on [WhatsApp](https://chat.whatsapp.com/CZblOXj7aV3LMSKCwSUxWR).
+- 📜 **Code of Conduct** - Please read our [Code of Conduct](./CODE_OF_CONDUCT.md). We're committed to a welcoming, inclusive community.
 
-> Scenario contributions are JSON-only — drop a file in `backend/app/scenarios/data/` and open a PR. No code changes required.
+> Scenario contributions are JSON-only - drop a file in `backend/app/scenarios/data/` and open a PR. No code changes required.
 
 ## 📄 License
 
