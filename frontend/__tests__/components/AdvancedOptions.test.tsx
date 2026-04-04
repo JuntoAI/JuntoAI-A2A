@@ -158,12 +158,12 @@ describe("Per-Agent Memory Strategy Radio Group", () => {
     expect(radio).toBeInTheDocument();
   });
 
-  it("defaults the memory strategy to full_transcript in the modal", async () => {
+  it("defaults the memory strategy to structured in the modal", async () => {
     render(<ArenaPage />);
     await selectScenario();
     await openAdvancedConfig("Recruiter");
 
-    const radio = document.getElementById("memory-full_transcript") as HTMLInputElement;
+    const radio = document.getElementById("memory-structured") as HTMLInputElement;
     expect(radio).toBeChecked();
   });
 
@@ -194,7 +194,7 @@ describe("Per-Agent Memory Strategy Radio Group", () => {
         [],
         undefined,
         undefined,
-        ["Recruiter"],  // Only the Recruiter's role
+        ["Recruiter", "Candidate"],  // Both agents have structured memory (default)
         false,
         undefined,
       );
@@ -216,14 +216,13 @@ describe("Per-Agent Memory Strategy Radio Group", () => {
     render(<ArenaPage />);
     await selectScenario();
 
-    // Enable structured memory for Recruiter
+    // Change Recruiter to "no memory" (non-default)
     await openAdvancedConfig("Recruiter");
-    selectMemoryStrategy("structured");
+    selectMemoryStrategy("none");
     fireEvent.click(screen.getByRole("button", { name: /Save/i }));
 
-    // Verify indicator shows on the Recruiter card only
-    const memoryIndicators = screen.getAllByText("✦ Structured Memory");
-    expect(memoryIndicators).toHaveLength(1);
+    // Verify "No Memory" warning indicator shows on the Recruiter card
+    expect(screen.getByText("⚠ No Memory")).toBeInTheDocument();
 
     // Switch scenario
     const detail2: api.ArenaScenario = {
@@ -243,7 +242,9 @@ describe("Per-Agent Memory Strategy Radio Group", () => {
       expect(screen.getByText("Due Diligence")).toBeInTheDocument();
     });
 
-    // Memory indicator should be gone after scenario change
-    expect(screen.queryByText("✦ Structured Memory")).not.toBeInTheDocument();
+    // "No Memory" indicator should be gone — reset to default (structured)
+    expect(screen.queryByText("⚠ No Memory")).not.toBeInTheDocument();
+    // Default structured memory indicator should be present
+    expect(screen.getByText("✦ Structured Memory")).toBeInTheDocument();
   });
 });

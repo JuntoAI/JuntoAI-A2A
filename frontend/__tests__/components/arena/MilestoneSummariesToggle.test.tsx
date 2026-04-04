@@ -246,8 +246,8 @@ describe("MilestoneSummariesToggle (integration with ArenaPage)", () => {
     await openAdvancedConfig("Recruiter");
     const radio = document.getElementById("memory-structured_milestones") as HTMLInputElement;
     expect(radio).not.toBeChecked();
-    // full_transcript should be the default
-    const defaultRadio = document.getElementById("memory-full_transcript") as HTMLInputElement;
+    // structured should be the default
+    const defaultRadio = document.getElementById("memory-structured") as HTMLInputElement;
     expect(defaultRadio).toBeChecked();
   });
 

@@ -121,14 +121,19 @@ function ArenaPageContent() {
     [],
   );
 
-  // Derive structured memory roles and no-memory roles from memory strategies
-  const structuredMemoryRoles = Object.entries(memoryStrategies)
-    .filter(([, s]) => s === "structured" || s === "structured_milestones")
-    .map(([role]) => role);
+  // Derive structured memory roles and no-memory roles from memory strategies.
+  // Default strategy is "structured", so agents without an explicit strategy
+  // get structured memory enabled.
+  const allAgentRoles = scenarioDetail?.agents.map((a) => a.role) ?? [];
 
-  const noMemoryRoles = Object.entries(memoryStrategies)
-    .filter(([, s]) => s === "none")
-    .map(([role]) => role);
+  const structuredMemoryRoles = allAgentRoles.filter((role) => {
+    const strategy = memoryStrategies[role] ?? "structured";
+    return strategy === "structured" || strategy === "structured_milestones";
+  });
+
+  const noMemoryRoles = allAgentRoles.filter((role) => {
+    return memoryStrategies[role] === "none";
+  });
 
   const handleInitialize = useCallback(async () => {
     if (!email || !selectedScenarioId) return;
@@ -217,7 +222,7 @@ function ArenaPageContent() {
                   index={i}
                   hasCustomPrompt={!!customPrompts[agent.role]?.trim()}
                   modelOverride={modelOverrides[agent.role] ?? null}
-                  memoryStrategy={memoryStrategies[agent.role] ?? "full_transcript"}
+                  memoryStrategy={memoryStrategies[agent.role] ?? "structured"}
                   onAdvancedConfig={() =>
                     setAdvancedConfigAgent({
                       name: agent.name,
@@ -273,7 +278,7 @@ function ArenaPageContent() {
           availableModels={availableModels}
           initialCustomPrompt={customPrompts[advancedConfigAgent.role] ?? ""}
           initialModelOverride={modelOverrides[advancedConfigAgent.role] ?? null}
-          initialMemoryStrategy={memoryStrategies[advancedConfigAgent.role] ?? "full_transcript"}
+          initialMemoryStrategy={memoryStrategies[advancedConfigAgent.role] ?? "structured"}
           milestoneSummariesEnabled={milestoneSummariesEnabled}
           onMilestoneSummariesChange={handleMilestoneSummariesChange}
           onSave={(customPrompt, modelOverride, memoryStrategy) => {
