@@ -16,6 +16,7 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from app.orchestrator.agent_node import create_agent_node
+from app.orchestrator.confirmation_node import confirmation_node
 from app.orchestrator.milestone_generator import generate_milestones
 from app.orchestrator.stall_detector import detect_stall
 from app.orchestrator.state import NegotiationState
@@ -23,6 +24,7 @@ from app.orchestrator.state import NegotiationState
 logger = logging.getLogger(__name__)
 
 DISPATCHER_NODE = "dispatcher"
+CONFIRMATION_NODE = "confirmation"
 
 
 # ---------------------------------------------------------------------------
@@ -51,6 +53,9 @@ def build_graph(scenario_config: dict[str, Any]) -> CompiledStateGraph:
     # Dispatcher node
     graph.add_node(DISPATCHER_NODE, _dispatcher)
 
+    # Confirmation node
+    graph.add_node(CONFIRMATION_NODE, confirmation_node)
+
     # Entry point
     graph.set_entry_point(DISPATCHER_NODE)
 
@@ -58,9 +63,13 @@ def build_graph(scenario_config: dict[str, Any]) -> CompiledStateGraph:
     for role in unique_roles:
         graph.add_edge(role, DISPATCHER_NODE)
 
+    # Confirmation → dispatcher
+    graph.add_edge(CONFIRMATION_NODE, DISPATCHER_NODE)
+
     # Conditional edges from dispatcher
     route_map: dict[str, str] = {role: role for role in unique_roles}
     route_map["__end__"] = END
+    route_map[CONFIRMATION_NODE] = CONFIRMATION_NODE
     graph.add_conditional_edges(DISPATCHER_NODE, _route_dispatcher, route_map)
 
     return graph.compile()
@@ -81,6 +90,12 @@ async def _dispatcher(state: NegotiationState) -> dict[str, Any]:
     * If milestone generation is due → generate and merge summaries.
     * Otherwise → return ``{}`` (routing handled by ``_route_dispatcher``).
     """
+    # Handle confirmation resolution when all confirmations are in
+    if state["deal_status"] == "Confirming":
+        if not state.get("confirmation_pending", []):
+            return _resolve_confirmation(state)
+        return {}
+
     if state["deal_status"] != "Negotiating":
         return {}
 
@@ -96,8 +111,14 @@ async def _dispatcher(state: NegotiationState) -> dict[str, Any]:
         }
 
     if _check_agreement(state):
+        negotiator_roles = [
+            role for role, info in state["agent_states"].items()
+            if info.get("agent_type") == "negotiator"
+        ]
         return {
-            "deal_status": "Agreed",
+            "deal_status": "Confirming",
+            "confirmation_pending": negotiator_roles,
+            "closure_status": "",
             "current_offer": state["current_offer"],
             "turn_count": state["turn_count"],
             "warning_count": state["warning_count"],
@@ -142,6 +163,24 @@ async def _dispatcher(state: NegotiationState) -> dict[str, Any]:
     return delta
 
 
+def _resolve_confirmation(state: NegotiationState) -> dict[str, Any]:
+    """Resolve confirmation round results after all negotiators have responded."""
+    confirmations = [
+        e for e in state["history"]
+        if e.get("agent_type") == "confirmation"
+    ]
+
+    all_accepted = all(e["content"]["accept"] for e in confirmations)
+    any_conditions = any(e["content"].get("conditions", []) for e in confirmations)
+
+    if all_accepted and not any_conditions:
+        return {"deal_status": "Agreed", "closure_status": "Confirmed"}
+    elif not all_accepted:
+        return {"deal_status": "Negotiating", "closure_status": "Rejected"}
+    else:
+        return {"deal_status": "Negotiating", "closure_status": "Conditional"}
+
+
 def _should_generate_milestones(state: NegotiationState) -> bool:
     """Return True if milestone generation should be triggered this turn."""
     if not state.get("milestone_summaries_enabled", False):
@@ -159,6 +198,10 @@ def _route_dispatcher(state: NegotiationState) -> str:
     Separate from ``_dispatcher`` so that LangGraph can use this as a
     pure routing function on the conditional edge.
     """
+    if state["deal_status"] == "Confirming":
+        if state.get("confirmation_pending", []):
+            return CONFIRMATION_NODE
+        return "__end__"
     if state["deal_status"] != "Negotiating":
         return "__end__"
     return state["current_speaker"]

@@ -20,7 +20,7 @@ class NegotiationStateModel(BaseModel):
     turn_count: int = Field(default=0, ge=0)
     max_turns: int = Field(default=15, gt=0)
     current_speaker: str = Field(default="Buyer")
-    deal_status: Literal["Negotiating", "Agreed", "Blocked", "Failed"] = Field(
+    deal_status: Literal["Negotiating", "Agreed", "Blocked", "Failed", "Confirming"] = Field(
         default="Negotiating"
     )
     current_offer: float = Field(default=0.0, ge=0.0)
@@ -45,3 +45,5 @@ class NegotiationStateModel(BaseModel):
     sliding_window_size: int = Field(default=3, ge=1)
     milestone_interval: int = Field(default=4, ge=2)
     no_memory_roles: list[str] = Field(default_factory=list)
+    closure_status: str = Field(default="")
+    confirmation_pending: list[str] = Field(default_factory=list)
