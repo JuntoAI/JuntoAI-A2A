@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_SES_REGION: str = "us-east-1"
     SES_SENDER_EMAIL: str = "noreply@juntoai.org"
+    FRONTEND_URL: str = "http://localhost:3000"
 
     @property
     def cors_origins_list(self) -> list[str]:

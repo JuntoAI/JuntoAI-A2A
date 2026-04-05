@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from app.config import settings
@@ -209,14 +209,13 @@ async def update_profile(
 @router.post("/profile/{email}/verify-email")
 async def verify_email(
     email: str,
-    request: Request,
     profile_client=Depends(get_profile_client),
 ):
     """Generate a verification token and send a verification email."""
     verifier = EmailVerifier(profile_client)
 
-    # Derive the base URL for the verification link
-    base_url = str(request.base_url).rstrip("/")
+    # Use the configured frontend URL for verification links
+    base_url = settings.FRONTEND_URL.rstrip("/")
 
     try:
         token = await verifier.generate_and_send_verification(email, base_url)
