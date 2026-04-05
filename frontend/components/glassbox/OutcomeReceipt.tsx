@@ -187,7 +187,7 @@ export default function OutcomeReceipt({
         )}
 
         {/* Evaluation Score */}
-        {finalSummary.evaluation && typeof finalSummary.evaluation === "object" && (
+        {typeof finalSummary.evaluation === "object" && finalSummary.evaluation !== null && (
           <div className="border-t border-gray-200 pt-4 mb-6" data-testid="evaluation-section">
             <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
               Negotiation Evaluation
