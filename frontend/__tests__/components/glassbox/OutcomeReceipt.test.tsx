@@ -200,4 +200,306 @@ describe("OutcomeReceipt", () => {
     fireEvent.click(screen.getByTestId("reset-variables-btn"));
     expect(mockPush).toHaveBeenCalledWith("/arena");
   });
+
+  // -------------------------------------------------------------------------
+  // Evaluation section (spec 170_negotiation-evaluator)
+  // -------------------------------------------------------------------------
+
+  describe("Evaluation section", () => {
+    const baseEvaluation = {
+      overall_score: 7,
+      dimensions: {
+        fairness: 7,
+        mutual_respect: 8,
+        value_creation: 6,
+        satisfaction: 7,
+      },
+      verdict: "A solid deal both parties can live with.",
+      participant_interviews: [
+        {
+          role: "Buyer",
+          satisfaction_rating: 8,
+          felt_respected: true,
+          is_win_win: true,
+          criticism: "Would have liked a lower price.",
+        },
+        {
+          role: "Seller",
+          satisfaction_rating: 6,
+          felt_respected: true,
+          is_win_win: true,
+          criticism: "",
+        },
+      ],
+    };
+
+    it("does not render evaluation section when evaluation is absent", () => {
+      render(<OutcomeReceipt {...defaultProps} />);
+      expect(screen.queryByTestId("evaluation-section")).not.toBeInTheDocument();
+    });
+
+    it("does not render evaluation section when evaluation is null", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{ ...defaultProps.finalSummary, evaluation: null }}
+        />,
+      );
+      expect(screen.queryByTestId("evaluation-section")).not.toBeInTheDocument();
+    });
+
+    it("renders overall score, dimensions, verdict, and participants when evaluation is present", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{ ...defaultProps.finalSummary, evaluation: baseEvaluation }}
+        />,
+      );
+
+      // Section heading
+      expect(screen.getByTestId("evaluation-section")).toBeInTheDocument();
+
+      // Overall score
+      const scoreBlock = screen.getByTestId("evaluation-score");
+      expect(scoreBlock).toHaveTextContent("7");
+      expect(scoreBlock).toHaveTextContent("/ 10");
+
+      // Dimensions — 4 rows with name + value
+      const dims = screen.getByTestId("evaluation-dimensions");
+      expect(dims).toHaveTextContent("fairness");
+      expect(dims).toHaveTextContent("7/10");
+      expect(dims).toHaveTextContent("mutual respect");
+      expect(dims).toHaveTextContent("8/10");
+      expect(dims).toHaveTextContent("value creation");
+      expect(dims).toHaveTextContent("6/10");
+      expect(dims).toHaveTextContent("satisfaction");
+
+      // Verdict
+      expect(screen.getByTestId("evaluation-verdict")).toHaveTextContent(
+        "A solid deal both parties can live with.",
+      );
+
+      // Participants
+      const participants = screen.getByTestId("evaluation-participants");
+      expect(participants).toHaveTextContent("Buyer");
+      expect(participants).toHaveTextContent("8/10");
+      expect(participants).toHaveTextContent("Seller");
+      expect(participants).toHaveTextContent("6/10");
+      expect(participants).toHaveTextContent("Would have liked a lower price.");
+    });
+
+    it("applies emerald color for overall score >= 9", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: { ...baseEvaluation, overall_score: 9 },
+          }}
+        />,
+      );
+      const scoreValue = screen
+        .getByTestId("evaluation-score")
+        .querySelector("span");
+      expect(scoreValue?.className).toContain("text-emerald-400");
+    });
+
+    it("applies green color for overall score 7-8", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: { ...baseEvaluation, overall_score: 7 },
+          }}
+        />,
+      );
+      const scoreValue = screen
+        .getByTestId("evaluation-score")
+        .querySelector("span");
+      expect(scoreValue?.className).toContain("text-green-500");
+    });
+
+    it("applies amber color for overall score 4-6", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: { ...baseEvaluation, overall_score: 5 },
+          }}
+        />,
+      );
+      const scoreValue = screen
+        .getByTestId("evaluation-score")
+        .querySelector("span");
+      expect(scoreValue?.className).toContain("text-amber-500");
+    });
+
+    it("applies red color for overall score below 4", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: { ...baseEvaluation, overall_score: 2 },
+          }}
+        />,
+      );
+      const scoreValue = screen
+        .getByTestId("evaluation-score")
+        .querySelector("span");
+      expect(scoreValue?.className).toContain("text-red-500");
+    });
+
+    it("renders score as 0 when overall_score is missing", () => {
+      const { dimensions, verdict, participant_interviews } = baseEvaluation;
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: { dimensions, verdict, participant_interviews },
+          }}
+        />,
+      );
+      expect(screen.getByTestId("evaluation-score")).toHaveTextContent("0");
+    });
+
+    it("does not render dimensions grid when dimensions is absent", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: {
+              overall_score: 7,
+              verdict: "No dimensions provided.",
+              participant_interviews: [],
+            },
+          }}
+        />,
+      );
+      expect(screen.queryByTestId("evaluation-dimensions")).not.toBeInTheDocument();
+    });
+
+    it("does not render verdict when verdict is absent", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: {
+              overall_score: 7,
+              dimensions: baseEvaluation.dimensions,
+              participant_interviews: [],
+            },
+          }}
+        />,
+      );
+      expect(screen.queryByTestId("evaluation-verdict")).not.toBeInTheDocument();
+    });
+
+    it("does not render participants list when interviews array is empty", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: {
+              ...baseEvaluation,
+              participant_interviews: [],
+            },
+          }}
+        />,
+      );
+      expect(screen.queryByTestId("evaluation-participants")).not.toBeInTheDocument();
+    });
+
+    it("does not render participants list when interviews is undefined", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: {
+              overall_score: 7,
+              dimensions: baseEvaluation.dimensions,
+              verdict: "No interviews.",
+            },
+          }}
+        />,
+      );
+      expect(screen.queryByTestId("evaluation-participants")).not.toBeInTheDocument();
+    });
+
+    it("applies correct color coding per participant satisfaction rating", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: {
+              ...baseEvaluation,
+              participant_interviews: [
+                { role: "HighSat", satisfaction_rating: 9, criticism: "" },
+                { role: "MidSat", satisfaction_rating: 5, criticism: "" },
+                { role: "LowSat", satisfaction_rating: 2, criticism: "" },
+              ],
+            },
+          }}
+        />,
+      );
+      const participants = screen.getByTestId("evaluation-participants");
+      const spans = participants.querySelectorAll("span.font-semibold");
+      expect(spans[0].className).toContain("text-green-600");
+      expect(spans[1].className).toContain("text-amber-600");
+      expect(spans[2].className).toContain("text-red-600");
+    });
+
+    it("applies correct color coding per dimension value", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: {
+              ...baseEvaluation,
+              dimensions: { high: 9, mid: 5, low: 2 },
+            },
+          }}
+        />,
+      );
+      // The fill bars have inline style width (the track has no style attr)
+      const bars = Array.from(
+        screen
+          .getByTestId("evaluation-dimensions")
+          .querySelectorAll<HTMLDivElement>("div.h-2.rounded-full"),
+      ).filter((el) => el.style.width !== "");
+      expect(bars[0].className).toContain("bg-green-500");
+      expect(bars[1].className).toContain("bg-amber-400");
+      expect(bars[2].className).toContain("bg-red-400");
+    });
+
+    it("truncates long criticism to 80 chars in participant display", () => {
+      const longCriticism = "a".repeat(150);
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          finalSummary={{
+            ...defaultProps.finalSummary,
+            evaluation: {
+              ...baseEvaluation,
+              participant_interviews: [
+                { role: "Verbose", satisfaction_rating: 5, criticism: longCriticism },
+              ],
+            },
+          }}
+        />,
+      );
+      const participants = screen.getByTestId("evaluation-participants");
+      expect(participants).toHaveTextContent("a".repeat(80));
+      expect(participants).not.toHaveTextContent("a".repeat(81));
+    });
+  });
 });
