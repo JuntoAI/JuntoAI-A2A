@@ -37,6 +37,7 @@ def to_pydantic(state: NegotiationState) -> NegotiationStateModel:
         sliding_window_size=state.get("sliding_window_size", 3),
         milestone_interval=state.get("milestone_interval", 4),
         no_memory_roles=state.get("no_memory_roles", []),
+        agent_calls=state.get("agent_calls", []),
         closure_status=state.get("closure_status", ""),
         confirmation_pending=state.get("confirmation_pending", []),
     )
@@ -77,6 +78,7 @@ def from_pydantic(model: NegotiationStateModel) -> NegotiationState:
         sliding_window_size=model.sliding_window_size,
         milestone_interval=model.milestone_interval,
         no_memory_roles=model.no_memory_roles,
+        agent_calls=model.agent_calls,
         closure_status=model.closure_status,
         confirmation_pending=model.confirmation_pending,
     )

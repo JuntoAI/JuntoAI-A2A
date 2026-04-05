@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
+import time
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
@@ -16,7 +18,7 @@ from pydantic import BaseModel
 
 from app.orchestrator import model_router
 from app.orchestrator.exceptions import AgentOutputParseError
-from app.orchestrator.outputs import AgentMemory, NegotiatorOutput, ObserverOutput, RegulatorOutput
+from app.orchestrator.outputs import AgentCallRecord, AgentMemory, NegotiatorOutput, ObserverOutput, RegulatorOutput
 from app.orchestrator.state import NegotiationState
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,20 @@ def _extract_text_from_content(content: Any) -> str:
         if parts:
             return "\n".join(parts)
     return str(content)
+
+def _extract_tokens(response: AIMessage) -> tuple[int, int]:
+    """Extract (input_tokens, output_tokens) from response.usage_metadata.
+
+    Handles dict, object-with-attributes, and ``None`` cases.
+    Returns ``(0, 0)`` when metadata is absent or unreadable.
+    """
+    usage = getattr(response, "usage_metadata", None)
+    if usage is None:
+        return 0, 0
+    if isinstance(usage, dict):
+        return usage.get("input_tokens", 0), usage.get("output_tokens", 0)
+    return getattr(usage, "input_tokens", 0), getattr(usage, "output_tokens", 0)
+
 
 # Maps agent type → Pydantic output model class
 _OUTPUT_MODEL_MAP: dict[str, type] = {
@@ -177,17 +193,34 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
         # 3. Build prompt
         messages = _build_messages(agent_config, effective_state)
 
-        # 4. Invoke LLM
+        # 4. Invoke LLM — INSTRUMENTED
+        call_records: list[dict[str, Any]] = []
+        tokens_used = 0
+
+        t0 = time.perf_counter()
         response: AIMessage = model.invoke(messages)
+        first_latency_ms = int((time.perf_counter() - t0) * 1000)
         response_text = _extract_text_from_content(response.content)
 
-        # Track token usage
-        tokens_used = 0
-        usage = getattr(response, "usage_metadata", None)
-        if usage and isinstance(usage, dict):
-            tokens_used += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-        elif usage:
-            tokens_used += getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)
+        # Extract tokens via helper (replaces inline extraction)
+        input_tok, output_tok = _extract_tokens(response)
+        tokens_used = input_tok + output_tok
+
+        # Record telemetry for first call
+        try:
+            call_records.append(AgentCallRecord(
+                agent_role=agent_role,
+                agent_type=agent_type,
+                model_id=effective_model_id,
+                latency_ms=first_latency_ms,
+                input_tokens=input_tok,
+                output_tokens=output_tok,
+                error=False,
+                turn_number=effective_state.get("turn_count", 0),
+                timestamp=datetime.now(timezone.utc).isoformat(),
+            ).model_dump())
+        except Exception:
+            logger.warning("Telemetry capture failed for first call of agent '%s'", agent_role, exc_info=True)
 
         # 5. Parse output (retry once on failure)
         logger.debug(
@@ -207,19 +240,40 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
                 messages.append(AIMessage(content=response_text))
             messages.append(HumanMessage(content="Your previous response was not valid JSON. Please respond with ONLY valid JSON matching the schema."))
             try:
+                t0_retry = time.perf_counter()
                 response = model.invoke(messages)
+                retry_latency_ms = int((time.perf_counter() - t0_retry) * 1000)
                 response_text = _extract_text_from_content(response.content)
                 logger.debug(
                     "Retry LLM response for agent '%s': %s",
                     agent_name, response_text[:500],
                 )
-                # Add retry tokens
-                usage = getattr(response, "usage_metadata", None)
-                if usage and isinstance(usage, dict):
-                    tokens_used += usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-                elif usage:
-                    tokens_used += getattr(usage, "input_tokens", 0) + getattr(usage, "output_tokens", 0)
-                parsed = _parse_output(response_text, agent_type, agent_name)
+                # Extract retry tokens
+                retry_input_tok, retry_output_tok = _extract_tokens(response)
+                tokens_used += retry_input_tok + retry_output_tok
+
+                retry_error = False
+                try:
+                    parsed = _parse_output(response_text, agent_type, agent_name)
+                except AgentOutputParseError:
+                    parsed = _fallback_output(agent_type, agent_name, effective_state, agent_role)
+                    retry_error = True
+
+                # Record telemetry for retry call
+                try:
+                    call_records.append(AgentCallRecord(
+                        agent_role=agent_role,
+                        agent_type=agent_type,
+                        model_id=effective_model_id,
+                        latency_ms=retry_latency_ms,
+                        input_tokens=retry_input_tok,
+                        output_tokens=retry_output_tok,
+                        error=retry_error,
+                        turn_number=effective_state.get("turn_count", 0),
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    ).model_dump())
+                except Exception:
+                    logger.warning("Telemetry capture failed for retry call of agent '%s'", agent_role, exc_info=True)
             except Exception as retry_exc:
                 logger.warning(
                     "Retry also failed for agent '%s': %s. "
@@ -227,6 +281,21 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
                     agent_name, retry_exc, len(response_text), response_text[:500],
                 )
                 parsed = _fallback_output(agent_type, agent_name, effective_state, agent_role)
+                # Record failed retry with error=True
+                try:
+                    call_records.append(AgentCallRecord(
+                        agent_role=agent_role,
+                        agent_type=agent_type,
+                        model_id=effective_model_id,
+                        latency_ms=0,
+                        input_tokens=0,
+                        output_tokens=0,
+                        error=True,
+                        turn_number=effective_state.get("turn_count", 0),
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                    ).model_dump())
+                except Exception:
+                    logger.warning("Telemetry capture failed for fallback of agent '%s'", agent_role, exc_info=True)
 
         # 6. Build state delta (uses effective_state so turn_number is correct)
         state_delta = _update_state(parsed, agent_type, agent_role, effective_state)
@@ -240,6 +309,7 @@ def create_agent_node(agent_role: str) -> Callable[[NegotiationState], dict[str,
         # nodes and is present in the final state for transcript generation.
         merged["turn_count"] = effective_state.get("turn_count", state.get("turn_count", 0))
         merged["total_tokens_used"] = state.get("total_tokens_used", 0) + tokens_used
+        merged["agent_calls"] = call_records
         return merged
 
     return _node

@@ -28,6 +28,20 @@ class ObserverOutput(BaseModel):
     recommendation: str = ""
 
 
+class AgentCallRecord(BaseModel):
+    """Per-LLM-call telemetry record captured during agent node execution."""
+
+    agent_role: str
+    agent_type: str
+    model_id: str
+    latency_ms: int = Field(ge=0)
+    input_tokens: int = Field(default=0, ge=0)
+    output_tokens: int = Field(default=0, ge=0)
+    error: bool = Field(default=False)
+    turn_number: int = Field(ge=0)
+    timestamp: str
+
+
 class ConfirmationOutput(BaseModel):
     """Structured output from a negotiator during the confirmation round."""
 
