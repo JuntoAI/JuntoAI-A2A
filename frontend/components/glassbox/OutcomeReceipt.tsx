@@ -292,7 +292,7 @@ export default function OutcomeReceipt({
             </p>
             {finalSummary.ai_tokens_used != null && Number(finalSummary.ai_tokens_used) > 0 && (
               <p className="text-sm font-medium text-gray-900">
-                AI Tokens: {Number(finalSummary.ai_tokens_used).toLocaleString()} ({Math.max(1, Math.ceil(Number(finalSummary.ai_tokens_used) / 1000))} credits used)
+                AI Tokens: {Number(finalSummary.ai_tokens_used).toLocaleString("en-US")} ({Math.max(1, Math.ceil(Number(finalSummary.ai_tokens_used) / 1000))} credits used)
               </p>
             )}
           </div>

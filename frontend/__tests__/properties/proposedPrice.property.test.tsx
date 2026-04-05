@@ -44,7 +44,7 @@ describe("Property 12: Proposed price rendering in Chat Panel", () => {
           expect(badge).toBeInTheDocument();
 
           // Badge must contain the formatted price value
-          const formattedPrice = proposedPrice.toLocaleString();
+          const formattedPrice = proposedPrice.toLocaleString("en-US");
           expect(badge.textContent).toContain(formattedPrice);
 
           // Badge should have highlight styling (blue background)
