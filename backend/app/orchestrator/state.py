@@ -43,6 +43,8 @@ class NegotiationState(TypedDict):
     milestone_interval: int
     no_memory_roles: list[str]
     agent_calls: Annotated[list[dict[str, Any]], add]
+    closure_status: str
+    confirmation_pending: list[str]
 
 
 def create_initial_state(
@@ -148,4 +150,6 @@ def create_initial_state(
         milestone_interval=milestone_interval,
         no_memory_roles=list(no_memory_roles or []),
         agent_calls=[],
+        closure_status="",
+        confirmation_pending=[],
     )

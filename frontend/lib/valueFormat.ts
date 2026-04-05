@@ -21,12 +21,12 @@ export function formatValue(
 ): string {
   switch (format) {
     case "currency":
-      return `€${value.toLocaleString()}`;
+      return `€${value.toLocaleString("en-US")}`;
     case "time_from_22":
       return minutesFrom22ToTime(value);
     case "percent":
       return `${Math.round(value)}%`;
     case "number":
-      return value.toLocaleString();
+      return value.toLocaleString("en-US");
   }
 }

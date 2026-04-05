@@ -9,6 +9,29 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Negotiation Evaluator",
+    specId: "170",
+    date: "2026-04-05",
+    items: [
+      "Deal closure protocol: price convergence triggers a Confirmation Round — each negotiator explicitly accepts or rejects proposed terms",
+      "ConfirmationOutput Pydantic V2 model with accept, final_statement, conditions — parse retry + fallback rejection on invalid JSON",
+      "deal_status = Confirming state with closure_status and confirmation_pending fields on NegotiationState",
+      "Confirmation resolution: all accept + no conditions → Confirmed, any reject → resume Negotiating, conditions → resume Negotiating",
+      "Confirmation node runs as LangGraph node without incrementing turn_count; final_statement streamed as agent_message SSE events",
+      "Post-negotiation Evaluator Agent: standalone async generator running after run_negotiation(), before negotiation_complete SSE event",
+      "Independent Evaluation Interview per negotiator: 5 probing questions on satisfaction, respect, win-win, criticism, and self-rated score",
+      "EvaluationReport: per-participant interviews, four Score Dimensions (fairness, mutual_respect, value_creation, satisfaction), overall score 1-10, verdict",
+      "Anti-rubber-stamp scoring: default 5, cap at 6 if dissatisfaction, penalize simple splits by 2 points, reserve 9-10 for genuine enthusiasm",
+      "Cross-referencing: scoring prompt includes objective deal metrics (final price vs budget) to flag inconsistencies",
+      "evaluation_interview and evaluation_complete SSE event types for real-time Glass Box streaming",
+      "Configurable evaluator model via evaluator_config on ArenaScenario — defaults to first negotiator's model_id",
+      "Outcome Receipt: prominent X / 10 score with color coding (red/amber/green), dimension bars, verdict, per-participant satisfaction",
+      "Graceful degradation: evaluator disabled or failure → existing outcome layout, negotiation_complete always emitted",
+      "N-agent compatible: confirmation round and evaluator iterate over all negotiator agents from scenario config",
+      "Property tests (11 Hypothesis properties): model round-trip, convergence, resolution determinism, interview isolation, scoring metrics",
+    ],
+  },
+  {
     title: "Per-Model Telemetry",
     specId: "145",
     date: "2026-04-05",

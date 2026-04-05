@@ -69,7 +69,7 @@ export function buildTranscript(
     lines.push(`Time Elapsed: ${elapsedSec}s`);
     if (outcome.tokensUsed != null) {
       const credits = Math.max(1, Math.ceil(outcome.tokensUsed / 1000));
-      lines.push(`AI Tokens: ${outcome.tokensUsed.toLocaleString()} (${credits} credits used)`);
+      lines.push(`AI Tokens: ${outcome.tokensUsed.toLocaleString("en-US")} (${credits} credits used)`);
     }
     lines.push("");
   }

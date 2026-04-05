@@ -6,6 +6,28 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Negotiation Evaluator (Spec 170) — 2026-04-05
+
+- Deal closure protocol: price convergence triggers a Confirmation_Round instead of immediately marking "Agreed" — each negotiator explicitly accepts or rejects the proposed terms
+- `ConfirmationOutput` Pydantic V2 model: `accept` (bool), `final_statement` (str), `conditions` (list[str]) with parse retry + fallback rejection
+- `deal_status = "Confirming"` state with `closure_status` and `confirmation_pending` fields on NegotiationState
+- Confirmation resolution: all accept + no conditions → Confirmed, any reject → resume Negotiating, all accept + conditions → resume Negotiating
+- Confirmation node runs as a LangGraph node that does NOT increment `turn_count`; final_statement streamed as `agent_message` SSE events
+- Post-negotiation Evaluator Agent ("JuntoAI Evaluator"): standalone async generator running AFTER `run_negotiation()` completes, BEFORE `negotiation_complete` SSE event
+- Independent Evaluation_Interview per negotiator: 5 probing questions on satisfaction, respect, win-win perception, criticism, and self-rated score (1-10)
+- `EvaluationInterview` model: `feels_served`, `felt_respected`, `is_win_win`, `criticism`, `satisfaction_rating` with parse retry + neutral fallback (rating=5)
+- `EvaluationReport` model: per-participant interviews, four Score_Dimensions (fairness, mutual_respect, value_creation, satisfaction — each 1-10), overall_score (1-10), verdict
+- Anti-rubber-stamp scoring: default 5, cap at 6 if any dissatisfaction, penalize simple price splits by 2 points, reserve 9-10 for genuine enthusiasm + novel value creation
+- Cross-referencing: scoring prompt includes objective deal metrics (final price vs each agent's target/budget) to flag inconsistencies
+- Interview isolation: no participant sees other participants' responses
+- `evaluation_interview` and `evaluation_complete` SSE event types for real-time Glass Box streaming
+- Configurable evaluator model via `evaluator_config` on ArenaScenario (model_id, fallback_model_id, enabled) — defaults to first negotiator's model_id
+- Evaluator respects `LLM_MODEL_OVERRIDE` and `MODEL_MAP` env vars for local mode model routing
+- Outcome Receipt extended: prominent "X / 10" score with color coding (1-3 red, 4-6 amber, 7-8 green, 9-10 bright green), dimension progress bars, verdict summary, per-participant satisfaction
+- Graceful degradation: evaluator disabled or failure → existing outcome layout, `negotiation_complete` always emitted
+- N-agent compatible: confirmation round and evaluator iterate over all `type == "negotiator"` agents from scenario config — no hardcoded role names
+- Property tests (11 Hypothesis properties): model round-trip, convergence triggers Confirming, confirmation_pending correctness, resolution determinism, history entries, interview count/isolation, prompt context, model resolution, scoring metrics, confirmation prompt terms
+
 ## Per-Model Telemetry (Spec 145) — 2026-04-05
 
 - `AgentCallRecord` Pydantic V2 model capturing `agent_role`, `agent_type`, `model_id`, `latency_ms`, `input_tokens`, `output_tokens`, `error`, `turn_number`, and `timestamp` per LLM invocation

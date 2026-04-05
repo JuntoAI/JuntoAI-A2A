@@ -27,6 +27,7 @@ vi.mock("@/context/SessionContext", () => ({
   useSession: () => ({
     email: "user@test.com",
     tokenBalance: 42,
+    dailyLimit: 100,
     lastResetDate: "2025-01-01",
     isAuthenticated: true,
     login: vi.fn(),

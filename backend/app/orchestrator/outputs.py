@@ -42,6 +42,34 @@ class AgentCallRecord(BaseModel):
     timestamp: str
 
 
+class ConfirmationOutput(BaseModel):
+    """Structured output from a negotiator during the confirmation round."""
+
+    accept: bool
+    final_statement: str = Field(..., min_length=1)
+    conditions: list[str] = Field(default_factory=list)
+
+
+class EvaluationInterview(BaseModel):
+    """Structured output from a single participant's post-negotiation interview."""
+
+    feels_served: bool
+    felt_respected: bool
+    is_win_win: bool
+    criticism: str
+    satisfaction_rating: int = Field(..., ge=1, le=10)
+
+
+class EvaluationReport(BaseModel):
+    """Aggregated evaluation report with dimensional scores and verdict."""
+
+    participant_interviews: list[dict[str, Any]]
+    dimensions: dict[str, int]
+    overall_score: int = Field(..., ge=1, le=10)
+    verdict: str
+    deal_status: str
+
+
 class AgentMemory(BaseModel):
     """Structured per-agent memory for tracking negotiation state across turns."""
 

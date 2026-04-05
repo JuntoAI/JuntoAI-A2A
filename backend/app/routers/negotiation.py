@@ -17,10 +17,13 @@ from app.middleware.sse_limiter import SSEConnectionTracker
 from app.models.events import (
     AgentMessageEvent,
     AgentThoughtEvent,
+    EvaluationCompleteEvent,
+    EvaluationInterviewEvent,
     NegotiationCompleteEvent,
     NegotiationStallEvent,
     StreamErrorEvent,
 )
+from app.orchestrator.evaluator import run_evaluation
 from app.models.negotiation import NegotiationStateModel
 from app.orchestrator import model_router
 from app.orchestrator.graph import run_negotiation
@@ -527,6 +530,18 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
         turn_number = state.get("turn_count", 0)
         content = entry.get("content", {})
 
+        # Handle confirmation entries — emit final_statement as public message
+        if agent_type == "confirmation":
+            final_statement = content.get("final_statement", "")
+            if final_statement:
+                events.append(AgentMessageEvent(
+                    event_type="agent_message",
+                    agent_name=role,
+                    public_message=final_statement,
+                    turn_number=turn_number,
+                ))
+            continue
+
         # Thought event (inner_thought for negotiators, reasoning for regulators,
         # observation for observers)
         thought_text = (
@@ -558,7 +573,7 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
                 msg.status = content["status"]
             events.append(msg)
 
-        # Check for terminal state
+        # Check for terminal state (Confirming is NOT terminal)
         deal_status = state.get("deal_status", "Negotiating")
         if deal_status in ("Agreed", "Blocked", "Failed"):
             summary: dict = {
@@ -746,6 +761,9 @@ async def stream_negotiation(
         try:
             async with asyncio.timeout(timeout):
                 accumulated_history: list[dict] = []
+                held_complete_event: NegotiationCompleteEvent | None = None
+                last_terminal_state: dict | None = None
+
                 async for snapshot in run_negotiation(initial_state, scenario_config):
                     # Accumulate history and state from each snapshot delta
                     for _node, s in snapshot.items():
@@ -768,17 +786,49 @@ async def stream_negotiation(
                                 final_state["agent_states"] = s["agent_states"]
                     final_state["history"] = accumulated_history
                     events = _snapshot_to_events(snapshot, session_id, accumulated_history)
-                    # Track tokens from snapshot state
+                    # Track tokens and terminal state from snapshot
                     for _node, s in snapshot.items():
                         if isinstance(s, dict):
                             ai_tokens_used = max(ai_tokens_used, s.get("total_tokens_used", 0))
+                            if s.get("deal_status") in ("Agreed", "Blocked", "Failed"):
+                                last_terminal_state = s
                     for event in events:
-                        is_terminal = isinstance(event, (NegotiationCompleteEvent,))
+                        if isinstance(event, NegotiationCompleteEvent):
+                            # Hold back — we'll emit after evaluation
+                            held_complete_event = event
+                            continue
                         json_data = event.model_dump_json()
-                        eid = await event_buffer.append(session_id, json_data, is_terminal=is_terminal)
+                        eid = await event_buffer.append(session_id, json_data)
                         yield format_sse_event(event, event_id=eid)
-                        if is_terminal:
-                            return
+
+                # Run evaluation if enabled (between negotiation end and complete event)
+                if held_complete_event is not None:
+                    try:
+                        evaluator_config = scenario_config.get("evaluator_config")
+                        evaluator_enabled = evaluator_config is None or evaluator_config.get("enabled", True)
+                        if evaluator_enabled and last_terminal_state is not None:
+                            terminal_for_eval = {
+                                **(last_terminal_state or {}),
+                                "history": accumulated_history,
+                            }
+                            evaluation_report = None
+                            async for eval_event in run_evaluation(terminal_for_eval, scenario_config):
+                                json_data = eval_event.model_dump_json()
+                                eid = await event_buffer.append(session_id, json_data)
+                                yield format_sse_event(eval_event, event_id=eid)
+                                if isinstance(eval_event, EvaluationCompleteEvent):
+                                    evaluation_report = eval_event.model_dump()
+                            # Attach evaluation to the held-back complete event
+                            if evaluation_report:
+                                held_complete_event.final_summary["evaluation"] = evaluation_report
+                    except Exception:
+                        logger.exception("Evaluation failed for session %s", session_id)
+
+                    # NOW emit the held-back NegotiationCompleteEvent
+                    json_data = held_complete_event.model_dump_json()
+                    eid = await event_buffer.append(session_id, json_data, is_terminal=True)
+                    yield format_sse_event(held_complete_event, event_id=eid)
+                    return
         except TimeoutError:
             final_state["deal_status"] = "Failed"
             timeout_event = NegotiationCompleteEvent(
