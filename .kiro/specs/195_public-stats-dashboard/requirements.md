@@ -15,6 +15,8 @@ Public-facing statistics dashboard for the JuntoAI A2A Protocol Sandbox. The Sta
 - **Simulation**: A single negotiation session from start to terminal state (Agreed, Blocked, or Failed)
 - **Active_Simulation**: A negotiation session currently in "Negotiating" status
 - **Footer**: The shared site-wide footer component rendered on every page
+- **Custom_Scenario**: A user-created ArenaScenario stored in the Firestore sub-collection `profiles/{email}/custom_scenarios` (from Spec 130 — AI Scenario Builder)
+- **Custom_Agent_Session**: A negotiation session where at least one agent role was overridden with an external endpoint URL via the BYOA flow (from Spec 230 — Bring Your Own Agent)
 
 ## Requirements
 
@@ -166,3 +168,27 @@ Public-facing statistics dashboard for the JuntoAI A2A Protocol Sandbox. The Sta
 2. WHEN a negotiation session completes, THE Session_Store SHALL record an `updated_at` timestamp in UTC
 3. THE Session_Store SHALL persist the `total_tokens_used`, `deal_status`, `scenario_id`, `turn_count`, and agent `model_id` values for each session
 4. THE Stats_API SHALL derive all metrics from data already persisted in the Session_Store without requiring additional tracking tables
+
+### Requirement 15: Custom Scenario Creation Metrics
+
+**User Story:** As a visitor, I want to see how many custom scenarios the community has created, so that I can gauge how actively users are building their own negotiation content.
+
+#### Acceptance Criteria
+
+1. THE Stats_Dashboard SHALL display the total number of Custom_Scenarios created across all users today (UTC)
+2. THE Stats_Dashboard SHALL display the total number of Custom_Scenarios created across all users in the last 7 days
+3. THE Stats_Dashboard SHALL display the cumulative total of Custom_Scenarios that exist on the platform (all time)
+4. THE Stats_API SHALL compute custom scenario counts by querying the `custom_scenarios` sub-collections across all profile documents, using the `created_at` timestamp for Time_Window filtering
+5. THE Stats_API SHALL include custom scenario counts in the existing `/api/v1/stats` JSON response alongside the other metrics
+
+### Requirement 16: Custom Agent Usage Metrics
+
+**User Story:** As a visitor, I want to see how many simulations used community-built external agents, so that I can understand how actively developers are bringing their own agents to the platform.
+
+#### Acceptance Criteria
+
+1. THE Stats_Dashboard SHALL display the total number of Custom_Agent_Sessions started today (UTC)
+2. THE Stats_Dashboard SHALL display the total number of Custom_Agent_Sessions started in the last 7 days
+3. THE Stats_Dashboard SHALL display the cumulative total of Custom_Agent_Sessions across all time
+4. THE Stats_API SHALL identify Custom_Agent_Sessions by checking for the presence of `endpoint_overrides` in the session document (recorded per Spec 230, Requirement 2, Criterion 6)
+5. THE Stats_API SHALL include custom agent session counts in the existing `/api/v1/stats` JSON response alongside the other metrics
