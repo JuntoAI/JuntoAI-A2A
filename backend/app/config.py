@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
     AWS_SES_REGION: str = "us-east-1"
-    SES_SENDER_EMAIL: str = "noreply@juntoai.com"
+    SES_SENDER_EMAIL: str = "noreply@juntoai.org"
 
     @property
     def cors_origins_list(self) -> list[str]:
