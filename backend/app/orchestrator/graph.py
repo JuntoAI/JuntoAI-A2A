@@ -44,6 +44,15 @@ def build_graph(scenario_config: dict[str, Any]) -> CompiledStateGraph:
     agents = scenario_config["agents"]
     unique_roles: list[str] = list({a["role"] for a in agents})
 
+    # Guard against agent roles colliding with reserved internal node names
+    _RESERVED = {DISPATCHER_NODE, CONFIRMATION_NODE}
+    for role in unique_roles:
+        if role in _RESERVED:
+            raise ValueError(
+                f"Agent role {role!r} collides with reserved node name. "
+                f"Reserved names: {_RESERVED}"
+            )
+
     graph = StateGraph(NegotiationState)
 
     # Agent nodes
@@ -111,10 +120,19 @@ async def _dispatcher(state: NegotiationState) -> dict[str, Any]:
         }
 
     if _check_agreement(state):
-        negotiator_roles = [
+        # Populate confirmation_pending with negotiator roles in turn_order
+        # sequence (Req 1.3), skipping regulators and observers.
+        turn_order = state.get("turn_order", [])
+        negotiator_set = {
             role for role, info in state["agent_states"].items()
             if info.get("agent_type") == "negotiator"
-        ]
+        }
+        negotiator_roles = [r for r in turn_order if r in negotiator_set]
+        # Fallback: if turn_order doesn't cover all negotiators (shouldn't
+        # happen), append any missing ones at the end.
+        for role in state["agent_states"]:
+            if role in negotiator_set and role not in negotiator_roles:
+                negotiator_roles.append(role)
         return {
             "deal_status": "Confirming",
             "confirmation_pending": negotiator_roles,
