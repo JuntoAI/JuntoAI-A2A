@@ -30,7 +30,7 @@ from app.orchestrator.state import NegotiationState
 # ---------------------------------------------------------------------------
 
 st_role = st.text(min_size=1, max_size=15, alphabet=st.characters(categories=("L", "N"))).filter(
-    lambda s: s.lower() != "dispatcher"  # avoid collision with internal DISPATCHER_NODE
+    lambda s: s.lower() not in ("dispatcher", "confirmation")  # avoid collision with internal nodes
 )
 st_price = st.floats(min_value=0.01, max_value=1e9, allow_nan=False, allow_infinity=False)
 st_threshold = st.floats(min_value=0.01, max_value=1e8, allow_nan=False, allow_infinity=False)
