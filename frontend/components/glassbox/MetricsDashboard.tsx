@@ -8,6 +8,7 @@ export interface MetricsDashboardProps {
   turnNumber: number;
   maxTurns: number;
   tokenBalance: number;
+  dailyLimit?: number;
   valueLabel?: string;
   valueFormat?: ValueFormat;
 }
@@ -24,6 +25,7 @@ export default function MetricsDashboard({
   turnNumber,
   maxTurns,
   tokenBalance,
+  dailyLimit = 20,
   valueLabel = "Current Offer",
   valueFormat = "currency",
 }: MetricsDashboardProps) {
@@ -108,7 +110,7 @@ export default function MetricsDashboard({
             className="text-2xl font-bold text-gray-900"
             data-testid="token-balance"
           >
-            Tokens: {tokenBalance} / 100
+            Tokens: {tokenBalance} / {dailyLimit}
           </p>
         </div>
       </div>
