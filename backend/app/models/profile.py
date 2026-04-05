@@ -48,6 +48,7 @@ class ProfileUpdateRequest(BaseModel):
     def validate_github_url(cls, v: str | None) -> str | None:
         if v is None:
             return v
+        v = v.rstrip("/")
         pattern = r"^https://github\.com/[a-zA-Z0-9\-]{1,39}$"
         if not re.match(pattern, v):
             raise ValueError("GitHub URL must match https://github.com/{username}")
@@ -58,6 +59,7 @@ class ProfileUpdateRequest(BaseModel):
     def validate_linkedin_url(cls, v: str | None) -> str | None:
         if v is None:
             return v
+        v = v.rstrip("/")
         pattern = r"^https://(www\.)?linkedin\.com/in/[a-zA-Z0-9\-]{3,100}$"
         if not re.match(pattern, v):
             raise ValueError(
