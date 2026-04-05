@@ -16,14 +16,17 @@ export interface SessionState {
   email: string | null;
   tokenBalance: number;
   lastResetDate: string | null;
+  tier: number;
+  dailyLimit: number;
   isAuthenticated: boolean;
   isHydrated: boolean;
 }
 
 export interface SessionContextValue extends SessionState {
-  login: (email: string, tokenBalance: number, lastResetDate: string) => void;
+  login: (email: string, tokenBalance: number, lastResetDate: string, tier?: number, dailyLimit?: number) => void;
   logout: () => void;
   updateTokenBalance: (newBalance: number) => void;
+  updateTier: (tier: number, dailyLimit: number, tokenBalance: number) => void;
 }
 
 // --- Constants ---
@@ -31,12 +34,16 @@ export interface SessionContextValue extends SessionState {
 const STORAGE_KEY_EMAIL = "junto_email";
 const STORAGE_KEY_TOKEN_BALANCE = "junto_token_balance";
 const STORAGE_KEY_LAST_RESET = "junto_last_reset";
+const STORAGE_KEY_TIER = "junto_tier";
+const STORAGE_KEY_DAILY_LIMIT = "junto_daily_limit";
 const SESSION_COOKIE_NAME = "junto_session";
 
 const defaultState: SessionState = {
   email: null,
   tokenBalance: 0,
   lastResetDate: null,
+  tier: 1,
+  dailyLimit: 20,
   isAuthenticated: false,
   isHydrated: false,
 };
@@ -57,6 +64,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         email: "local@dev",
         tokenBalance: Infinity,
         lastResetDate: null,
+        tier: 3,
+        dailyLimit: 100,
         isAuthenticated: true,
         isHydrated: true,
       });
@@ -66,12 +75,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const email = sessionStorage.getItem(STORAGE_KEY_EMAIL);
     const balanceStr = sessionStorage.getItem(STORAGE_KEY_TOKEN_BALANCE);
     const lastReset = sessionStorage.getItem(STORAGE_KEY_LAST_RESET);
+    const tierStr = sessionStorage.getItem(STORAGE_KEY_TIER);
+    const dailyLimitStr = sessionStorage.getItem(STORAGE_KEY_DAILY_LIMIT);
 
     if (email) {
       setState({
         email,
         tokenBalance: balanceStr !== null ? Number(balanceStr) : 0,
         lastResetDate: lastReset,
+        tier: tierStr !== null ? Number(tierStr) : 1,
+        dailyLimit: dailyLimitStr !== null ? Number(dailyLimitStr) : 20,
         isAuthenticated: true,
         isHydrated: true,
       });
@@ -81,11 +94,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    (email: string, tokenBalance: number, lastResetDate: string) => {
+    (email: string, tokenBalance: number, lastResetDate: string, tier: number = 1, dailyLimit: number = 20) => {
       // Persist to sessionStorage
       sessionStorage.setItem(STORAGE_KEY_EMAIL, email);
       sessionStorage.setItem(STORAGE_KEY_TOKEN_BALANCE, String(tokenBalance));
       sessionStorage.setItem(STORAGE_KEY_LAST_RESET, lastResetDate);
+      sessionStorage.setItem(STORAGE_KEY_TIER, String(tier));
+      sessionStorage.setItem(STORAGE_KEY_DAILY_LIMIT, String(dailyLimit));
 
       // Set cookie for middleware
       document.cookie = `${SESSION_COOKIE_NAME}=1; SameSite=Strict; path=/`;
@@ -94,6 +109,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         email,
         tokenBalance,
         lastResetDate,
+        tier,
+        dailyLimit,
         isAuthenticated: true,
         isHydrated: true,
       });
@@ -106,11 +123,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem(STORAGE_KEY_EMAIL);
     sessionStorage.removeItem(STORAGE_KEY_TOKEN_BALANCE);
     sessionStorage.removeItem(STORAGE_KEY_LAST_RESET);
+    sessionStorage.removeItem(STORAGE_KEY_TIER);
+    sessionStorage.removeItem(STORAGE_KEY_DAILY_LIMIT);
 
     // Remove cookie by setting max-age=0
     document.cookie = `${SESSION_COOKIE_NAME}=; SameSite=Strict; path=/; max-age=0`;
 
-    setState(defaultState);
+    // Keep isHydrated true so the protected layout redirect fires
+    setState({ ...defaultState, isHydrated: true });
   }, []);
 
   const updateTokenBalance = useCallback((newBalance: number) => {
@@ -118,9 +138,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, tokenBalance: newBalance }));
   }, []);
 
+  const updateTier = useCallback((tier: number, dailyLimit: number, tokenBalance: number) => {
+    sessionStorage.setItem(STORAGE_KEY_TIER, String(tier));
+    sessionStorage.setItem(STORAGE_KEY_DAILY_LIMIT, String(dailyLimit));
+    sessionStorage.setItem(STORAGE_KEY_TOKEN_BALANCE, String(tokenBalance));
+    setState((prev) => ({ ...prev, tier, dailyLimit, tokenBalance }));
+  }, []);
+
   return (
     <SessionContext.Provider
-      value={{ ...state, login, logout, updateTokenBalance }}
+      value={{ ...state, login, logout, updateTokenBalance, updateTier }}
     >
       {children}
     </SessionContext.Provider>

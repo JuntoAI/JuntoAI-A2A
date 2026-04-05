@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Sync package-lock.json",
+  "description": "Automatically runs npm install to regenerate package-lock.json whenever package.json is edited, preventing CI failures from lock file drift.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "frontend/package.json"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "cd frontend && npm install --package-lock-only",
+    "timeout": 60
+  }
+}

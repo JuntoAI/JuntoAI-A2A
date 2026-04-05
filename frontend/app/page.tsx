@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { Handshake, Eye, SlidersHorizontal, Github } from "lucide-react";
 import { isLocalMode } from "@/lib/runMode";
 import WaitlistForm from "@/components/WaitlistForm";
 import ScenarioBanner from "@/components/ScenarioBanner";
@@ -30,6 +31,33 @@ const jsonLd = {
   },
 };
 
+const VALUE_PROPS = [
+  {
+    icon: Handshake,
+    iconBg: "bg-brand-green/10",
+    iconColor: "text-brand-green",
+    title: "Not Zero-Sum",
+    description:
+      "Agents seek mutual benefit, not domination. Watch them find creative compromises.",
+  },
+  {
+    icon: Eye,
+    iconBg: "bg-brand-blue/10",
+    iconColor: "text-brand-blue",
+    title: "Glass Box Reasoning",
+    description:
+      "See every agent\u2019s inner thoughts before they speak. Understand why they concede or hold firm.",
+  },
+  {
+    icon: SlidersHorizontal,
+    iconBg: "bg-brand-green/10",
+    iconColor: "text-brand-green",
+    title: "One Toggle Changes Everything",
+    description:
+      "Give an agent a secret competing offer or hidden deadline and watch the entire dynamic shift.",
+  },
+] as const;
+
 export default function Home() {
   if (isLocalMode) {
     redirect("/arena");
@@ -41,88 +69,106 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <main className="flex min-h-screen flex-col items-center justify-center bg-brand-offwhite px-4 py-16 sm:px-6 lg:px-8">
-        <div className="w-screen">
-          <ScenarioBanner />
-        </div>
 
-        <div className="mt-8 flex w-full max-w-3xl flex-col items-center text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-brand-charcoal sm:text-5xl lg:text-6xl">
-            AI Negotiation Sandbox.{" "}
-            <span className="text-brand-blue">Find the Win‑Win.</span>
-          </h1>
+      <main className="flex min-h-screen flex-col items-center">
+        {/* Hero Section — off-white */}
+        <section className="w-full bg-brand-offwhite pt-20 pb-12">
+          <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col items-center text-center">
+              <h1 className="text-4xl font-bold tracking-tight text-brand-charcoal sm:text-5xl lg:text-6xl">
+                AI Negotiation Sandbox.{" "}
+                <span className="text-brand-blue">Find the Win&#8209;Win.</span>
+              </h1>
 
-          <p className="mt-4 max-w-2xl text-base leading-relaxed text-brand-charcoal/70 sm:text-lg">
-            Real negotiations aren't about one side winning. They're about
-            finding outcomes everyone can live with. JuntoAI A2A simulates that
-            process. Autonomous AI agents work through scenarios in real time,
-            searching for common ground while protecting their own interests.
-          </p>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-brand-charcoal/70 sm:text-lg">
+                Real negotiations aren&apos;t about one side winning. They&apos;re
+                about finding outcomes everyone can live with. JuntoAI A2A
+                simulates that process with autonomous AI agents working through
+                scenarios in real time.
+              </p>
 
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-charcoal/50">
-            Pick a scenario, flip the hidden variables, and watch how a single
-            piece of information reshapes the entire conversation.
-          </p>
-        </div>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-brand-charcoal/50">
+                Pick a scenario, flip the hidden variables, and watch how a single
+                piece of information reshapes the entire conversation.
+              </p>
 
-        <div className="mt-8 w-full max-w-md">
-          <WaitlistForm />
-        </div>
-
-        <section className="mt-6 flex w-full max-w-md flex-col items-center text-center">
-          <a
-            href="https://github.com/JuntoAI/JuntoAI-A2A"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Contribute to JuntoAI on GitHub"
-            className="inline-flex items-center gap-2 text-sm text-brand-charcoal/70 transition-colors hover:text-brand-blue"
-          >
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
-            </svg>
-            <span>Contribute on GitHub & run your own local simulation</span>
-          </a>
+              <div id="waitlist" className="mt-8 w-full max-w-md">
+                <WaitlistForm />
+              </div>
+            </div>
+          </div>
         </section>
 
-        {/* Win-win value props */}
-        <div className="mt-12 grid w-full max-w-2xl gap-6 sm:grid-cols-3">
-          <div className="text-center">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand-green/10 text-lg">
-              🤝
+        {/* Scenario Banner — light gray */}
+        <section className="w-full bg-brand-gray py-6">
+          <ScenarioBanner />
+        </section>
+
+        {/* Value Proposition Cards — off-white */}
+        <section className="w-full bg-brand-offwhite py-16">
+          <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-6 sm:grid-cols-3">
+              {VALUE_PROPS.map((prop) => {
+                const Icon = prop.icon;
+                return (
+                  <div
+                    key={prop.title}
+                    className="flex flex-col items-center rounded-xl bg-white p-6 text-center shadow-sm"
+                  >
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-full ${prop.iconBg}`}
+                    >
+                      <Icon className={`h-6 w-6 ${prop.iconColor}`} />
+                    </div>
+                    <h3 className="mt-4 text-sm font-semibold text-brand-charcoal">
+                      {prop.title}
+                    </h3>
+                    <p className="mt-2 text-xs leading-relaxed text-brand-charcoal/60">
+                      {prop.description}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
-            <p className="mt-2 text-sm font-medium text-brand-charcoal">
-              Not zero-sum
-            </p>
-            <p className="mt-1 text-xs text-brand-charcoal/50">
-              Agents seek mutual benefit, not domination. Watch them find
-              creative compromises.
-            </p>
           </div>
-          <div className="text-center">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand-blue/10 text-lg">
-              🔍
+        </section>
+
+        {/* GitHub Community CTA — light gray */}
+        <section className="w-full bg-brand-gray py-16">
+          <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+            <div
+              className="relative overflow-hidden rounded-xl p-8 text-center sm:p-12"
+              style={{ background: "var(--gradient)" }}
+            >
+              {/* Subtle overlay for text readability */}
+              <div className="absolute inset-0 bg-white/90" />
+
+              <div className="relative z-10 flex flex-col items-center">
+                <Github className="h-10 w-10 text-brand-charcoal" />
+
+                <h2 className="mt-4 text-2xl font-bold text-brand-charcoal sm:text-3xl">
+                  Built in Public. Join the Community.
+                </h2>
+
+                <p className="mt-3 max-w-lg text-sm leading-relaxed text-brand-charcoal/70">
+                  Clone the repo, run it locally, contribute new negotiation
+                  scenarios, or build custom agent plugins. The entire stack is
+                  open source.
+                </p>
+
+                <a
+                  href="https://github.com/JuntoAI/JuntoAI-A2A"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-charcoal px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  <Github className="h-4 w-4" />
+                  View on GitHub
+                </a>
+              </div>
             </div>
-            <p className="mt-2 text-sm font-medium text-brand-charcoal">
-              Glass box reasoning
-            </p>
-            <p className="mt-1 text-xs text-brand-charcoal/50">
-              See every agent's inner thoughts before they speak. Understand why
-              they concede or hold firm.
-            </p>
           </div>
-          <div className="text-center">
-            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand-green/10 text-lg">
-              🎛️
-            </div>
-            <p className="mt-2 text-sm font-medium text-brand-charcoal">
-              One toggle changes everything
-            </p>
-            <p className="mt-1 text-xs text-brand-charcoal/50">
-              Give an agent a secret, a competing offer, a hidden deadline, and
-              watch the entire dynamic shift.
-            </p>
-          </div>
-        </div>
+        </section>
       </main>
     </>
   );

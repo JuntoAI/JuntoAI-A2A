@@ -24,7 +24,7 @@ function isValidSessionId(id: unknown): id is string {
 export default function GlassBoxPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const { email, tokenBalance } = useSession();
+  const { email, tokenBalance, dailyLimit } = useSession();
 
   const sessionId = params?.sessionId;
   const maxTurns = Number(searchParams.get("max_turns")) || 10;
@@ -158,6 +158,7 @@ export default function GlassBoxPage() {
         turnNumber={state.turnNumber}
         maxTurns={state.maxTurns}
         tokenBalance={tokenBalance}
+        dailyLimit={dailyLimit}
         valueLabel={valueLabel}
         valueFormat={valueFormat}
       />
