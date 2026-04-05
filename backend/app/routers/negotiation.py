@@ -723,6 +723,20 @@ async def stream_negotiation(
         timeout = state.max_turns * 60  # 60s per turn to account for LLM latency
         ai_tokens_used = 0
 
+        # Accumulate final state for write-back after negotiation completes.
+        # These fields are tracked across all snapshots so the session
+        # document reflects the final negotiation outcome.
+        final_state: dict = {
+            "deal_status": "Negotiating",
+            "turn_count": 0,
+            "current_offer": 0.0,
+            "warning_count": 0,
+            "total_tokens_used": 0,
+            "agent_calls": [],
+            "history": [],
+            "agent_states": {},
+        }
+
         # If reconnecting, replay missed events first
         if last_event_id is not None:
             replay = await event_buffer.replay_after(session_id, last_event_id)
@@ -733,10 +747,26 @@ async def stream_negotiation(
             async with asyncio.timeout(timeout):
                 accumulated_history: list[dict] = []
                 async for snapshot in run_negotiation(initial_state, scenario_config):
-                    # Accumulate history entries from each snapshot delta
+                    # Accumulate history and state from each snapshot delta
                     for _node, s in snapshot.items():
                         if isinstance(s, dict):
                             accumulated_history.extend(s.get("history", []))
+                            # Accumulate agent_calls (append-only, same as LangGraph add reducer)
+                            final_state["agent_calls"].extend(s.get("agent_calls", []))
+                            # Track latest values for scalar fields
+                            if "deal_status" in s:
+                                final_state["deal_status"] = s["deal_status"]
+                            if "turn_count" in s:
+                                final_state["turn_count"] = max(final_state["turn_count"], s["turn_count"])
+                            if "current_offer" in s and s["current_offer"]:
+                                final_state["current_offer"] = s["current_offer"]
+                            if "warning_count" in s:
+                                final_state["warning_count"] = max(final_state["warning_count"], s["warning_count"])
+                            if "total_tokens_used" in s:
+                                final_state["total_tokens_used"] = max(final_state["total_tokens_used"], s["total_tokens_used"])
+                            if "agent_states" in s and s["agent_states"]:
+                                final_state["agent_states"] = s["agent_states"]
+                    final_state["history"] = accumulated_history
                     events = _snapshot_to_events(snapshot, session_id, accumulated_history)
                     # Track tokens from snapshot state
                     for _node, s in snapshot.items():
@@ -750,6 +780,7 @@ async def stream_negotiation(
                         if is_terminal:
                             return
         except TimeoutError:
+            final_state["deal_status"] = "Failed"
             timeout_event = NegotiationCompleteEvent(
                 event_type="negotiation_complete",
                 session_id=session_id,
@@ -769,6 +800,15 @@ async def stream_negotiation(
             eid = await event_buffer.append(session_id, json_data)
             yield format_sse_event(err_event, event_id=eid)
         finally:
+            # Persist final negotiation state back to the session document.
+            # This ensures agent_calls, deal_status, history, and other
+            # fields are available for downstream consumers (Specs 190,
+            # 192, 195) that read the session after completion.
+            try:
+                await db.update_session(session_id, final_state)
+            except Exception:
+                logger.warning("Failed to persist final state for session %s", session_id)
+
             await tracker.release(email)
             # Deduct AI tokens from user's balance (cloud mode only)
             if settings.RUN_MODE == "cloud" and ai_tokens_used > 0:

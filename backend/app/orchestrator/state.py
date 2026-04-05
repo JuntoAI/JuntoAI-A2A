@@ -42,6 +42,7 @@ class NegotiationState(TypedDict):
     sliding_window_size: int
     milestone_interval: int
     no_memory_roles: list[str]
+    agent_calls: Annotated[list[dict[str, Any]], add]
 
 
 def create_initial_state(
@@ -146,4 +147,5 @@ def create_initial_state(
         sliding_window_size=sliding_window_size,
         milestone_interval=milestone_interval,
         no_memory_roles=list(no_memory_roles or []),
+        agent_calls=[],
     )
