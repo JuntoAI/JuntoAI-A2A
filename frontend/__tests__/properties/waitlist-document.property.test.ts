@@ -8,10 +8,10 @@ import { getDoc, setDoc } from "firebase/firestore";
  *
  * For any valid email address, when a new Waitlist_Document is created,
  * the document SHALL have: `email` equal to the input normalized to
- * lowercase, `token_balance` equal to 100, and `last_reset_date` equal
+ * lowercase, `token_balance` equal to 20 (Tier 1 default), and `last_reset_date` equal
  * to the current UTC date in YYYY-MM-DD format.
  *
- * Validates: Requirements 3.4, 5.1, 5.2
+ * Validates: Requirements 3.4, 5.1, 5.2, 6.1
  */
 
 // Mock firebase to avoid env var validation on import
@@ -40,7 +40,7 @@ describe("Property 2: New waitlist document structure", () => {
    * **Validates: Requirements 3.4, 5.1, 5.2**
    *
    * For any random valid email, calling joinWaitlist produces a document
-   * with email normalized to lowercase, token_balance === 100, and
+   * with email normalized to lowercase, token_balance === 20 (Tier 1), and
    * last_reset_date matching today's UTC date string.
    */
   it("creates document with correct email, token_balance, and last_reset_date for any valid email", async () => {
@@ -59,8 +59,8 @@ describe("Property 2: New waitlist document structure", () => {
         // 1. email is normalized to lowercase
         expect(result.email).toBe(normalizedEmail);
 
-        // 2. token_balance is exactly 100
-        expect(result.token_balance).toBe(100);
+        // 2. token_balance is exactly 20 (Tier 1 default)
+        expect(result.token_balance).toBe(20);
 
         // 3. last_reset_date matches today's UTC date
         expect(result.last_reset_date).toBe(EXPECTED_DATE_STR);
@@ -70,7 +70,7 @@ describe("Property 2: New waitlist document structure", () => {
         const writtenDoc = vi.mocked(setDoc).mock.calls[0][1];
         expect(writtenDoc).toMatchObject({
           email: normalizedEmail,
-          token_balance: 100,
+          token_balance: 20,
           last_reset_date: EXPECTED_DATE_STR,
         });
 

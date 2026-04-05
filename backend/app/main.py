@@ -9,9 +9,11 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.exceptions import DatabaseConnectionError, SessionNotFoundError
+from app.routers.auth import router as auth_router
 from app.routers.health import router as health_router
 from app.routers.models import router as models_router
 from app.routers.negotiation import router as negotiation_router
+from app.routers.profile import router as profile_router
 from app.scenarios.router import router as scenarios_router
 
 logger = logging.getLogger(__name__)
@@ -35,7 +37,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "Cache-Control"],
 )
 
@@ -43,6 +45,8 @@ api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health_router)
 api_router.include_router(models_router)
 api_router.include_router(negotiation_router)
+api_router.include_router(profile_router)
+api_router.include_router(auth_router)
 api_router.include_router(scenarios_router)
 
 app.include_router(api_router)

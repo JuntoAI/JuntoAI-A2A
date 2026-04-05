@@ -1,23 +1,22 @@
 """Async Firestore client for negotiation session persistence."""
 
-from google.cloud import firestore
-
-from app.exceptions import DatabaseConnectionError, SessionNotFoundError
+from app.exceptions import SessionNotFoundError
 from app.models.negotiation import NegotiationStateModel
 
 
 class FirestoreSessionClient:
-    """Wraps the Firestore AsyncClient for session CRUD operations."""
+    """Wraps a shared Firestore AsyncClient for session CRUD operations."""
 
     COLLECTION = "negotiation_sessions"
 
-    def __init__(self, project: str | None = None) -> None:
-        try:
+    def __init__(self, db=None, project: str | None = None) -> None:
+        if db is not None:
+            self._db = db
+        else:
+            # Legacy path: create own client (kept for backward compat)
+            from google.cloud import firestore
+
             self._db = firestore.AsyncClient(project=project)
-        except Exception as e:
-            raise DatabaseConnectionError(
-                f"Failed to initialize Firestore: {e}"
-            ) from e
         self._collection = self._db.collection(self.COLLECTION)
 
     async def create_session(self, state: NegotiationStateModel) -> None:

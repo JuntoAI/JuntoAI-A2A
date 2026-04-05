@@ -24,11 +24,11 @@ describe("MetricsDashboard", () => {
     expect(counter.textContent).toBe("Turn: 3 / 15");
   });
 
-  it('renders Token Balance as "Tokens: X / 100"', () => {
-    render(<MetricsDashboard {...defaultProps} />);
+  it('renders Token Balance as "Tokens: X / dailyLimit"', () => {
+    render(<MetricsDashboard {...defaultProps} dailyLimit={50} />);
 
     const balance = screen.getByTestId("token-balance");
-    expect(balance.textContent).toBe("Tokens: 85 / 100");
+    expect(balance.textContent).toBe("Tokens: 85 / 50");
   });
 
   it("renders regulator traffic lights with correct color classes", () => {

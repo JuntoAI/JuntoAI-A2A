@@ -74,6 +74,12 @@ variable "firebase_app_id" {
   type        = string
 }
 
+variable "google_oauth_client_id" {
+  description = "Google OAuth Client ID for frontend Google sign-in (cloud only)"
+  type        = string
+  default     = ""
+}
+
 variable "allowed_roles" {
   description = "Allowlist of IAM roles permitted for the Cloud Build service account"
   type        = list(string)

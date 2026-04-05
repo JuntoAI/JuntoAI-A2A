@@ -93,6 +93,7 @@ resource "google_cloudbuild_trigger" "frontend" {
     _FRONTEND_SA_EMAIL = var.frontend_sa_email
     _FIREBASE_API_KEY  = var.firebase_api_key
     _FIREBASE_APP_ID   = var.firebase_app_id
+    _GOOGLE_CLIENT_ID  = var.google_oauth_client_id
   }
 
   service_account = google_service_account.cloudbuild.id
@@ -129,6 +130,7 @@ resource "google_cloudbuild_trigger" "fullstack" {
     _FRONTEND_SA_EMAIL = var.frontend_sa_email
     _FIREBASE_API_KEY  = var.firebase_api_key
     _FIREBASE_APP_ID   = var.firebase_app_id
+    _GOOGLE_CLIENT_ID  = var.google_oauth_client_id
   }
 
   service_account = google_service_account.cloudbuild.id

@@ -2,12 +2,62 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Release Notes — JuntoAI A2A Protocol Sandbox",
+  title: "Release Notes | JuntoAI A2A Protocol Sandbox",
   description:
     "A continuous stream of features shipped in the JuntoAI A2A Protocol Sandbox.",
 };
 
 const FEATURES = [
+  {
+    title: "Developer Community Infrastructure",
+    specId: "160",
+    date: "2026-04-04",
+    items: [
+      "GitHub Actions PR CI pipeline: parallel backend pytest + frontend Vitest jobs on every PR to main, 70% coverage enforced",
+      "CONTRIBUTING.md with fork-and-PR workflow, local dev setup, test commands, and scenario contribution guide (JSON-only)",
+      "CODE_OF_CONDUCT.md based on Contributor Covenant v2.1 with enforcement contact and community scope",
+      "GitHub issue templates: structured YAML forms for bug reports and feature requests, blank issues disabled",
+      "Pull request template with change-type checkboxes, related-issue linking, and pre-merge checklist",
+      "Contributor onboarding labels documented: good first issue, scenario-contribution, help wanted",
+      "README community section updated with links to CONTRIBUTING.md, CODE_OF_CONDUCT.md, WhatsApp channel, and good first issue view",
+      "Branch protection guidance: main protected, CI must pass before merge, no direct pushes",
+    ],
+  },
+  {
+    title: "User Profile & Token Upgrade",
+    specId: "140",
+    date: "2026-04-04",
+    items: [
+      "3-tier daily token system: Tier 1 (20/day) on signup, Tier 2 (50) on email verification, Tier 3 (100) on full profile completion",
+      "Profile page accessible via email link in header: display name, GitHub URL, LinkedIn URL, country dropdown",
+      "Email verification via Amazon SES with UUID tokens, 24h TTL, and automatic Tier 2 upgrade on click-through",
+      "Tier 3 is permanent once earned — profile_completed_at timestamp is write-once",
+      "Password-based account protection with bcrypt hashing and conditional password prompt on login",
+      "Google OAuth account linking: link/unlink on profile page, Google sign-in on login form",
+      "Auth endpoints: set-password, login, check-email, google/link, google/login, google/unlink",
+      "Profile endpoints: GET/PUT profile, POST verify-email, GET verify token with Pydantic V2 validation",
+      "Country field (ISO 3166-1 alpha-2) for upcoming leaderboard — validated via pycountry",
+      "Tier-aware token reset at midnight UTC uses profile tier instead of hardcoded 100",
+      "Frontend SessionContext updated with tier/dailyLimit; TokenDisplay shows dynamic X / {dailyLimit}",
+      "Dual-mode support: SQLiteProfileClient for local, FirestoreProfileClient for cloud",
+      "18 property tests (Hypothesis + fast-check): profile validation, tier logic, bcrypt, URLs, country codes, OAuth uniqueness",
+    ],
+  },
+  {
+    title: "Landing Page Redesign",
+    specId: "180",
+    date: "2026-04-04",
+    items: [
+      "Shared Header component: persistent sticky header with logo, nav links, auth-aware state (email/tokens/logout vs Join Waitlist CTA)",
+      "Header integrated into root layout; inline header bar removed from protected layout — auth-guard logic preserved",
+      "Landing page restructured: Hero → ScenarioBanner → Value Props → GitHub CTA in centered max-w-[1200px] container",
+      "Value proposition cards redesigned with Lucide React icons, brand color tinted backgrounds, responsive 3-column grid",
+      "GitHub community CTA section with gradient accent, GitHub icon, and external link to public repo",
+      "All color references use brand-* Tailwind tokens or CSS custom properties — zero inline hex values",
+      "Mobile-responsive: compact header below 768px, stacked cards below 640px, no horizontal overflow at 320px minimum",
+      "Unit tests for Header component (logo, nav links, auth states) and landing page (section order, value props, GitHub CTA, brand colors)",
+    ],
+  },
   {
     title: "Hybrid Agent Memory",
     specId: "110",

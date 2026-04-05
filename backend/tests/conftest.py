@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
-from app.db import get_session_store
+from app.db import get_profile_client, get_session_store
 from app.main import app
 from app.middleware import get_sse_tracker
 from app.middleware.sse_limiter import SSEConnectionTracker
@@ -82,13 +82,33 @@ def mock_registry(valid_scenario_dict):
 
 
 @pytest.fixture()
-async def test_client(mock_db, mock_tracker, mock_registry):
+def mock_profile_client():
+    """Mock ProfileClient with async methods."""
+    pc = MagicMock()
+    pc.get_profile = AsyncMock(return_value=None)
+
+    # Mock _db for waitlist access
+    waitlist_doc = MagicMock()
+    waitlist_doc.exists = True
+    waitlist_doc.to_dict.return_value = {"token_balance": 100}
+    waitlist_ref = MagicMock()
+    waitlist_ref.get = AsyncMock(return_value=waitlist_doc)
+    pc._db = MagicMock()
+    pc._db.collection.return_value = MagicMock()
+    pc._db.collection.return_value.document.return_value = waitlist_ref
+
+    return pc
+
+
+@pytest.fixture()
+async def test_client(mock_db, mock_tracker, mock_registry, mock_profile_client):
     """Async httpx client with dependency overrides for integration tests."""
     from app.scenarios.router import get_scenario_registry
 
     app.dependency_overrides[get_session_store] = lambda: mock_db
     app.dependency_overrides[get_sse_tracker] = lambda: mock_tracker
     app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
+    app.dependency_overrides[get_profile_client] = lambda: mock_profile_client
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="http://testserver",
