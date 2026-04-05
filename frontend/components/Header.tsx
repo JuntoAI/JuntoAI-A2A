@@ -12,13 +12,14 @@ export default function Header() {
   const pathname = usePathname();
 
   const showAuth = isHydrated && isAuthenticated;
-  const isArena = pathname.startsWith("/arena");
+  const isLanding = pathname === "/";
+  const showNavLinks = isLanding;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-brand-offwhite">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-2 md:px-6">
-        {/* Logo + product name */}
-        <Link href="/" className="flex items-center gap-2 flex-shrink-0">
+        {/* Logo + product name — links to arena when authenticated, landing otherwise */}
+        <Link href={showAuth ? "/arena" : "/"} className="flex items-center gap-2 flex-shrink-0">
           <Image
             src="/juntoai_logo_500x500.png"
             alt="JuntoAI logo"
@@ -31,8 +32,8 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Nav links — hidden on arena and on small screens */}
-        {!isArena && (
+        {/* Nav links — only on landing page */}
+        {showNavLinks && (
           <nav className="hidden items-center gap-4 md:flex" aria-label="Main navigation">
             <a
               href="https://juntoai.org"
@@ -57,8 +58,8 @@ export default function Header() {
 
         {/* Right side — auth-dependent */}
         <div className="flex items-center gap-2 md:gap-3">
-          {/* Compact nav links on mobile — hidden on arena */}
-          {!isArena && (
+          {/* Compact nav links on mobile — only on landing page */}
+          {showNavLinks && (
             <div className="flex items-center gap-2 md:hidden">
               <a
                 href="https://juntoai.org"
