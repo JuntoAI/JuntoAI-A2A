@@ -40,7 +40,7 @@ steps:
         GOOGLE_CLOUD_PROJECT: "${_PROJECT_ID}"
         VERTEX_AI_LOCATION: "${_REGION}"
         RUN_MODE: "cloud"
-        SES_SENDER_EMAIL: "noreply@juntoai.com"
+        SES_SENDER_EMAIL: "noreply@juntoai.org"
         AWS_SES_REGION: "us-east-1"
         EOF
     waitFor: ["-"]
