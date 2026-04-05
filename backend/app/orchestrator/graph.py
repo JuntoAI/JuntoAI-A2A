@@ -164,21 +164,49 @@ async def _dispatcher(state: NegotiationState) -> dict[str, Any]:
 
 
 def _resolve_confirmation(state: NegotiationState) -> dict[str, Any]:
-    """Resolve confirmation round results after all negotiators have responded."""
+    """Resolve confirmation round results after all negotiators have responded.
+
+    Only considers confirmation entries from the CURRENT round (matching
+    the current turn_count) to avoid stale entries from previous rejected
+    confirmation rounds contaminating the result.
+    """
+    current_turn = state.get("turn_count", 0)
     confirmations = [
         e for e in state["history"]
         if e.get("agent_type") == "confirmation"
+        and e.get("turn_number") == current_turn
     ]
+
+    if not confirmations:
+        # No confirmation entries for this round — shouldn't happen, but
+        # treat as rejection to avoid silent agreement.
+        return {
+            "deal_status": "Negotiating",
+            "closure_status": "Rejected",
+            "confirmation_pending": [],
+        }
 
     all_accepted = all(e["content"]["accept"] for e in confirmations)
     any_conditions = any(e["content"].get("conditions", []) for e in confirmations)
 
     if all_accepted and not any_conditions:
-        return {"deal_status": "Agreed", "closure_status": "Confirmed"}
+        return {
+            "deal_status": "Agreed",
+            "closure_status": "Confirmed",
+            "confirmation_pending": [],
+        }
     elif not all_accepted:
-        return {"deal_status": "Negotiating", "closure_status": "Rejected"}
+        return {
+            "deal_status": "Negotiating",
+            "closure_status": "Rejected",
+            "confirmation_pending": [],
+        }
     else:
-        return {"deal_status": "Negotiating", "closure_status": "Conditional"}
+        return {
+            "deal_status": "Negotiating",
+            "closure_status": "Conditional",
+            "confirmation_pending": [],
+        }
 
 
 def _should_generate_milestones(state: NegotiationState) -> bool:
@@ -197,12 +225,19 @@ def _route_dispatcher(state: NegotiationState) -> str:
 
     Separate from ``_dispatcher`` so that LangGraph can use this as a
     pure routing function on the conditional edge.
+
+    Note: when ``deal_status == "Confirming"`` and ``confirmation_pending``
+    is empty, the dispatcher has already called ``_resolve_confirmation()``
+    which changes ``deal_status`` to ``"Agreed"`` or ``"Negotiating"``.
+    So by the time this function runs, the Confirming+empty case is resolved.
+    The guard below handles the edge case defensively.
     """
     if state["deal_status"] == "Confirming":
         if state.get("confirmation_pending", []):
             return CONFIRMATION_NODE
+        # Dispatcher already resolved — but guard defensively
         return "__end__"
-    if state["deal_status"] != "Negotiating":
+    if state["deal_status"] not in ("Negotiating",):
         return "__end__"
     return state["current_speaker"]
 
