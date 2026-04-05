@@ -6,6 +6,18 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Per-Model Telemetry (Spec 145) — 2026-04-05
+
+- `AgentCallRecord` Pydantic V2 model capturing `agent_role`, `agent_type`, `model_id`, `latency_ms`, `input_tokens`, `output_tokens`, `error`, `turn_number`, and `timestamp` per LLM invocation
+- `agent_calls` append-only list on `NegotiationState` using LangGraph `add` reducer — same merge pattern as `history`
+- Agent node instrumentation: `time.perf_counter()` wall-clock timing and `usage_metadata` token extraction for every `model.invoke()` call
+- Retry calls recorded as separate `AgentCallRecord` entries with independent latency/tokens; fallback sets `error=True`
+- `_extract_tokens()` helper handling dict, object, and `None` `usage_metadata` shapes
+- Converter round-trip: `to_pydantic()` / `from_pydantic()` map `agent_calls` with backward-compatible default for pre-existing sessions
+- All telemetry wrapped in try/except — failures log WARNING, never break negotiation logic
+- Property tests (Hypothesis): AgentCallRecord round-trip serialization, converter round-trip preserves agent_calls, token extraction correctness
+- Prerequisite for Spec 150 (Admin Dashboard) per-model performance metrics
+
 ## Developer Community Infrastructure (Spec 160) — 2026-04-04
 
 - GitHub Actions PR CI pipeline (`.github/workflows/pr-tests.yml`): parallel backend pytest + frontend Vitest jobs on every PR to `main`, 70% coverage enforced
