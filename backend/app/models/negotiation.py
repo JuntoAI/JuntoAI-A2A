@@ -45,5 +45,6 @@ class NegotiationStateModel(BaseModel):
     sliding_window_size: int = Field(default=3, ge=1)
     milestone_interval: int = Field(default=4, ge=2)
     no_memory_roles: list[str] = Field(default_factory=list)
+    agent_calls: list[dict[str, Any]] = Field(default_factory=list)
     closure_status: str = Field(default="")
     confirmation_pending: list[str] = Field(default_factory=list)

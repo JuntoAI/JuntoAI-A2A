@@ -9,6 +9,22 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Per-Model Telemetry",
+    specId: "145",
+    date: "2026-04-05",
+    items: [
+      "AgentCallRecord Pydantic V2 model: agent_role, agent_type, model_id, latency_ms, input_tokens, output_tokens, error, turn_number, timestamp",
+      "agent_calls append-only list on NegotiationState using LangGraph add reducer — same merge pattern as history",
+      "Agent node instrumentation: wall-clock timing and usage_metadata token extraction for every model.invoke() call",
+      "Retry calls recorded as separate AgentCallRecord entries with independent latency/tokens; fallback sets error=True",
+      "_extract_tokens() helper handling dict, object, and None usage_metadata shapes",
+      "Converter round-trip: to_pydantic() / from_pydantic() map agent_calls with backward-compatible default for pre-existing sessions",
+      "All telemetry wrapped in try/except — failures log WARNING, never break negotiation logic",
+      "Property tests (Hypothesis): AgentCallRecord round-trip, converter round-trip, token extraction correctness",
+      "Prerequisite for Spec 150 (Admin Dashboard) per-model performance metrics",
+    ],
+  },
+  {
     title: "Developer Community Infrastructure",
     specId: "160",
     date: "2026-04-04",
