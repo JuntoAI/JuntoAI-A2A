@@ -23,6 +23,7 @@ steps:
         RUN_MODE: "cloud"
         SES_SENDER_EMAIL: "noreply@juntoai.org"
         AWS_SES_REGION: "us-east-1"
+        FRONTEND_URL: "https://a2a.juntoai.org"
         EOF
     waitFor: ["-"]
 
