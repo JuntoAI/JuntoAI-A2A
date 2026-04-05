@@ -4,21 +4,14 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react";
-import { requestEmailVerification } from "@/lib/profile";
-import { useSession } from "@/context/SessionContext";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 type VerifyState = "loading" | "success" | "expired" | "invalid";
 
 function VerifyContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const { email } = useSession();
 
   const [state, setState] = useState<VerifyState>("loading");
-  const [resending, setResending] = useState(false);
-  const [resendMsg, setResendMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -30,7 +23,7 @@ function VerifyContent() {
 
     async function verify() {
       try {
-        const res = await fetch(`${API_URL}/api/v1/profile/verify/${encodeURIComponent(token!)}`);
+        const res = await fetch(`/api/v1/profile/verify/${encodeURIComponent(token!)}`);
         if (cancelled) return;
 
         if (res.ok) {
@@ -49,20 +42,6 @@ function VerifyContent() {
     return () => { cancelled = true; };
   }, [token]);
 
-  async function handleResend() {
-    if (!email) return;
-    setResending(true);
-    setResendMsg(null);
-    try {
-      await requestEmailVerification(email);
-      setResendMsg("Verification email sent. Check your inbox.");
-    } catch {
-      setResendMsg("Failed to resend. Please try again.");
-    } finally {
-      setResending(false);
-    }
-  }
-
   if (state === "loading") {
     return (
       <div className="flex flex-col items-center gap-4 py-20">
@@ -78,13 +57,16 @@ function VerifyContent() {
         <CheckCircle2 className="h-12 w-12 text-green-500" />
         <h1 className="text-xl font-bold text-gray-900">Email Verified</h1>
         <p className="text-gray-600">
-          Your email has been verified. You&apos;ve been upgraded to Tier 2 (50 tokens/day).
+          Your email has been verified successfully. You&apos;ve been upgraded to Tier 2 (50 tokens/day).
+        </p>
+        <p className="text-sm text-gray-500">
+          Log in to see your updated token balance.
         </p>
         <Link
-          href="/profile"
+          href="/"
           className="rounded-lg bg-brand-blue px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
         >
-          Go to Profile
+          Go to Login
         </Link>
       </div>
     );
@@ -96,21 +78,13 @@ function VerifyContent() {
         <AlertTriangle className="h-12 w-12 text-yellow-500" />
         <h1 className="text-xl font-bold text-gray-900">Link Expired</h1>
         <p className="text-gray-600">
-          This verification link has expired. Request a new one below.
+          This verification link has expired. Log in and request a new one from your profile page.
         </p>
-        {email && (
-          <button
-            onClick={handleResend}
-            disabled={resending}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            {resending && <Loader2 className="h-4 w-4 animate-spin" />}
-            Resend Verification Email
-          </button>
-        )}
-        {resendMsg && <p className="text-sm text-gray-600">{resendMsg}</p>}
-        <Link href="/profile" className="text-sm text-brand-blue hover:underline">
-          Back to Profile
+        <Link
+          href="/"
+          className="rounded-lg bg-brand-blue px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+        >
+          Go to Login
         </Link>
       </div>
     );
@@ -124,8 +98,8 @@ function VerifyContent() {
       <p className="text-gray-600">
         This verification link is invalid. It may have already been used.
       </p>
-      <Link href="/profile" className="text-sm text-brand-blue hover:underline">
-        Back to Profile
+      <Link href="/" className="text-sm text-brand-blue hover:underline">
+        Back to Home
       </Link>
     </div>
   );
