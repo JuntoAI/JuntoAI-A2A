@@ -1,6 +1,6 @@
 """SSE event Pydantic models with Literal discriminators."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -44,6 +44,29 @@ class NegotiationStallEvent(BaseModel):
     confidence: float
     advice: list[str]
     details: dict
+
+
+class EvaluationInterviewEvent(BaseModel):
+    """SSE event for an individual participant evaluation interview."""
+
+    event_type: Literal["evaluation_interview"]
+    agent_name: str
+    turn_number: int
+    status: Literal["interviewing", "complete"]
+    satisfaction_rating: int | None = None
+    felt_respected: bool | None = None
+    is_win_win: bool | None = None
+
+
+class EvaluationCompleteEvent(BaseModel):
+    """SSE event for the final evaluation report."""
+
+    event_type: Literal["evaluation_complete"]
+    dimensions: dict[str, int]
+    overall_score: int
+    verdict: str
+    participant_interviews: list[dict[str, Any]]
+    deal_status: str
 
 
 class StreamErrorEvent(BaseModel):

@@ -42,6 +42,8 @@ class NegotiationState(TypedDict):
     sliding_window_size: int
     milestone_interval: int
     no_memory_roles: list[str]
+    closure_status: str
+    confirmation_pending: list[str]
 
 
 def create_initial_state(
@@ -146,4 +148,6 @@ def create_initial_state(
         sliding_window_size=sliding_window_size,
         milestone_interval=milestone_interval,
         no_memory_roles=list(no_memory_roles or []),
+        closure_status="",
+        confirmation_pending=[],
     )

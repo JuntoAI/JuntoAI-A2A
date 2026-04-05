@@ -106,6 +106,14 @@ class OutcomeReceipt(BaseModel):
     process_label: str = Field(..., min_length=1)
 
 
+class EvaluatorConfig(BaseModel):
+    """Configuration for the post-negotiation evaluator agent."""
+
+    model_id: str = Field(..., min_length=1)
+    fallback_model_id: str | None = Field(default=None)
+    enabled: bool = Field(default=True)
+
+
 class ArenaScenario(BaseModel):
     """Complete negotiation scenario definition."""
 
@@ -120,6 +128,7 @@ class ArenaScenario(BaseModel):
     toggles: list[ToggleDefinition] = Field(..., min_length=1)
     negotiation_params: NegotiationParams
     outcome_receipt: OutcomeReceipt
+    evaluator_config: EvaluatorConfig | None = Field(default=None)
     allowed_email_domains: list[str] | None = Field(
         default=None,
         description="If set, only users whose email ends with one of these "

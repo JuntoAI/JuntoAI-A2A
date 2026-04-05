@@ -186,6 +186,96 @@ export default function OutcomeReceipt({
           </div>
         )}
 
+        {/* Evaluation Score */}
+        {finalSummary.evaluation && typeof finalSummary.evaluation === "object" && (
+          <div className="border-t border-gray-200 pt-4 mb-6" data-testid="evaluation-section">
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
+              Negotiation Evaluation
+            </h3>
+
+            {/* Overall score */}
+            {(() => {
+              const eval_ = finalSummary.evaluation as Record<string, unknown>;
+              const score = Number(eval_.overall_score ?? 0);
+              const scoreColor =
+                score >= 9 ? "text-emerald-400" :
+                score >= 7 ? "text-green-500" :
+                score >= 4 ? "text-amber-500" :
+                "text-red-500";
+              return (
+                <div className="flex items-baseline gap-2 mb-4" data-testid="evaluation-score">
+                  <span className={`text-4xl font-bold ${scoreColor}`}>{score}</span>
+                  <span className="text-lg text-gray-400">/ 10</span>
+                </div>
+              );
+            })()}
+
+            {/* Dimensions */}
+            {(() => {
+              const eval_ = finalSummary.evaluation as Record<string, unknown>;
+              const dims = eval_.dimensions as Record<string, number> | undefined;
+              if (!dims) return null;
+              return (
+                <div className="grid grid-cols-2 gap-3 mb-4" data-testid="evaluation-dimensions">
+                  {Object.entries(dims).map(([key, val]) => (
+                    <div key={key} className="text-sm">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-gray-600 capitalize">{key.replace(/_/g, " ")}</span>
+                        <span className="font-medium text-gray-800">{val}/10</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${
+                            val >= 7 ? "bg-green-500" : val >= 4 ? "bg-amber-400" : "bg-red-400"
+                          }`}
+                          style={{ width: `${val * 10}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* Verdict */}
+            {(() => {
+              const eval_ = finalSummary.evaluation as Record<string, unknown>;
+              if (!eval_.verdict) return null;
+              return (
+                <p className="text-sm text-gray-700 leading-relaxed mb-4" data-testid="evaluation-verdict">
+                  {String(eval_.verdict)}
+                </p>
+              );
+            })()}
+
+            {/* Per-participant satisfaction */}
+            {(() => {
+              const eval_ = finalSummary.evaluation as Record<string, unknown>;
+              const interviews = eval_.participant_interviews as Array<Record<string, unknown>> | undefined;
+              if (!interviews || interviews.length === 0) return null;
+              return (
+                <div className="space-y-2" data-testid="evaluation-participants">
+                  {interviews.map((p, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-gray-700">{String(p.role)}</span>
+                      <span className={`font-semibold ${
+                        Number(p.satisfaction_rating) >= 7 ? "text-green-600" :
+                        Number(p.satisfaction_rating) >= 4 ? "text-amber-600" :
+                        "text-red-600"
+                      }`}>
+                        {String(p.satisfaction_rating)}/10
+                      </span>
+                      {p.criticism ? (
+                        <span className="text-gray-500 truncate">{String(p.criticism).slice(0, 80)}</span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {/* ROI Metrics */}
         <div className="border-t border-gray-200 pt-4 mb-6">
           <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">

@@ -67,6 +67,20 @@ def _make_state(**overrides) -> NegotiationState:
         "turn_order_index": 0,
         "agent_states": {},
         "active_toggles": [],
+        "total_tokens_used": 0,
+        "stall_diagnosis": None,
+        "custom_prompts": {},
+        "model_overrides": {},
+        "structured_memory_enabled": False,
+        "structured_memory_roles": [],
+        "agent_memories": {},
+        "milestone_summaries_enabled": False,
+        "milestone_summaries": {},
+        "sliding_window_size": 3,
+        "milestone_interval": 4,
+        "no_memory_roles": [],
+        "closure_status": "",
+        "confirmation_pending": [],
     }
     defaults.update(overrides)
     return NegotiationState(**defaults)
@@ -213,7 +227,7 @@ class TestP9DispatcherTerminalRouting:
 # ===========================================================================
 
 
-VALID_STATUSES = {"Negotiating", "Agreed", "Blocked", "Failed"}
+VALID_STATUSES = {"Negotiating", "Agreed", "Blocked", "Failed", "Confirming"}
 
 
 class TestP10DealStatusInvariant:
@@ -317,7 +331,7 @@ class TestP11DynamicGraphNodeCount:
         compiled = build_graph(config)
         graph = compiled.get_graph()
         real_nodes = {n for n in graph.nodes.keys() if not n.startswith("__")}
-        assert len(real_nodes) == n_roles + 1  # roles + dispatcher
+        assert len(real_nodes) == n_roles + 2  # roles + dispatcher + confirmation
 
     @settings(max_examples=100)
     @given(data=st_scenario_config())

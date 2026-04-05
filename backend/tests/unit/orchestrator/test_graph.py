@@ -58,6 +58,18 @@ def _make_state(
         active_toggles=[],
         total_tokens_used=0,
         stall_diagnosis=None,
+        custom_prompts={},
+        model_overrides={},
+        structured_memory_enabled=False,
+        structured_memory_roles=[],
+        agent_memories={},
+        milestone_summaries_enabled=False,
+        milestone_summaries={},
+        sliding_window_size=3,
+        milestone_interval=4,
+        no_memory_roles=[],
+        closure_status="",
+        confirmation_pending=[],
     )
 
 
@@ -260,14 +272,15 @@ class TestDispatcher:
         assert delta["max_turns"] == 10
 
     @pytest.mark.asyncio
-    async def test_agreement_sets_agreed(self):
+    async def test_agreement_sets_confirming(self):
         agent_states = {
             "Buyer": _negotiator_state("Buyer", 100000.0),
             "Seller": _negotiator_state("Seller", 102000.0),
         }
         state = _make_state(agent_states=agent_states, agreement_threshold=5000.0)
         delta = await _dispatcher(state)
-        assert delta["deal_status"] == "Agreed"
+        assert delta["deal_status"] == "Confirming"
+        assert delta["confirmation_pending"] == ["Buyer", "Seller"]
         assert delta["agent_states"] == agent_states
         assert "current_offer" in delta
         assert "turn_count" in delta
@@ -286,6 +299,16 @@ class TestDispatcher:
         for status in ("Agreed", "Blocked", "Failed"):
             state = _make_state(deal_status=status)
             assert _route_dispatcher(state) == "__end__"
+
+    def test_route_confirming_with_pending_returns_confirmation(self):
+        state = _make_state(deal_status="Confirming")
+        state["confirmation_pending"] = ["Buyer"]
+        assert _route_dispatcher(state) == "confirmation"
+
+    def test_route_confirming_empty_pending_returns_end(self):
+        state = _make_state(deal_status="Confirming")
+        state["confirmation_pending"] = []
+        assert _route_dispatcher(state) == "__end__"
 
     def test_route_negotiating_returns_current_speaker(self):
         state = _make_state(current_speaker="Seller")
@@ -330,9 +353,10 @@ class TestBuildGraph:
         assert "Seller" in node_names
         assert "Regulator" in node_names
         assert DISPATCHER_NODE in node_names
-        # 3 unique roles + dispatcher = 4 (excluding __start__/__end__)
+        assert "confirmation" in node_names
+        # 3 unique roles + dispatcher + confirmation = 5 (excluding __start__/__end__)
         real_nodes = {n for n in node_names if not n.startswith("__")}
-        assert len(real_nodes) == 4
+        assert len(real_nodes) == 5
 
     def test_no_hardcoded_role_names(self):
         """Graph works with completely custom role names."""
@@ -357,7 +381,7 @@ class TestBuildGraph:
         compiled = build_graph(scenario)
         graph = compiled.get_graph()
         real_nodes = {n for n in graph.nodes.keys() if not n.startswith("__")}
-        assert real_nodes == {"Solo", DISPATCHER_NODE}
+        assert real_nodes == {"Solo", DISPATCHER_NODE, "confirmation"}
 
     def test_duplicate_roles_deduplicated(self):
         """Two agents with the same role should produce only one node."""
@@ -368,4 +392,4 @@ class TestBuildGraph:
         compiled = build_graph(scenario)
         graph = compiled.get_graph()
         real_nodes = {n for n in graph.nodes.keys() if not n.startswith("__")}
-        assert len(real_nodes) == 2  # Agent + dispatcher
+        assert len(real_nodes) == 3  # Agent + dispatcher + confirmation
