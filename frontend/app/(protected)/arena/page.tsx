@@ -23,7 +23,7 @@ import { Spinner } from "@/components/ui/Spinner";
 function ArenaPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { email, tokenBalance, updateTokenBalance } = useSession();
+  const { email, tokenBalance, updateTokenBalance, dailyLimit, updateTier } = useSession();
 
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
@@ -47,6 +47,17 @@ function ArenaPageContent() {
   } | null>(null);
 
   // Fetch scenarios on mount
+  useEffect(() => {
+    // Refresh token balance from profile on mount (catches post-negotiation deductions)
+    if (email) {
+      import("@/lib/profile").then(({ getProfile }) => {
+        getProfile(email).then((p) => {
+          updateTier(p.tier, p.daily_limit, p.token_balance);
+        }).catch(() => {});
+      });
+    }
+  }, [email, updateTier]);
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
