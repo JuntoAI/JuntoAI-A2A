@@ -7,6 +7,7 @@ const API_URL = "";
 interface UserItem {
   email: string;
   signed_up_at: string | null;
+  last_login: string | null;
   token_balance: number;
   last_reset_date: string | null;
   tier: number;
@@ -47,13 +48,17 @@ function tierBadge(tier: number) {
 }
 
 function statusBadge(status: string) {
-  const colors: Record<string, string> = {
-    active: "bg-green-100 text-green-800",
-    suspended: "bg-yellow-100 text-yellow-800",
-    banned: "bg-red-100 text-red-800",
+  const config: Record<string, { color: string; description: string }> = {
+    active: { color: "bg-green-100 text-green-800", description: "User can log in and use the platform normally" },
+    suspended: { color: "bg-yellow-100 text-yellow-800", description: "Temporarily blocked — cannot start negotiations" },
+    banned: { color: "bg-red-100 text-red-800", description: "Permanently blocked — no access to the platform" },
   };
+  const cfg = config[status] ?? { color: "bg-gray-100 text-gray-700", description: "" };
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${colors[status] ?? "bg-gray-100 text-gray-700"}`}>
+    <span
+      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cfg.color} cursor-help`}
+      title={cfg.description}
+    >
       {status}
     </span>
   );
@@ -188,6 +193,28 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function deleteUser(email: string) {
+    const confirmed = confirm(
+      `⚠️ DELETE USER: ${email}\n\nThis will permanently delete:\n• Waitlist entry\n• Profile data\n• Custom scenarios\n• All negotiations/simulations\n\nThis action cannot be undone. Continue?`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/admin/users/${encodeURIComponent(email)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        alert(body?.detail ?? `Failed to delete user: ${res.status}`);
+        return;
+      }
+      setUsers((prev) => prev.filter((u) => u.email !== email));
+    } catch {
+      alert("Network error while deleting user.");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-brand-charcoal">Users</h2>
@@ -227,19 +254,20 @@ export default function AdminUsersPage() {
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Tier</th>
               <th className="px-4 py-3 text-right">Token Balance</th>
-              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3" title="active = normal access · suspended = temporarily blocked · banned = permanently blocked">Status ⓘ</th>
               <th className="px-4 py-3">Signed Up</th>
+              <th className="px-4 py-3">Last Login</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">Loading…</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">Loading…</td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">No users found</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">No users found</td>
               </tr>
             ) : (
               users.map((user) => (
@@ -257,6 +285,17 @@ export default function AdminUsersPage() {
                         })
                       : "—"}
                   </td>
+                  <td className="px-4 py-3 text-xs text-gray-500">
+                    {user.last_login
+                      ? new Date(user.last_login).toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "Never"}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
@@ -270,6 +309,12 @@ export default function AdminUsersPage() {
                         className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
                       >
                         Status
+                      </button>
+                      <button
+                        onClick={() => deleteUser(user.email)}
+                        className="rounded bg-red-50 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100"
+                      >
+                        Delete
                       </button>
                     </div>
                   </td>

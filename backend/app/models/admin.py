@@ -94,6 +94,7 @@ class UserListItem(BaseModel):
 
     email: str
     signed_up_at: str | None = None
+    last_login: str | None = None
     token_balance: int = 0
     last_reset_date: str | None = None
     tier: int = 1

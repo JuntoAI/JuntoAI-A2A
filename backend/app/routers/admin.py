@@ -371,12 +371,17 @@ async def admin_list_users(
 
     db = get_firestore_db()
 
-    # Step 1: Build email → tier map from profiles collection
+    # Step 1: Build email → tier map and last_login map from profiles collection
     email_tier_map: dict[str, int] = {}
+    email_last_login: dict[str, str | None] = {}
     profiles_stream = db.collection("profiles").stream()
     async for doc in profiles_stream:
         profile = doc.to_dict()
         email_tier_map[doc.id] = compute_tier(profile)
+        last_login = profile.get("last_login")
+        if last_login is not None and not isinstance(last_login, str):
+            last_login = last_login.isoformat() if hasattr(last_login, "isoformat") else str(last_login)
+        email_last_login[doc.id] = last_login
 
     # Step 2: Query waitlist with cursor-based pagination.
     # Because tier filtering happens in application code, we may need
@@ -433,6 +438,7 @@ async def admin_list_users(
                 UserListItem(
                     email=email,
                     signed_up_at=signed_up_at,
+                    last_login=email_last_login.get(email),
                     token_balance=wl_data.get("token_balance", 0) or 0,
                     last_reset_date=last_reset_date,
                     tier=user_tier,
@@ -542,6 +548,59 @@ async def admin_change_status(
     )
 
     return JSONResponse(content={"detail": "User status updated"})
+
+
+# ---------------------------------------------------------------------------
+# DELETE /admin/users/{email} — delete user + all data
+# ---------------------------------------------------------------------------
+
+
+@router.delete(
+    "/users/{email}",
+    dependencies=[Depends(verify_admin_session)],
+)
+async def admin_delete_user(
+    email: str,
+    request: Request,
+) -> JSONResponse:
+    """Delete a user and all associated data (waitlist, profile, custom scenarios, simulations)."""
+    from app.db import get_firestore_db
+
+    ip = request.client.host if request.client else "unknown"
+    normalised_email = email.lower().strip()
+
+    db = get_firestore_db()
+
+    # 1. Delete waitlist entry
+    wl_ref = db.collection("waitlist").document(normalised_email)
+    wl_doc = await wl_ref.get()
+    if not wl_doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    await wl_ref.delete()
+
+    # 2. Delete profile
+    profile_ref = db.collection("profiles").document(normalised_email)
+    profile_doc = await profile_ref.get()
+    if profile_doc.exists:
+        # Delete custom scenarios subcollection
+        scenarios_stream = profile_ref.collection("custom_scenarios").stream()
+        async for scenario_doc in scenarios_stream:
+            await scenario_doc.reference.delete()
+        await profile_ref.delete()
+
+    # 3. Delete simulations owned by this user
+    sims_query = db.collection("sessions").where("owner_email", "==", normalised_email)
+    async for sim_doc in sims_query.stream():
+        await sim_doc.reference.delete()
+
+    logger.info(
+        "admin action=delete_user ip=%s target=%s ts=%s",
+        ip,
+        normalised_email,
+        datetime.now(timezone.utc).isoformat(),
+    )
+
+    return JSONResponse(content={"detail": f"User {normalised_email} and all associated data deleted"})
 
 
 # ---------------------------------------------------------------------------

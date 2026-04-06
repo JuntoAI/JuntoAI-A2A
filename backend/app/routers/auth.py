@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -123,6 +124,11 @@ async def login(
             content={"detail": "Invalid password"},
         )
 
+    # Record last login timestamp
+    await profile_client.update_profile(body.email, {
+        "last_login": datetime.now(timezone.utc).isoformat(),
+    })
+
     token_balance = await _get_waitlist_token_balance(profile_client, body.email)
     return _build_login_response(body.email, profile, token_balance)
 
@@ -218,6 +224,13 @@ async def google_login(
         )
 
     email = profile.get("_email", "")
+
+    # Record last login timestamp
+    if email:
+        await profile_client.update_profile(email, {
+            "last_login": datetime.now(timezone.utc).isoformat(),
+        })
+
     token_balance = await _get_waitlist_token_balance(profile_client, email)
     return _build_login_response(email, profile, token_balance)
 
