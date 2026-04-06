@@ -261,7 +261,7 @@ Close all critical test coverage gaps in backend and frontend. No production cod
     - Click fires the provided callback
     - _Requirements: 9.3_
 
-- [-] 16. Final checkpoint — Full coverage verification
+- [x] 16. Final checkpoint — Full coverage verification
   - Run `cd backend && pytest --cov=app --cov-fail-under=70 -q` → must pass
   - Run `cd frontend && npx vitest run --coverage` → must pass with 70% thresholds
   - Verify CI workflow (`.github/workflows/pr-tests.yml`) would pass with these changes
