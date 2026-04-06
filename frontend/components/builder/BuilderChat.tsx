@@ -10,7 +10,7 @@ import type { BuilderSSECallbacks } from "@/lib/builder/sse-client";
 // Content cleaning — strip LLM markers and thought signatures
 // ---------------------------------------------------------------------------
 
-const JSON_DELTA_RE = /<<JSON_DELTA:\w+:.*?>>/gs;
+const JSON_DELTA_RE = /<<JSON_DELTA:\w+:[\s\S]*?>>/g;
 const THOUGHT_SIGNATURE_RE = /[{,]\s*"thought_signature"\s*:\s*"[^"]*"/g;
 
 /** Remove <<JSON_DELTA:...>> markers and thought_signature fields from display text. */
