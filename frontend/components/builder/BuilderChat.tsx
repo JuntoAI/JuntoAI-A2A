@@ -11,13 +11,18 @@ import type { BuilderSSECallbacks } from "@/lib/builder/sse-client";
 // ---------------------------------------------------------------------------
 
 const JSON_DELTA_RE = /<<JSON_DELTA:\w+:[\s\S]*?>>/g;
-const THOUGHT_SIGNATURE_RE = /[{,]\s*"thought_signature"\s*:\s*"[^"]*"/g;
+// Match thought_signature fields and surrounding JSON wrapper artifacts
+const THOUGHT_SIGNATURE_RE = /,?\s*"thought_signature"\s*:\s*"[A-Za-z0-9+/=\s]*"/g;
+// Match raw content block wrappers like {"type": "text", "text": "..."}
+const CONTENT_BLOCK_RE = /\{"type"\s*:\s*"text"\s*,\s*"text"\s*:\s*"/g;
 
 /** Remove <<JSON_DELTA:...>> markers and thought_signature fields from display text. */
 function cleanDisplayContent(text: string): string {
   return text
     .replace(JSON_DELTA_RE, "")
     .replace(THOUGHT_SIGNATURE_RE, "")
+    .replace(CONTENT_BLOCK_RE, "")
+    .replace(/"\s*}\s*$/g, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

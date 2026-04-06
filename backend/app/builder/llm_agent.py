@@ -164,7 +164,20 @@ class BuilderLLMAgent:
             accumulated_text = ""
             async for chunk in self.model.astream(messages):
                 if isinstance(chunk, AIMessageChunk) and chunk.content:
-                    token = chunk.content if isinstance(chunk.content, str) else str(chunk.content)
+                    content = chunk.content
+                    # Gemini 3.x may return content as a list of blocks
+                    # (e.g. [{"type": "text", "text": "..."}, ...]).
+                    # Extract only the text parts.
+                    if isinstance(content, list):
+                        token = "".join(
+                            block.get("text", "") if isinstance(block, dict) else str(block)
+                            for block in content
+                            if not (isinstance(block, dict) and block.get("type") == "thinking")
+                        )
+                    else:
+                        token = content if isinstance(content, str) else str(content)
+                    if not token:
+                        continue
                     accumulated_text += token
                     yield BuilderTokenEvent(event_type="builder_token", token=token)
 
