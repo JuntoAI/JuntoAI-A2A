@@ -6,6 +6,24 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Admin Dashboard (Spec 150) — 2026-04-06
+
+- Cloud-only internal admin dashboard at `/admin` with shared-password authentication (`ADMIN_PASSWORD` env var)
+- Admin login with `itsdangerous` signed HTTP-only session cookie (8h TTL), constant-time password comparison, IP-based rate limiting (10 attempts / 5 min)
+- Dashboard overview: total users, simulations today, active SSE connections, aggregate AI token consumption, scenario analytics, model performance metrics (latency, tokens, errors from Spec 145 `agent_calls`)
+- User management: paginated user list joined from `waitlist` + `profiles` collections, cursor-based pagination, tier/status filtering
+- User actions: token balance adjustment (`PATCH /admin/users/{email}/tokens`), account status changes (`active`, `suspended`, `banned`)
+- `user_status` field on waitlist documents — `suspended`/`banned` users blocked at `POST /api/v1/negotiation/start` with 403
+- Simulation list: paginated sessions with filtering by scenario_id, deal_status, owner_email and cursor-based pagination
+- Simulation transcript download: plain text reconstruction from history array with agent role, turn number, inner thought, and public message
+- Raw JSON session download with `Content-Disposition` attachment headers
+- CSV export endpoints for users and simulations with RFC 4180 escaping and date-stamped filenames
+- Session metadata: `created_at`, `completed_at`, and `duration_seconds` fields added to session documents for analytics
+- Admin API security: HTTP-only/Secure/SameSite=Strict cookie, Pydantic V2 validation on all params, INFO-level audit logging for all admin actions
+- Server-side rendered admin pages — no admin data in client JavaScript bundles
+- `RUN_MODE=local` returns HTTP 503 for all admin endpoints
+- Backward compatibility: missing `user_status` treated as `active`
+
 ## Test Coverage Hardening (Spec 155) — 2026-04-06
 
 - Backend coverage gate: `pytest --cov=app --cov-fail-under=70` enforced — test suite passes 70% threshold and completes under 120s

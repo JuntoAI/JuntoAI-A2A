@@ -9,6 +9,27 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Admin Dashboard",
+    specId: "150",
+    date: "2026-04-06",
+    items: [
+      "Cloud-only internal admin dashboard at /admin with shared-password authentication (ADMIN_PASSWORD env var)",
+      "Admin login with itsdangerous signed HTTP-only session cookie (8h TTL), constant-time password comparison, IP-based rate limiting",
+      "Dashboard overview: total users, simulations today, active SSE connections, aggregate AI token consumption, scenario analytics",
+      "Model performance metrics: average latency, token usage, and error count per model from Spec 145 agent_calls telemetry",
+      "User management: paginated user list joined from waitlist + profiles collections with tier/status filtering",
+      "User actions: token balance adjustment and account status changes (active, suspended, banned)",
+      "user_status field on waitlist documents — suspended/banned users blocked at POST /api/v1/negotiation/start with 403",
+      "Simulation list: paginated sessions with filtering by scenario_id, deal_status, owner_email and cursor-based pagination",
+      "Simulation transcript download: plain text reconstruction from history array with agent role, turn number, and messages",
+      "Raw JSON session download and CSV export endpoints for users and simulations with RFC 4180 escaping",
+      "Session metadata: created_at, completed_at, and duration_seconds fields on session documents for analytics",
+      "Admin API security: HTTP-only/Secure/SameSite=Strict cookie, Pydantic V2 validation, INFO-level audit logging",
+      "Server-side rendered admin pages — no admin data in client JavaScript bundles",
+      "RUN_MODE=local returns HTTP 503 for all admin endpoints; missing user_status treated as active for backward compatibility",
+    ],
+  },
+  {
     title: "Test Coverage Hardening",
     specId: "155",
     date: "2026-04-06",
