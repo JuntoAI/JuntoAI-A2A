@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { LogoutButton } from "@/components/admin/LogoutButton";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/admin" },
@@ -23,39 +24,33 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="flex w-56 flex-col justify-between bg-brand-charcoal text-white">
-        <div>
-          <div className="px-5 py-6">
-            <h1 className="text-lg font-semibold tracking-tight">
-              JuntoAI Admin
-            </h1>
-          </div>
-          <nav className="flex flex-col gap-1 px-3">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+      <aside className="flex w-56 flex-col bg-brand-charcoal text-white">
+        <div className="px-5 py-6">
+          <h1 className="text-lg font-semibold tracking-tight">
+            JuntoAI Admin
+          </h1>
         </div>
-        <div className="px-3 pb-6">
-          <form action="/api/v1/admin/logout" method="POST">
-            <button
-              type="submit"
-              className="w-full rounded-md px-3 py-2 text-left text-sm font-medium text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+        <nav className="flex flex-col gap-1 px-3">
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-md px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
             >
-              Logout
-            </button>
-          </form>
-        </div>
+              {item.label}
+            </Link>
+          ))}
+        </nav>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 bg-brand-offwhite p-8">{children}</main>
+      <div className="flex flex-1 flex-col">
+        {/* Header with logout */}
+        <header className="flex items-center justify-end border-b border-gray-200 bg-white px-8 py-3">
+          <LogoutButton />
+        </header>
+        <main className="flex-1 bg-brand-offwhite p-8">{children}</main>
+      </div>
     </div>
   );
 }
