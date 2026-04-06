@@ -9,6 +9,28 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Test Coverage Hardening",
+    specId: "155",
+    date: "2026-04-06",
+    items: [
+      "Backend coverage gate: pytest --cov=app --cov-fail-under=70 enforced — passes 70% threshold, completes under 120s",
+      "pytest.ini markers (unit, integration, property, slow) for selective test runs via pytest -m",
+      "SSE event formatting tests: _snapshot_to_events() for negotiator, regulator, observer, dispatcher with data: JSON format validation",
+      "Participant summary tests: _build_participant_summaries(), _build_block_advice(), _format_outcome_value() for multi-agent scenarios",
+      "Model mapping tests: resolve_model_id() for all 4 resolution paths across openai, anthropic, and ollama providers",
+      "SQLite and Firestore session client tests: in-memory round-trip, mocked SDK, create/get/update/not-found coverage",
+      "Profile client tests: mocked Firestore for get_or_create_profile, get_profile, update_profile",
+      "SSE middleware tests: SSEEventBuffer (append, replay_after, terminal events, session isolation) and SSEConnectionTracker (acquire/release, limits)",
+      "Auth service tests: bcrypt hash/verify round-trip with 72-byte truncation, validate_google_token, check_google_oauth_id_unique",
+      "Negotiation router integration tests: POST /api/v1/negotiation/start (200, 404, 422), SSE event replay via Last-Event-ID",
+      "Evaluator and orchestrator tests: evaluation logic with mocked LLM, prompt construction, confirmation node, milestone generator",
+      "Scenario module tests: toggle injector (multi-toggle, non-existent agent), pretty printer, loader/registry error paths",
+      "Frontend API client tests: lib/auth.ts (7 functions) and lib/profile.ts (3 functions) with mocked fetch and error handling",
+      "Frontend component tests: WaitlistForm, TokenDisplay, StartNegotiationButton with validation, edge cases, and interaction testing",
+      "Property tests: SSE format compliance, model mapping determinism, SQLite round-trip, password hash round-trip, event buffer replay",
+    ],
+  },
+  {
     title: "Negotiation Evaluator",
     specId: "170",
     date: "2026-04-05",

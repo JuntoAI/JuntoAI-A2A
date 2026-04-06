@@ -6,6 +6,25 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Test Coverage Hardening (Spec 155) — 2026-04-06
+
+- Backend coverage gate: `pytest --cov=app --cov-fail-under=70` enforced — test suite passes 70% threshold and completes under 120s
+- `pytest.ini` markers (`unit`, `integration`, `property`, `slow`) for selective test runs via `pytest -m <marker>`
+- SSE event formatting tests: `_snapshot_to_events()` coverage for negotiator, regulator, observer, and dispatcher snapshots with `data: <valid JSON>\n\n` format validation
+- Participant summary tests: `_build_participant_summaries()`, `_build_block_advice()`, `_format_outcome_value()`, `_format_price_for_summary()` for multi-agent scenarios
+- Model mapping tests: `resolve_model_id()` coverage for all 4 resolution paths (global override, MODEL_MAP JSON, default mapping, provider fallback) across openai, anthropic, and ollama providers
+- SQLite session client tests: in-memory round-trip for `create_session`, `get_session`, `get_session_doc`, `update_session`, and `SessionNotFoundError`
+- Firestore session client tests: mocked SDK covering `create_session`, `get_session`, `get_session_doc`, and document-not-found error
+- Profile client tests: mocked Firestore for `get_or_create_profile`, `get_profile`, `update_profile`
+- SSE middleware tests: `SSEEventBuffer` (append, replay_after, terminal events, session isolation) and `SSEConnectionTracker` (acquire/release, limit enforcement)
+- Auth service tests: bcrypt hash/verify round-trip with 72-byte truncation edge case, `validate_google_token` with mocked HTTP, `check_google_oauth_id_unique`
+- Negotiation router integration tests: `POST /api/v1/negotiation/start` (200, 404, 422), SSE event replay via `Last-Event-ID`, auth and profile endpoint coverage
+- Evaluator and orchestrator tests: evaluation logic with mocked LLM, prompt construction for 2-agent and 4-agent scenarios, confirmation node, milestone generator
+- Scenario module tests: toggle injector (multi-toggle, non-existent agent), pretty printer, scenario loader/registry error paths
+- Frontend API client tests: `lib/auth.ts` (7 functions) and `lib/profile.ts` (3 functions) with mocked fetch — success, specific error codes, and generic error handling
+- Frontend component tests: WaitlistForm (validation, submission, errors), TokenDisplay (count, zero, null), StartNegotiationButton (enabled/disabled, click handler)
+- Property tests: SSE format compliance, model mapping determinism, SQLite session round-trip, password hash round-trip, event buffer replay correctness
+
 ## Negotiation Evaluator (Spec 170) — 2026-04-05
 
 - Deal closure protocol: price convergence triggers a Confirmation_Round instead of immediately marking "Agreed" — each negotiator explicitly accepts or rejects the proposed terms
