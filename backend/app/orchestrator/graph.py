@@ -205,32 +205,22 @@ def _resolve_confirmation(state: NegotiationState) -> dict[str, Any]:
         }
 
     all_accepted = all(e["content"]["accept"] for e in confirmations)
-    any_conditions = any(e["content"].get("conditions", []) for e in confirmations)
 
-    if all_accepted and not any_conditions:
+    if all_accepted:
         return {
             "deal_status": "Agreed",
             "closure_status": "Confirmed",
             "confirmation_pending": [],
-            # Forward essential fields so the dispatcher snapshot can
-            # build a complete NegotiationCompleteEvent with participant
-            # summaries and correct metrics.
             "current_offer": state.get("current_offer", 0),
             "turn_count": state.get("turn_count", 0),
             "warning_count": state.get("warning_count", 0),
             "total_tokens_used": state.get("total_tokens_used", 0),
             "agent_states": state.get("agent_states", {}),
         }
-    elif not all_accepted:
-        return {
-            "deal_status": "Negotiating",
-            "closure_status": "Rejected",
-            "confirmation_pending": [],
-        }
     else:
         return {
             "deal_status": "Negotiating",
-            "closure_status": "Conditional",
+            "closure_status": "Rejected",
             "confirmation_pending": [],
         }
 

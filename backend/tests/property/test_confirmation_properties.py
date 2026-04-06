@@ -340,19 +340,14 @@ def test_confirmation_resolution_deterministic_and_correct(
     result = _resolve_confirmation(state)
 
     all_accepted = all(e["content"]["accept"] for e in entries)
-    any_conditions = any(e["content"].get("conditions", []) for e in entries)
 
-    # Exactly one of three outcomes
-    if all_accepted and not any_conditions:
+    # Two outcomes: all accepted → Agreed, any rejected → Negotiating
+    if all_accepted:
         assert result["deal_status"] == "Agreed"
         assert result["closure_status"] == "Confirmed"
-    elif not all_accepted:
+    else:
         assert result["deal_status"] == "Negotiating"
         assert result["closure_status"] == "Rejected"
-    else:
-        # all_accepted and any_conditions
-        assert result["deal_status"] == "Negotiating"
-        assert result["closure_status"] == "Conditional"
 
     # All outcomes clear confirmation_pending
     assert result["confirmation_pending"] == []
