@@ -78,7 +78,11 @@ def _build_mock_db():
 
     db.create_session = AsyncMock(side_effect=_capture_create)
 
-    # Cloud-mode mocks (not used in local mode tests, but needed to avoid errors)
+    # Local mode: update_session merges metadata into stored data
+    async def _capture_update(session_id, updates):
+        stored_data.update(updates)
+
+    db.update_session = AsyncMock(side_effect=_capture_update)
     doc_ref = MagicMock()
     doc_ref.set = AsyncMock(side_effect=lambda data: stored_data.update(data))
     db._collection = MagicMock()

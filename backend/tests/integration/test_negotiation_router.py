@@ -127,6 +127,12 @@ def _build_mock_db():
 
     db.create_session = AsyncMock(side_effect=_capture_create)
 
+    # Local mode: update_session merges metadata into stored data
+    async def _capture_update(session_id, updates):
+        stored_data.update(updates)
+
+    db.update_session = AsyncMock(side_effect=_capture_update)
+
     # Mock waitlist lookup for token balance
     waitlist_doc = MagicMock()
     waitlist_doc.exists = True

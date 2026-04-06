@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "llama3.1"
 
+    # --- Cloud-only: Admin dashboard ---
+    ADMIN_PASSWORD: str = ""
+
     # --- Cloud-only: Amazon SES (email verification) ---
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""

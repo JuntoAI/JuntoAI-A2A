@@ -37,7 +37,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["Content-Type", "Authorization", "Cache-Control"],
 )
 
@@ -48,6 +48,13 @@ api_router.include_router(negotiation_router)
 api_router.include_router(profile_router)
 api_router.include_router(auth_router)
 api_router.include_router(scenarios_router)
+
+if settings.ADMIN_PASSWORD:
+    from app.routers.admin import router as admin_router
+
+    api_router.include_router(admin_router)
+else:
+    logger.error("ADMIN_PASSWORD not set — admin routes disabled")
 
 app.include_router(api_router)
 

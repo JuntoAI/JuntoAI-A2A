@@ -21,6 +21,7 @@ langchain-community
 
 # Auth & Profile
 bcrypt
+itsdangerous
 pycountry
 boto3
 requests

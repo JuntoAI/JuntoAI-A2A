@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -82,6 +83,17 @@ async def start_negotiation(
     Validates the scenario, builds initial state with toggle injection,
     persists to Firestore, and returns the session_id.
     """
+    # 0. User status check (cloud mode only)
+    if settings.RUN_MODE == "cloud":
+        wl_ref = profile_client._db.collection("waitlist").document(body.email.lower().strip())
+        wl_doc = await wl_ref.get()
+        if wl_doc.exists:
+            user_status = wl_doc.to_dict().get("user_status", "active")
+            if user_status == "suspended":
+                return JSONResponse(status_code=403, content={"detail": "Account suspended"})
+            if user_status == "banned":
+                return JSONResponse(status_code=403, content={"detail": "Account banned"})
+
     # 1. Validate scenario exists
     try:
         scenario = registry.get_scenario(body.scenario_id, email=body.email)
@@ -151,11 +163,14 @@ async def start_negotiation(
         # Cloud: store via Firestore internals (owner_email for auth)
         doc_data = state.model_dump()
         doc_data["owner_email"] = body.email
+        doc_data["created_at"] = datetime.now(timezone.utc).isoformat()
         doc_ref = db._collection.document(session_id)  # type: ignore[attr-defined]
         await doc_ref.set(doc_data)
     else:
         # Local: use the SessionStore protocol
         await db.create_session(state)
+        # Add created_at metadata (not part of NegotiationStateModel)
+        await db.update_session(session_id, {"created_at": datetime.now(timezone.utc).isoformat()})
 
     # 7. Return session info (tokens deducted after negotiation completes)
     if settings.RUN_MODE == "cloud":
@@ -526,19 +541,28 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
         role = entry.get("role", "Unknown")
         agent_type = entry.get("agent_type", "negotiator")
         # Use turn_count from state (increments on full cycle wrap).
-        # Fall back to 0 if not present (dispatcher snapshots).
-        turn_number = state.get("turn_count", 0)
+        # Fall back to the entry's own turn_number, then 0.
+        # This is important because some snapshot deltas (e.g. confirmation
+        # node) don't include turn_count in their state delta.
+        turn_number = state.get("turn_count", None)
+        if turn_number is None:
+            turn_number = entry.get("turn_number", 0)
         content = entry.get("content", {})
 
         # Handle confirmation entries — emit final_statement as public message
         if agent_type == "confirmation":
+            # The confirmation node snapshot does NOT include turn_count
+            # in its state delta, so state.get("turn_count", 0) falls
+            # back to 0.  Use the turn_number stored inside the history
+            # entry itself (set by confirmation_node from the full state).
+            conf_turn = entry.get("turn_number", turn_number)
             final_statement = content.get("final_statement", "")
             if final_statement:
                 events.append(AgentMessageEvent(
                     event_type="agent_message",
                     agent_name=role,
                     public_message=final_statement,
-                    turn_number=turn_number,
+                    turn_number=conf_turn,
                 ))
             continue
 
@@ -873,6 +897,22 @@ async def stream_negotiation(
                         await wl_ref.update({"token_balance": new_balance})
                 except Exception:
                     logger.warning("Failed to deduct tokens for %s", email)
+
+            # Write session completion metadata (cloud mode only)
+            if settings.RUN_MODE == "cloud":
+                try:
+                    completed_at = datetime.now(timezone.utc).isoformat()
+                    created_at_str = raw_doc.get("created_at")
+                    duration_seconds = None
+                    if created_at_str:
+                        created_dt = datetime.fromisoformat(created_at_str)
+                        duration_seconds = int((datetime.now(timezone.utc) - created_dt).total_seconds())
+                    updates: dict = {"completed_at": completed_at}
+                    if duration_seconds is not None:
+                        updates["duration_seconds"] = duration_seconds
+                    await db.update_session(session_id, updates)
+                except Exception:
+                    logger.warning("Failed to write session metadata for %s", session_id)
 
     return StreamingResponse(
         event_stream(),

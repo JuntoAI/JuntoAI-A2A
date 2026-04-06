@@ -1,5 +1,21 @@
 """Pydantic models for the JuntoAI A2A API."""
 
+from app.models.admin import (
+    AdminLoginRequest,
+    ModelPerformance,
+    OverviewResponse,
+    RecentSimulation,
+    ScenarioAnalytics,
+    SimulationListItem,
+    SimulationListParams,
+    SimulationListResponse,
+    StatusChangeRequest,
+    TokenAdjustRequest,
+    UserListItem,
+    UserListParams,
+    UserListResponse,
+    UserStatus,
+)
 from app.models.auth import (
     ChangePasswordRequest,
     CheckEmailResponse,
@@ -34,4 +50,18 @@ __all__ = [
     "GoogleTokenRequest",
     "CheckEmailResponse",
     "LoginResponse",
+    "UserStatus",
+    "AdminLoginRequest",
+    "TokenAdjustRequest",
+    "StatusChangeRequest",
+    "ScenarioAnalytics",
+    "ModelPerformance",
+    "RecentSimulation",
+    "OverviewResponse",
+    "UserListItem",
+    "UserListResponse",
+    "SimulationListItem",
+    "SimulationListResponse",
+    "UserListParams",
+    "SimulationListParams",
 ]
