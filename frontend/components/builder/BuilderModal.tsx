@@ -144,7 +144,7 @@ export function BuilderModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-[#1C1C1E]/95 backdrop-blur-sm"
+      className="fixed inset-x-0 bottom-0 top-[49px] z-40 flex flex-col bg-[#1C1C1E]/95 backdrop-blur-sm"
       data-testid="builder-modal"
     >
       {/* Header */}
@@ -223,7 +223,7 @@ export function BuilderModal({
       {/* Close confirmation dialog */}
       {showConfirmClose && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+          className="fixed inset-x-0 bottom-0 top-[49px] z-[45] flex items-center justify-center bg-black/60"
           data-testid="confirm-close-dialog"
         >
           <div className="rounded-xl bg-[#1C1C1E] border border-gray-700 p-6 max-w-sm mx-4 shadow-2xl">
