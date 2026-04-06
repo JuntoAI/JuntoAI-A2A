@@ -1,10 +1,26 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Linkedin } from "lucide-react";
+import { Send, Linkedin, Loader2 } from "lucide-react";
 import type { BuilderChatMessage, HealthCheckFullReport } from "@/lib/builder/types";
 import { streamBuilderChat } from "@/lib/builder/sse-client";
 import type { BuilderSSECallbacks } from "@/lib/builder/sse-client";
+
+// ---------------------------------------------------------------------------
+// Content cleaning — strip LLM markers and thought signatures
+// ---------------------------------------------------------------------------
+
+const JSON_DELTA_RE = /<<JSON_DELTA:\w+:.*?>>/gs;
+const THOUGHT_SIGNATURE_RE = /[{,]\s*"thought_signature"\s*:\s*"[^"]*"/g;
+
+/** Remove <<JSON_DELTA:...>> markers and thought_signature fields from display text. */
+function cleanDisplayContent(text: string): string {
+  return text
+    .replace(JSON_DELTA_RE, "")
+    .replace(THOUGHT_SIGNATURE_RE, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 // ---------------------------------------------------------------------------
 // Props
@@ -72,6 +88,7 @@ export function BuilderChat({
   const [input, setInput] = useState("");
   const [isWaiting, setIsWaiting] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [hasReceivedToken, setHasReceivedToken] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -96,9 +113,11 @@ export function BuilderChat({
     setInput("");
     setIsWaiting(true);
     setStreamingContent("");
+    setHasReceivedToken(false);
 
     const callbacks: BuilderSSECallbacks = {
       onToken: (token) => {
+        setHasReceivedToken(true);
         setStreamingContent((prev) => prev + token);
       },
       onJsonDelta: (section, data) => {
@@ -106,12 +125,14 @@ export function BuilderChat({
       },
       onComplete: () => {
         setStreamingContent((prev) => {
-          if (prev) {
-            setMessages((msgs) => [...msgs, { role: "assistant", content: prev }]);
+          const cleaned = cleanDisplayContent(prev);
+          if (cleaned) {
+            setMessages((msgs) => [...msgs, { role: "assistant", content: cleaned }]);
           }
           return "";
         });
         setIsWaiting(false);
+        setHasReceivedToken(false);
       },
       onError: (message) => {
         setMessages((prev) => [
@@ -120,6 +141,7 @@ export function BuilderChat({
         ]);
         setStreamingContent("");
         setIsWaiting(false);
+        setHasReceivedToken(false);
       },
       onHealthStart: () => {
         // Health check started — no UI action needed here
@@ -167,6 +189,16 @@ export function BuilderChat({
           </div>
         ))}
 
+        {/* Thinking indicator — before first token arrives */}
+        {isWaiting && !hasReceivedToken && !streamingContent && (
+          <div className="flex justify-start" data-testid="thinking-indicator">
+            <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm text-gray-400 shadow-sm">
+              <Loader2 size={16} className="animate-spin text-[#007BFF]" />
+              <span>Thinking...</span>
+            </div>
+          </div>
+        )}
+
         {/* Streaming assistant message (typewriter effect) */}
         {streamingContent && (
           <div className="flex justify-start">
@@ -174,7 +206,7 @@ export function BuilderChat({
               className="max-w-[80%] rounded-2xl rounded-bl-md bg-white px-4 py-2 text-sm text-[#1C1C1E] shadow-sm whitespace-pre-wrap"
               data-testid="streaming-message"
             >
-              {renderMessageContent(streamingContent)}
+              {renderMessageContent(cleanDisplayContent(streamingContent))}
               <span className="inline-block w-1 h-4 ml-0.5 bg-[#007BFF] animate-pulse" />
             </div>
           </div>
