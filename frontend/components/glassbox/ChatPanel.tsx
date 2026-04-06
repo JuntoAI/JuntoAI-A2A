@@ -81,7 +81,7 @@ export default function ChatPanel({ messages, isConnected, valueFormat = "curren
             </p>
             <div className="inline-block rounded-lg bg-gray-100 px-3 py-2 text-sm text-gray-900">
               <p>{msg.publicMessage}</p>
-              {msg.proposedPrice !== undefined && (
+              {msg.proposedPrice !== undefined && msg.proposedPrice > 0 && (
                 <span
                   className="mt-1 inline-block rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-xs font-semibold"
                   data-testid="proposed-price-badge"
