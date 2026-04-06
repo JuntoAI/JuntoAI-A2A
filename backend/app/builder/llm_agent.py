@@ -70,7 +70,7 @@ def _build_default_model() -> BaseChatModel:
     return ChatVertexAI(
         model_name="gemini-3.1-pro-preview",
         project=settings.GOOGLE_CLOUD_PROJECT,
-        location=os.environ.get("VERTEX_AI_LOCATION", "us-east5"),
+        location="global",
         max_output_tokens=4096,
     )
 
