@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { backendFetch } from "@/lib/proxy";
 
 interface SessionData {
   session_id: string;
@@ -23,7 +22,7 @@ async function fetchSession(
   cookie: string
 ): Promise<{ data: SessionData | null; error: string | null }> {
   try {
-    const res = await fetch(`${API_URL}/api/v1/admin/simulations/${id}/json`, {
+    const res = await backendFetch(`/api/v1/admin/simulations/${id}/json`, {
       headers: { Cookie: `admin_session=${cookie}` },
       cache: "no-store",
     });
@@ -117,8 +116,8 @@ export default async function SimulationDetailPage({
     );
   }
 
-  const transcriptUrl = `${API_URL}/api/v1/admin/simulations/${data.session_id}/transcript`;
-  const jsonUrl = `${API_URL}/api/v1/admin/simulations/${data.session_id}/json`;
+  const transcriptUrl = `/api/v1/admin/simulations/${data.session_id}/transcript`;
+  const jsonUrl = `/api/v1/admin/simulations/${data.session_id}/json`;
 
   return (
     <div className="space-y-6">

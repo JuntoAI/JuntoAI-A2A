@@ -49,6 +49,9 @@ async function proxyRequest(req: NextRequest) {
   // Forward cache-control
   const cc = upstream.headers.get("cache-control");
   if (cc) responseHeaders.set("cache-control", cc);
+  // Forward set-cookie (needed for admin login/logout)
+  const setCookie = upstream.headers.get("set-cookie");
+  if (setCookie) responseHeaders.set("set-cookie", setCookie);
 
   if (isStream) {
     // Disable buffering for SSE

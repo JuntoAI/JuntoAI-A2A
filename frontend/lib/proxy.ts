@@ -50,6 +50,10 @@ export async function buildProxyHeaders(
   const accept = incomingHeaders.get("accept");
   if (accept) headers["accept"] = accept;
 
+  // Forward cookies (needed for admin_session and other auth cookies)
+  const cookie = incomingHeaders.get("cookie");
+  if (cookie) headers["cookie"] = cookie;
+
   // Attach identity token for Cloud Run service-to-service auth
   const token = await fetchIdentityToken(BACKEND_ORIGIN);
   if (token) {
@@ -57,4 +61,19 @@ export async function buildProxyHeaders(
   }
 
   return headers;
+}
+
+/**
+ * Perform a server-side fetch to the backend with OIDC auth.
+ * Use this from server components instead of going through the proxy route.
+ */
+export async function backendFetch(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const token = await fetchIdentityToken(BACKEND_ORIGIN);
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("authorization", `Bearer ${token}`);
+
+  return fetch(`${BACKEND_ORIGIN}${path}`, { ...init, headers });
 }

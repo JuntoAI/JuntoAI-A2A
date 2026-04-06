@@ -13,7 +13,6 @@ steps:
       - --build-arg=NEXT_PUBLIC_FIREBASE_APP_ID=${_FIREBASE_APP_ID}
       - --build-arg=NEXT_PUBLIC_RUN_MODE=cloud
       - --build-arg=NEXT_PUBLIC_GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}
-      - --build-arg=NEXT_PUBLIC_API_URL=https://${_BACKEND_SERVICE}-141882351618.${_REGION}.run.app
     waitFor: ["-"]
 
   # Write frontend runtime env vars

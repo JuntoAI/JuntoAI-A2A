@@ -22,7 +22,7 @@ Monorepo with three top-level directories: `/backend`, `/frontend`, `/infra`.
 - **Icons**: Lucide React
 - **Client DB**: Firebase JS SDK (Firestore modular imports)
 - **Hosting**: GCP Cloud Run (containerized)
-- **Key env vars**: `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`, `NEXT_PUBLIC_API_URL`
+- **Key env vars**: `NEXT_PUBLIC_FIREBASE_API_KEY`, `NEXT_PUBLIC_FIREBASE_PROJECT_ID`, `NEXT_PUBLIC_FIREBASE_APP_ID`, `BACKEND_URL`
 
 ## Infrastructure
 - **IaC**: Terraform + Terragrunt

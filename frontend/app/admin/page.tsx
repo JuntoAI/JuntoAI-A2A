@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+import { backendFetch } from "@/lib/proxy";
 
 interface ScenarioAnalytics {
   scenario_id: string;
@@ -41,7 +40,7 @@ async function fetchOverview(
   cookie: string
 ): Promise<{ data: OverviewData | null; error: string | null }> {
   try {
-    const res = await fetch(`${API_URL}/api/v1/admin/overview`, {
+    const res = await backendFetch("/api/v1/admin/overview", {
       headers: { Cookie: `admin_session=${cookie}` },
       cache: "no-store",
     });

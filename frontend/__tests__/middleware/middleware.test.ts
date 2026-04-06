@@ -100,8 +100,8 @@ describe("middleware (default mode — no env set)", () => {
 });
 
 describe("config.matcher", () => {
-  it("matches /arena/:path* routes only", async () => {
+  it("matches /arena/:path* and /admin/:path* routes", async () => {
     const { config } = await import("../../middleware");
-    expect(config.matcher).toEqual(["/arena/:path*"]);
+    expect(config.matcher).toEqual(["/arena/:path*", "/admin/:path*"]);
   });
 });
