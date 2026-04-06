@@ -348,3 +348,262 @@ class TestSnapshotToEventsConfirmation:
 
         complete_events = [e for e in events if isinstance(e, NegotiationCompleteEvent)]
         assert len(complete_events) == 0
+
+
+# ===========================================================================
+# Test: Confirmation with accept response
+# ===========================================================================
+
+
+class TestConfirmationAcceptResponse:
+    """Test the full accept flow through confirmation_node."""
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_accept_preserves_deal_status_as_confirming(self, mock_router):
+        """Accept response does NOT change deal_status — dispatcher handles that."""
+        valid_json = json.dumps({
+            "accept": True,
+            "final_statement": "I accept the terms as proposed.",
+            "conditions": [],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content=valid_json)
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Buyer"])
+        result = confirmation_node(state)
+
+        # confirmation_node never sets deal_status — only history + pending
+        assert "deal_status" not in result
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_accept_with_conditions(self, mock_router):
+        """Accept with conditions stores them in history entry."""
+        valid_json = json.dumps({
+            "accept": True,
+            "final_statement": "I accept, but with conditions.",
+            "conditions": ["Payment within 30 days", "Non-compete clause"],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content=valid_json)
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Seller"])
+        result = confirmation_node(state)
+
+        entry = result["history"][0]
+        assert entry["content"]["accept"] is True
+        assert entry["content"]["conditions"] == ["Payment within 30 days", "Non-compete clause"]
+        assert entry["role"] == "Seller"
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_accept_uses_model_override_when_set(self, mock_router):
+        """When model_overrides has an entry for the role, it's used instead of agent config model."""
+        valid_json = json.dumps({
+            "accept": True,
+            "final_statement": "Accepted.",
+            "conditions": [],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content=valid_json)
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Buyer"])
+        state["model_overrides"] = {"Buyer": "gpt-4o-override"}
+        confirmation_node(state)
+
+        mock_router.get_model.assert_called_once_with(
+            "gpt-4o-override",
+            fallback_model_id=None,
+        )
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_accept_invokes_llm_exactly_once(self, mock_router):
+        """Successful parse on first try means only one LLM call."""
+        valid_json = json.dumps({
+            "accept": True,
+            "final_statement": "Deal!",
+            "conditions": [],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content=valid_json)
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Buyer"])
+        confirmation_node(state)
+
+        assert mock_model.invoke.call_count == 1
+
+
+# ===========================================================================
+# Test: Confirmation with reject response
+# ===========================================================================
+
+
+class TestConfirmationRejectResponse:
+    """Test the full reject flow through confirmation_node."""
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_reject_stores_false_accept(self, mock_router):
+        """Reject response stores accept=False in history."""
+        valid_json = json.dumps({
+            "accept": False,
+            "final_statement": "This deal does not meet my minimum requirements.",
+            "conditions": [],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content=valid_json)
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Buyer"])
+        result = confirmation_node(state)
+
+        entry = result["history"][0]
+        assert entry["content"]["accept"] is False
+        assert "minimum requirements" in entry["content"]["final_statement"]
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_reject_with_conditions_as_reasons(self, mock_router):
+        """Reject with conditions lists reasons for rejection."""
+        valid_json = json.dumps({
+            "accept": False,
+            "final_statement": "I cannot accept this deal.",
+            "conditions": ["Price too high", "Timeline unrealistic"],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content=valid_json)
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Seller"])
+        result = confirmation_node(state)
+
+        entry = result["history"][0]
+        assert entry["content"]["accept"] is False
+        assert len(entry["content"]["conditions"]) == 2
+        assert "Price too high" in entry["content"]["conditions"]
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_reject_still_decrements_pending(self, mock_router):
+        """Rejection still removes the role from confirmation_pending."""
+        valid_json = json.dumps({
+            "accept": False,
+            "final_statement": "No deal.",
+            "conditions": [],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content=valid_json)
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Buyer", "Seller"])
+        result = confirmation_node(state)
+
+        assert result["confirmation_pending"] == ["Seller"]
+        assert result["history"][0]["content"]["accept"] is False
+
+
+# ===========================================================================
+# Test: Confirmation with invalid JSON from LLM
+# ===========================================================================
+
+
+class TestConfirmationInvalidJSON:
+    """Test edge cases for invalid/malformed LLM responses."""
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_markdown_wrapped_json_parsed_successfully(self, mock_router):
+        """JSON wrapped in markdown code fences is parsed correctly."""
+        inner_json = json.dumps({
+            "accept": True,
+            "final_statement": "Accepted.",
+            "conditions": [],
+        })
+        markdown_wrapped = f"```json\n{inner_json}\n```"
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content=markdown_wrapped)
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Buyer"])
+        result = confirmation_node(state)
+
+        # Should parse successfully on first try (no retry needed)
+        assert mock_model.invoke.call_count == 1
+        assert result["history"][0]["content"]["accept"] is True
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_empty_response_triggers_fallback(self, mock_router):
+        """Empty string from LLM triggers retry then fallback."""
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(content="")
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Buyer"])
+        result = confirmation_node(state)
+
+        assert mock_model.invoke.call_count == 2
+        entry = result["history"][0]
+        assert entry["content"]["accept"] is False
+        assert "could not provide a clear response" in entry["content"]["final_statement"]
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_partial_json_triggers_retry(self, mock_router):
+        """Truncated JSON triggers retry."""
+        valid_json = json.dumps({
+            "accept": True,
+            "final_statement": "OK deal.",
+            "conditions": [],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.side_effect = [
+            AIMessage(content='{"accept": true, "final_sta'),  # truncated
+            AIMessage(content=valid_json),
+        ]
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Seller"])
+        result = confirmation_node(state)
+
+        assert mock_model.invoke.call_count == 2
+        assert result["history"][0]["content"]["accept"] is True
+
+    @patch("app.orchestrator.confirmation_node.model_router")
+    def test_list_content_blocks_extracted(self, mock_router):
+        """LLM returning list-of-blocks content is handled correctly."""
+        valid_json = json.dumps({
+            "accept": False,
+            "final_statement": "Rejected.",
+            "conditions": [],
+        })
+        mock_model = MagicMock()
+        mock_model.invoke.return_value = AIMessage(
+            content=[{"type": "text", "text": valid_json}]
+        )
+        mock_router.get_model.return_value = mock_model
+
+        state = _make_state(confirmation_pending=["Buyer"])
+        result = confirmation_node(state)
+
+        assert mock_model.invoke.call_count == 1
+        assert result["history"][0]["content"]["accept"] is False
+
+    def test_parse_confirmation_raises_on_missing_required_field(self):
+        """_parse_confirmation raises AgentOutputParseError when required fields missing."""
+        incomplete_json = json.dumps({"accept": True})  # missing final_statement
+        with pytest.raises(AgentOutputParseError):
+            _parse_confirmation(incomplete_json, "TestRole")
+
+    def test_parse_confirmation_valid_json(self):
+        """_parse_confirmation returns ConfirmationOutput for valid JSON."""
+        valid_json = json.dumps({
+            "accept": True,
+            "final_statement": "Done.",
+            "conditions": ["cond1"],
+        })
+        result = _parse_confirmation(valid_json, "TestRole")
+        assert result.accept is True
+        assert result.final_statement == "Done."
+        assert result.conditions == ["cond1"]
+
+    def test_parse_confirmation_raises_on_plain_text(self):
+        """_parse_confirmation raises AgentOutputParseError for non-JSON text."""
+        with pytest.raises(AgentOutputParseError):
+            _parse_confirmation("I accept the deal, let's go!", "TestRole")

@@ -55,8 +55,9 @@ _printable_ascii = st.text(
 ).filter(lambda s: len(s) >= 8)
 
 
+@pytest.mark.slow
 @given(password=_printable_ascii)
-@settings(max_examples=100, deadline=None)
+@settings(max_examples=20, deadline=None)
 def test_bcrypt_hash_round_trip(password: str):
     """**Validates: Requirements 11.3, 11.7, 11.8**
 

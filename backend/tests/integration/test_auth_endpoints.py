@@ -1,6 +1,6 @@
 """Integration tests for auth endpoints.
 
-Validates: Requirements 9.7, 9.8, 9.9, 9.10, 9.11, 9.12,
+Validates: Requirements 3.1, 9.7, 9.8, 9.9, 9.10, 9.11, 9.12,
            11.3, 11.7, 11.8, 11.10, 11.11,
            13.3, 13.4, 13.5, 13.7, 13.8, 13.9, 13.10
 """
@@ -8,6 +8,8 @@ Validates: Requirements 9.7, 9.8, 9.9, 9.10, 9.11, 9.12,
 from unittest.mock import AsyncMock, patch
 
 import pytest
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(autouse=True)
@@ -333,6 +335,48 @@ class TestGoogleLogin:
         assert resp.status_code == 404
         assert "no linked account" in resp.json()["detail"].lower()
 
+    async def test_invalid_google_token_returns_401(
+        self, test_client, mock_profile_client
+    ):
+        """Invalid Google token on login returns 401."""
+        with patch("app.routers.auth.validate_google_token") as mock_validate:
+            mock_validate.side_effect = ValueError("Invalid Google ID token")
+
+            resp = await test_client.post(
+                "/api/v1/auth/google/login",
+                json={"id_token": "bad-token"},
+            )
+
+        assert resp.status_code == 401
+        assert "invalid" in resp.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/auth/google/link — additional edge cases
+# ---------------------------------------------------------------------------
+
+
+class TestGoogleLinkEdgeCases:
+    """Additional edge cases for Google link endpoint."""
+
+    async def test_missing_email_returns_400(
+        self, test_client, mock_profile_client
+    ):
+        """Google link without email in body returns 400."""
+        with patch("app.routers.auth.validate_google_token") as mock_validate:
+            mock_validate.return_value = {
+                "sub": "google-sub-123",
+                "email": "user@gmail.com",
+            }
+
+            resp = await test_client.post(
+                "/api/v1/auth/google/link",
+                json={"id_token": "valid-google-token", "email": None},
+            )
+
+        assert resp.status_code == 400
+        assert "email" in resp.json()["detail"].lower()
+
 
 # ---------------------------------------------------------------------------
 # DELETE /api/v1/auth/google/link/{email}
@@ -366,3 +410,19 @@ class TestGoogleUnlink:
         )
 
         assert resp.status_code == 404
+
+    async def test_unlink_profile_without_google_id(
+        self, test_client, mock_profile_client
+    ):
+        """Unlinking when profile has no google_oauth_id still succeeds (idempotent)."""
+        mock_profile_client.get_profile = AsyncMock(
+            return_value={"google_oauth_id": None}
+        )
+        mock_profile_client.clear_google_oauth_id = AsyncMock()
+
+        resp = await test_client.delete(
+            "/api/v1/auth/google/link/user@example.com"
+        )
+
+        assert resp.status_code == 200
+        mock_profile_client.clear_google_oauth_id.assert_awaited_once()

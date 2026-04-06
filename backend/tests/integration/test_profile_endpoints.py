@@ -4,9 +4,11 @@ Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5, 12.6, 12.7
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from app.services.email_verifier import SESDeliveryError
 
 
 @pytest.fixture(autouse=True)
@@ -14,6 +16,7 @@ def _force_cloud_mode():
     """Force RUN_MODE=cloud so waitlist helpers use the mocked Firestore path."""
     with patch("app.routers.profile.settings") as mock_settings:
         mock_settings.RUN_MODE = "cloud"
+        mock_settings.FRONTEND_URL = "http://localhost:3000"
         yield mock_settings
 
 
@@ -22,6 +25,7 @@ def _force_cloud_mode():
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 class TestGetProfile:
     """GET /api/v1/profile/{email} — get-or-create profile."""
 
@@ -90,6 +94,7 @@ class TestGetProfile:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 class TestUpdateProfile:
     """PUT /api/v1/profile/{email} — update profile fields."""
 
@@ -187,6 +192,7 @@ class TestUpdateProfile:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 class TestVerifyEmail:
     """POST /api/v1/profile/{email}/verify-email — send verification email."""
 
@@ -213,6 +219,7 @@ class TestVerifyEmail:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 class TestVerifyToken:
     """GET /api/v1/profile/verify/{token} — validate verification token."""
 
@@ -277,3 +284,130 @@ class TestVerifyToken:
         assert resp.status_code == 404
         body = resp.json()
         assert "invalid" in body["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: email verification request edge cases
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestVerifyEmailEdgeCases:
+    """POST /api/v1/profile/{email}/verify-email — additional paths."""
+
+    async def test_ses_failure_returns_502(
+        self, test_client, mock_profile_client, _force_cloud_mode
+    ):
+        """SES delivery failure returns 502 with retry message."""
+        _force_cloud_mode.RUN_MODE = "cloud"
+        mock_profile_client.create_verification_token = AsyncMock()
+
+        with patch(
+            "app.routers.profile.EmailVerifier.generate_and_send_verification",
+            new_callable=AsyncMock,
+            side_effect=SESDeliveryError("user@example.com"),
+        ):
+            resp = await test_client.post(
+                "/api/v1/profile/user@example.com/verify-email"
+            )
+
+        assert resp.status_code == 502
+        body = resp.json()
+        assert "failed to send" in body["detail"].lower()
+
+    async def test_verify_email_returns_token(
+        self, test_client, mock_profile_client, _force_cloud_mode
+    ):
+        """Cloud-mode verify-email returns a token on success."""
+        _force_cloud_mode.RUN_MODE = "cloud"
+        mock_profile_client.create_verification_token = AsyncMock()
+
+        with patch(
+            "app.routers.profile.EmailVerifier.generate_and_send_verification",
+            new_callable=AsyncMock,
+            return_value="fake-token-uuid",
+        ):
+            resp = await test_client.post(
+                "/api/v1/profile/user@example.com/verify-email"
+            )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["token"] == "fake-token-uuid"
+        assert body["message"] == "Verification email sent"
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage: profile creation on first access
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.integration
+class TestProfileCreationOnFirstAccess:
+    """GET /api/v1/profile/{email} — profile auto-creation behaviour."""
+
+    async def test_first_access_creates_profile_and_reads_waitlist_balance(
+        self, test_client, mock_profile_client
+    ):
+        """First access creates a profile via get_or_create_profile and reads token_balance from waitlist."""
+        defaults = {
+            "display_name": "",
+            "email_verified": False,
+            "github_url": None,
+            "linkedin_url": None,
+            "profile_completed_at": None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "password_hash": None,
+            "country": None,
+            "google_oauth_id": None,
+        }
+        mock_profile_client.get_or_create_profile = AsyncMock(return_value=defaults)
+
+        resp = await test_client.get("/api/v1/profile/brand-new@example.com")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        # Profile was auto-created with defaults
+        assert body["display_name"] == ""
+        assert body["email_verified"] is False
+        assert body["tier"] == 1
+        assert body["daily_limit"] == 20
+        # token_balance comes from the mocked waitlist doc (100 in conftest)
+        assert body["token_balance"] == 100
+        # Verify get_or_create_profile was called with the email
+        mock_profile_client.get_or_create_profile.assert_awaited_once_with(
+            "brand-new@example.com"
+        )
+
+    async def test_first_access_with_missing_waitlist_doc_gets_default_balance(
+        self, test_client, mock_profile_client
+    ):
+        """When waitlist doc doesn't exist, token_balance defaults to 20."""
+        defaults = {
+            "display_name": "",
+            "email_verified": False,
+            "github_url": None,
+            "linkedin_url": None,
+            "profile_completed_at": None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "password_hash": None,
+            "country": None,
+            "google_oauth_id": None,
+        }
+        mock_profile_client.get_or_create_profile = AsyncMock(return_value=defaults)
+
+        # Override the waitlist doc mock to simulate non-existent doc
+        waitlist_doc = MagicMock()
+        waitlist_doc.exists = False
+        waitlist_ref = MagicMock()
+        waitlist_ref.get = AsyncMock(return_value=waitlist_doc)
+        mock_profile_client._db.collection.return_value.document.return_value = (
+            waitlist_ref
+        )
+
+        resp = await test_client.get("/api/v1/profile/no-waitlist@example.com")
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["token_balance"] == 20
+        assert body["tier"] == 1

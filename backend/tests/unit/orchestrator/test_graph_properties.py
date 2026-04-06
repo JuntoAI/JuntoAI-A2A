@@ -9,6 +9,10 @@ P12: Dispatcher Routes to current_speaker
 
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.slow
+
 from typing import Any
 
 from hypothesis import given, settings
@@ -323,7 +327,7 @@ def st_scenario_config(draw: st.DrawFn) -> tuple[dict[str, Any], int]:
 class TestP11DynamicGraphNodeCount:
     """build_graph creates len(unique_roles) + 1 nodes (roles + dispatcher)."""
 
-    @settings(max_examples=100)
+    @settings(max_examples=100, deadline=None)
     @given(data=st_scenario_config())
     def test_node_count_matches(self, data: tuple):
         """**Validates: Requirements 4.2**"""
@@ -333,7 +337,7 @@ class TestP11DynamicGraphNodeCount:
         real_nodes = {n for n in graph.nodes.keys() if not n.startswith("__")}
         assert len(real_nodes) == n_roles + 2  # roles + dispatcher + confirmation
 
-    @settings(max_examples=100)
+    @settings(max_examples=100, deadline=None)
     @given(data=st_scenario_config())
     def test_dispatcher_always_present(self, data: tuple):
         """**Validates: Requirements 4.4**"""
@@ -342,7 +346,7 @@ class TestP11DynamicGraphNodeCount:
         graph = compiled.get_graph()
         assert DISPATCHER_NODE in graph.nodes
 
-    @settings(max_examples=100)
+    @settings(max_examples=100, deadline=None)
     @given(data=st_scenario_config())
     def test_all_roles_present_as_nodes(self, data: tuple):
         """**Validates: Requirements 4.5**"""

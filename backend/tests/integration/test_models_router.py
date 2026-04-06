@@ -131,6 +131,7 @@ def _compute_expected(scenarios_data: list[list[dict]]) -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.slow
 @settings(max_examples=100)
 @given(scenarios_data=_scenarios_strategy)
 @pytest.mark.asyncio

@@ -73,7 +73,7 @@ steps:
       - --env-vars-file
       - /workspace/backend-env.yaml
       - --set-secrets
-      - AWS_ACCESS_KEY_ID=aws-ses-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-ses-secret-access-key:latest
+      - AWS_ACCESS_KEY_ID=aws-ses-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-ses-secret-access-key:latest,ADMIN_PASSWORD=admin-password:latest
       - --timeout
       - "1200"
       - --min-instances

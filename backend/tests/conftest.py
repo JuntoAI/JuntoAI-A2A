@@ -127,6 +127,105 @@ from app.scenarios.models import ArenaScenario
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
+def mock_firestore_async_client():
+    """A MagicMock mimicking google.cloud.firestore.AsyncClient.
+
+    Provides the chained call pattern used by FirestoreSessionClient and
+    ProfileClient: ``client.collection(...).document(...).get/set/update()``.
+    The leaf methods (``.get()``, ``.set()``, ``.update()``) are AsyncMocks
+    so they can be awaited in async tests.
+    """
+    client = MagicMock()
+
+    # Build the chain: collection() → doc_ref, doc_ref.get/set/update are async
+    doc_ref = MagicMock()
+    doc_ref.get = AsyncMock()
+    doc_ref.set = AsyncMock()
+    doc_ref.update = AsyncMock()
+
+    collection_ref = MagicMock()
+    collection_ref.document.return_value = doc_ref
+
+    client.collection.return_value = collection_ref
+
+    # Expose inner mocks for easy assertion in tests
+    client._doc_ref = doc_ref
+    client._collection_ref = collection_ref
+
+    return client
+
+
+@pytest.fixture()
+def negotiation_start_payload():
+    """A valid StartNegotiationRequest-compatible dict for POST /negotiation/start."""
+    return {
+        "email": "test@example.com",
+        "scenario_id": "test-scenario",
+        "active_toggles": ["toggle_1"],
+    }
+
+
+@pytest.fixture()
+def sample_history():
+    """Multi-turn history array with negotiator, regulator, and observer entries.
+
+    Represents a realistic 2-turn exchange: Buyer proposes → Regulator evaluates
+    → Seller counters → Regulator evaluates → Observer comments.
+    """
+    return [
+        {
+            "role": "Buyer",
+            "agent_type": "negotiator",
+            "turn_number": 1,
+            "content": {
+                "inner_thought": "I should start low to leave room for negotiation.",
+                "public_message": "I propose $500,000 for the acquisition.",
+                "proposed_price": 500000.0,
+            },
+        },
+        {
+            "role": "Regulator",
+            "agent_type": "regulator",
+            "turn_number": 1,
+            "content": {
+                "reasoning": "Initial offer is within acceptable range.",
+                "public_message": "Offer noted. No compliance issues.",
+                "status": "CLEAR",
+            },
+        },
+        {
+            "role": "Seller",
+            "agent_type": "negotiator",
+            "turn_number": 2,
+            "content": {
+                "inner_thought": "That is too low. I need at least $800k.",
+                "public_message": "I counter at $850,000.",
+                "proposed_price": 850000.0,
+            },
+        },
+        {
+            "role": "Regulator",
+            "agent_type": "regulator",
+            "turn_number": 2,
+            "content": {
+                "reasoning": "Counter-offer is reasonable. Monitoring spread.",
+                "public_message": "Counter-offer accepted for review.",
+                "status": "CLEAR",
+            },
+        },
+        {
+            "role": "Analyst",
+            "agent_type": "observer",
+            "turn_number": 2,
+            "content": {
+                "observation": "Significant gap between parties. Buyer at $500k, Seller at $850k.",
+                "recommendation": "Consider splitting the difference around $675k.",
+            },
+        },
+    ]
+
+
+@pytest.fixture()
 def valid_scenario_dict():
     """Return a minimal valid ArenaScenario dict."""
     return {

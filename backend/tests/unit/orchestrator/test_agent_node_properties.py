@@ -10,6 +10,10 @@ P15: Turn Number Consistency
 
 from __future__ import annotations
 
+import pytest
+
+pytestmark = pytest.mark.slow
+
 from typing import Any
 
 from hypothesis import given, settings

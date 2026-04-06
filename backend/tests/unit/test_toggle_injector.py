@@ -3,12 +3,17 @@
 Tests cover: single toggle injection, multiple toggles same role merge
 (shallow merge, last wins on key conflict), no toggles returns empty dict,
 invalid toggle raises InvalidToggleError, multiple toggles targeting
-different roles produce separate keys.
+different roles produce separate keys, hidden context targets correct agent
+in multi-agent scenarios, non-existent agent role validation, empty toggles
+leave state unchanged.
 
-Requirements: 5.1, 5.2, 5.3, 5.5, 5.6
+Requirements: 5.1, 5.2, 5.3, 5.5, 5.6, 11.1
 """
 
+import copy
+
 import pytest
+from pydantic import ValidationError
 
 from app.scenarios.exceptions import InvalidToggleError
 from app.scenarios.models import ArenaScenario
@@ -201,3 +206,158 @@ class TestMultipleTogglesDifferentRoles:
         assert set(result.keys()) == {"Buyer", "Seller"}
         assert result["Buyer"] == {"intel": "debt_info", "leverage": "patent"}
         assert result["Seller"] == {"pressure": "deadline"}
+
+
+# ---------------------------------------------------------------------------
+# Hidden context targets correct agent in multi-agent scenario
+# ---------------------------------------------------------------------------
+
+
+class TestHiddenContextTargetsCorrectAgent:
+    """Verify toggle injection adds hidden context only to the targeted agent
+    in a scenario with 4 agents (2 negotiators + regulator + observer)."""
+
+    def _four_agent_scenario(self) -> ArenaScenario:
+        return ArenaScenario.model_validate(
+            _scenario(
+                agents=[
+                    _agent(role="Buyer", name="Alice", type="negotiator"),
+                    _agent(role="Seller", name="Bob", type="negotiator"),
+                    _agent(role="Regulator", name="Rex", type="regulator"),
+                    _agent(role="Observer", name="Ollie", type="observer"),
+                ],
+                toggles=[
+                    _toggle(
+                        id="reg_secret",
+                        target_agent_role="Regulator",
+                        hidden_context_payload={"compliance_flag": "strict"},
+                    ),
+                    _toggle(
+                        id="buyer_intel",
+                        target_agent_role="Buyer",
+                        hidden_context_payload={"intel": "debt_info"},
+                    ),
+                ],
+                negotiation_params={
+                    "max_turns": 10,
+                    "agreement_threshold": 1000.0,
+                    "turn_order": ["Buyer", "Seller", "Regulator", "Observer"],
+                },
+            )
+        )
+
+    def test_toggle_targets_regulator_not_others(self):
+        scenario = self._four_agent_scenario()
+
+        result = build_hidden_context(scenario, ["reg_secret"])
+
+        assert result == {"Regulator": {"compliance_flag": "strict"}}
+        assert "Buyer" not in result
+        assert "Seller" not in result
+        assert "Observer" not in result
+
+    def test_toggle_payload_matches_definition(self):
+        """Hidden context payload must exactly match the toggle definition."""
+        scenario = self._four_agent_scenario()
+
+        result = build_hidden_context(scenario, ["buyer_intel"])
+
+        assert result["Buyer"] == {"intel": "debt_info"}
+
+
+# ---------------------------------------------------------------------------
+# Multiple toggles applied to different agents (4-agent scenario)
+# ---------------------------------------------------------------------------
+
+
+class TestMultipleTogglesDifferentAgents:
+    """Activate toggles targeting 3 different roles simultaneously."""
+
+    def test_three_roles_receive_independent_contexts(self):
+        scenario = ArenaScenario.model_validate(
+            _scenario(
+                agents=[
+                    _agent(role="Buyer", name="Alice", type="negotiator"),
+                    _agent(role="Seller", name="Bob", type="negotiator"),
+                    _agent(role="Regulator", name="Rex", type="regulator"),
+                ],
+                toggles=[
+                    _toggle(id="t_buy", target_agent_role="Buyer", hidden_context_payload={"edge": "patent"}),
+                    _toggle(id="t_sell", target_agent_role="Seller", hidden_context_payload={"pressure": "q4"}),
+                    _toggle(id="t_reg", target_agent_role="Regulator", hidden_context_payload={"bias": "lenient"}),
+                ],
+                negotiation_params={
+                    "max_turns": 10,
+                    "agreement_threshold": 1000.0,
+                    "turn_order": ["Buyer", "Seller", "Regulator"],
+                },
+            )
+        )
+
+        result = build_hidden_context(scenario, ["t_buy", "t_sell", "t_reg"])
+
+        assert set(result.keys()) == {"Buyer", "Seller", "Regulator"}
+        assert result["Buyer"] == {"edge": "patent"}
+        assert result["Seller"] == {"pressure": "q4"}
+        assert result["Regulator"] == {"bias": "lenient"}
+
+
+# ---------------------------------------------------------------------------
+# Toggle targeting non-existent agent role — Pydantic rejects at model level
+# ---------------------------------------------------------------------------
+
+
+class TestToggleNonExistentAgentRole:
+    """ArenaScenario's model_validator ensures toggle target_agent_role
+    references a valid agent. build_hidden_context never sees bad roles."""
+
+    def test_pydantic_rejects_toggle_targeting_unknown_role(self):
+        with pytest.raises(ValidationError, match="Ghost.*not in agents"):
+            ArenaScenario.model_validate(
+                _scenario(
+                    toggles=[
+                        _toggle(
+                            id="ghost_toggle",
+                            target_agent_role="Ghost",
+                            hidden_context_payload={"x": 1},
+                        ),
+                    ],
+                )
+            )
+
+    def test_pydantic_rejects_mixed_valid_and_invalid_roles(self):
+        with pytest.raises(ValidationError, match="Phantom.*not in agents"):
+            ArenaScenario.model_validate(
+                _scenario(
+                    toggles=[
+                        _toggle(id="ok", target_agent_role="Buyer", hidden_context_payload={"a": 1}),
+                        _toggle(id="bad", target_agent_role="Phantom", hidden_context_payload={"b": 2}),
+                    ],
+                )
+            )
+
+
+# ---------------------------------------------------------------------------
+# Empty toggles list — no changes to state
+# ---------------------------------------------------------------------------
+
+
+class TestEmptyTogglesNoStateChange:
+    """Calling build_hidden_context with [] must not mutate the scenario."""
+
+    def test_scenario_unchanged_after_empty_toggle_call(self):
+        scenario = _build_scenario()
+        original = copy.deepcopy(scenario)
+
+        build_hidden_context(scenario, [])
+
+        assert scenario.model_dump() == original.model_dump()
+
+    def test_scenario_toggles_list_unchanged_after_activation(self):
+        """Even with active toggles, the scenario object itself is not mutated."""
+        scenario = _build_scenario()
+        original_toggles = copy.deepcopy(scenario.toggles)
+
+        build_hidden_context(scenario, ["toggle_buyer"])
+
+        assert scenario.toggles == original_toggles

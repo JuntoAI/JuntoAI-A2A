@@ -390,3 +390,290 @@ class TestGenerateMilestones:
         result = await generate_milestones(state)
 
         assert result["milestone_summaries"]["Buyer"][0]["summary"] == "Block summary"
+
+
+# ---------------------------------------------------------------------------
+# Milestone generation at different negotiation stages
+# ---------------------------------------------------------------------------
+
+
+class TestMilestoneGenerationStages:
+    """Tests milestone generation at early, mid, and late negotiation stages."""
+
+    @pytest.mark.asyncio
+    @patch("app.orchestrator.milestone_generator.model_router")
+    async def test_early_stage_single_turn(self, mock_router):
+        """Milestone at turn 1 with minimal history."""
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = _make_fake_response("Early summary", 40)
+        mock_router.get_model.return_value = mock_model
+
+        agents = [_make_agent_config("Buyer", "Alice")]
+        history = [
+            {"role": "Buyer", "turn_number": 1, "content": {"public_message": "Opening offer"}},
+        ]
+        state = _make_state(
+            agents=agents,
+            history=history,
+            milestone_summaries={"Buyer": []},
+            turn_count=1,
+        )
+        result = await generate_milestones(state)
+
+        assert result["milestone_summaries"]["Buyer"][0]["turn_number"] == 1
+        assert result["milestone_summaries"]["Buyer"][0]["summary"] == "Early summary"
+
+    @pytest.mark.asyncio
+    @patch("app.orchestrator.milestone_generator.model_router")
+    async def test_mid_stage_with_accumulated_milestones(self, mock_router):
+        """Milestone at turn 8 with a prior milestone at turn 4."""
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = _make_fake_response("Mid summary", 90)
+        mock_router.get_model.return_value = mock_model
+
+        agents = [_make_agent_config("Buyer", "Alice")]
+        history = [
+            {"role": "Buyer", "turn_number": i, "content": {"public_message": f"Msg {i}"}}
+            for i in range(1, 9)
+        ]
+        existing = {
+            "Buyer": [{"turn_number": 4, "summary": "Early progress summary"}],
+        }
+        state = _make_state(
+            agents=agents,
+            history=history,
+            milestone_summaries=existing,
+            turn_count=8,
+        )
+        result = await generate_milestones(state)
+
+        buyer_ms = result["milestone_summaries"]["Buyer"]
+        assert len(buyer_ms) == 2
+        assert buyer_ms[0]["turn_number"] == 4  # existing preserved
+        assert buyer_ms[1]["turn_number"] == 8  # new appended
+
+    @pytest.mark.asyncio
+    @patch("app.orchestrator.milestone_generator.model_router")
+    async def test_late_stage_near_max_turns(self, mock_router):
+        """Milestone at turn 14 of 15 max — near deadline."""
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = _make_fake_response("Final push summary", 110)
+        mock_router.get_model.return_value = mock_model
+
+        agents = [
+            _make_agent_config("Buyer", "Alice"),
+            _make_agent_config("Seller", "Bob"),
+        ]
+        history = [
+            {"role": r, "turn_number": t, "content": {"public_message": f"Turn {t} {r}"}}
+            for t in range(1, 15)
+            for r in ["Buyer", "Seller"]
+        ]
+        existing = {
+            "Buyer": [
+                {"turn_number": 4, "summary": "Early"},
+                {"turn_number": 8, "summary": "Mid"},
+            ],
+            "Seller": [
+                {"turn_number": 4, "summary": "Early seller"},
+            ],
+        }
+        state = _make_state(
+            agents=agents,
+            history=history,
+            milestone_summaries=existing,
+            turn_count=14,
+        )
+        result = await generate_milestones(state)
+
+        assert len(result["milestone_summaries"]["Buyer"]) == 3
+        assert result["milestone_summaries"]["Buyer"][2]["turn_number"] == 14
+        assert len(result["milestone_summaries"]["Seller"]) == 2
+        assert result["milestone_summaries"]["Seller"][1]["turn_number"] == 14
+
+    @pytest.mark.asyncio
+    @patch("app.orchestrator.milestone_generator.model_router")
+    async def test_empty_history_stage(self, mock_router):
+        """Milestone generation with no history entries at all."""
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = _make_fake_response("No history yet", 30)
+        mock_router.get_model.return_value = mock_model
+
+        agents = [_make_agent_config("Buyer", "Alice")]
+        state = _make_state(
+            agents=agents,
+            history=[],
+            milestone_summaries={"Buyer": []},
+            turn_count=0,
+        )
+        result = await generate_milestones(state)
+
+        assert result["milestone_summaries"]["Buyer"][0]["turn_number"] == 0
+        # Prompt should contain "(No history yet)"
+        prompt_text = mock_model.ainvoke.call_args.args[0][0].content
+        assert "(No history yet)" in prompt_text
+
+    @pytest.mark.asyncio
+    @patch("app.orchestrator.milestone_generator.model_router")
+    async def test_multi_agent_four_roles(self, mock_router):
+        """Milestone generation with 4 agents: 2 negotiators + regulator + observer."""
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = _make_fake_response("Role summary", 50)
+        mock_router.get_model.return_value = mock_model
+
+        agents = [
+            _make_agent_config("Buyer", "Alice", "negotiator"),
+            _make_agent_config("Seller", "Bob", "negotiator"),
+            _make_agent_config("Regulator", "Carol", "regulator"),
+            _make_agent_config("Observer", "Dave", "observer"),
+        ]
+        history = [
+            {"role": "Buyer", "turn_number": 1, "content": {"public_message": "Offer"}},
+            {"role": "Regulator", "turn_number": 1, "content": {"observation": "Compliant"}},
+            {"role": "Seller", "turn_number": 2, "content": {"public_message": "Counter"}},
+            {"role": "Observer", "turn_number": 2, "content": {"observation": "Noted"}},
+        ]
+        state = _make_state(
+            agents=agents,
+            history=history,
+            milestone_summaries={},
+            turn_count=4,
+        )
+        result = await generate_milestones(state)
+
+        # All 4 agents get summaries
+        for role in ["Buyer", "Seller", "Regulator", "Observer"]:
+            assert role in result["milestone_summaries"]
+            assert len(result["milestone_summaries"][role]) == 1
+            assert result["milestone_summaries"][role][0]["turn_number"] == 4
+
+    @pytest.mark.asyncio
+    @patch("app.orchestrator.milestone_generator.model_router")
+    async def test_prompt_reflects_stage_context(self, mock_router):
+        """At mid-stage, prompt includes existing milestones as context."""
+        mock_model = AsyncMock()
+        mock_model.ainvoke.return_value = _make_fake_response("Updated", 60)
+        mock_router.get_model.return_value = mock_model
+
+        agents = [_make_agent_config("Buyer", "Alice", goals=["Get best deal"])]
+        existing = {
+            "Buyer": [{"turn_number": 4, "summary": "Buyer started strong at 150k"}],
+        }
+        history = [
+            {"role": "Buyer", "turn_number": i, "content": {"public_message": f"Turn {i}"}}
+            for i in range(1, 9)
+        ]
+        state = _make_state(
+            agents=agents,
+            history=history,
+            milestone_summaries=existing,
+            turn_count=8,
+        )
+        await generate_milestones(state)
+
+        prompt_text = mock_model.ainvoke.call_args.args[0][0].content
+        assert "Buyer started strong at 150k" in prompt_text
+        assert "As of turn 4" in prompt_text
+
+
+# ---------------------------------------------------------------------------
+# Milestone summary formatting tests
+# ---------------------------------------------------------------------------
+
+
+class TestMilestoneSummaryFormatting:
+    """Tests for _format_history and _format_existing_milestones edge cases."""
+
+    def test_format_history_with_observation_content(self):
+        """History entry with observation (observer/regulator) is formatted."""
+        history = [
+            {"role": "Observer", "turn_number": 3, "content": {"observation": "Deal looks fair"}},
+        ]
+        result = _format_history(history)
+        assert "[Turn 3 - Observer]" in result
+        assert "Deal looks fair" in result
+
+    def test_format_history_with_non_dict_content(self):
+        """History entry with plain string content is handled."""
+        history = [
+            {"role": "System", "turn_number": 0, "content": "Negotiation started"},
+        ]
+        result = _format_history(history)
+        assert "[Turn 0 - System]" in result
+        assert "Negotiation started" in result
+
+    def test_format_history_missing_fields(self):
+        """History entry with missing role/turn_number uses defaults."""
+        history = [{"content": {"public_message": "Hello"}}]
+        result = _format_history(history)
+        assert "[Turn ? - unknown]" in result
+        assert "Hello" in result
+
+    def test_format_history_dict_content_fallback_to_str(self):
+        """Dict content with no recognized keys falls back to str()."""
+        history = [
+            {"role": "Agent", "turn_number": 1, "content": {"custom_field": "data"}},
+        ]
+        result = _format_history(history)
+        assert "custom_field" in result
+
+    def test_format_existing_milestones_multiple(self):
+        """Multiple milestones are formatted in order."""
+        milestones = [
+            {"turn_number": 4, "summary": "First checkpoint"},
+            {"turn_number": 8, "summary": "Second checkpoint"},
+            {"turn_number": 12, "summary": "Third checkpoint"},
+        ]
+        result = _format_existing_milestones(milestones)
+        assert "As of turn 4: First checkpoint" in result
+        assert "As of turn 8: Second checkpoint" in result
+        assert "As of turn 12: Third checkpoint" in result
+        # Verify ordering: turn 4 appears before turn 12
+        idx_4 = result.index("turn 4")
+        idx_12 = result.index("turn 12")
+        assert idx_4 < idx_12
+
+    def test_format_existing_milestones_missing_fields(self):
+        """Milestones with missing turn_number/summary use defaults."""
+        milestones = [{"summary": "No turn"}, {"turn_number": 5}]
+        result = _format_existing_milestones(milestones)
+        assert "As of turn ?" in result
+        assert "No turn" in result
+        assert "As of turn 5" in result
+
+    def test_build_prompt_no_goals_no_budget(self):
+        """Prompt with agent that has no goals or budget shows no private context."""
+        agent = _make_agent_config("Buyer", "Alice")
+        state = _make_state(
+            agents=[agent],
+            history=[],
+            milestone_summaries={"Buyer": []},
+        )
+        prompt = _build_milestone_prompt(agent, state)
+        assert "(No private context)" in prompt
+
+    def test_build_prompt_with_multiple_goals(self):
+        """Prompt includes all goals separated by semicolons."""
+        agent = _make_agent_config(
+            "Buyer", "Alice",
+            goals=["Minimize cost", "Secure IP rights", "Retain key staff"],
+        )
+        state = _make_state(agents=[agent], milestone_summaries={"Buyer": []})
+        prompt = _build_milestone_prompt(agent, state)
+        assert "Minimize cost; Secure IP rights; Retain key staff" in prompt
+
+    def test_build_prompt_inner_thoughts_only_for_matching_role(self):
+        """Inner thoughts section only includes entries for the target agent's role."""
+        agent = _make_agent_config("Buyer", "Alice")
+        history = [
+            {"role": "Buyer", "turn_number": 1, "content": {"inner_thought": "My secret plan", "public_message": "Offer"}},
+            {"role": "Seller", "turn_number": 1, "content": {"inner_thought": "Seller secret", "public_message": "Counter"}},
+        ]
+        state = _make_state(
+            agents=[agent, _make_agent_config("Seller", "Bob")],
+            history=history,
+            milestone_summaries={"Buyer": [], "Seller": []},
+        )
+        prompt = _build_milestone_prompt(agent, state)
+        assert "My secret plan" in prompt
+        assert "Seller secret" not in prompt

@@ -150,6 +150,24 @@ class TestRegistryDiscovery:
         assert len(registry) == 0
         assert "not found" in caplog.text
 
+    def test_duplicate_scenario_ids_last_write_wins(self, tmp_path):
+        """When two files define the same id, the last one (alphabetical) wins."""
+        _write_scenario(
+            tmp_path, "a_first.scenario.json",
+            _scenario(id="dup", name="First"),
+        )
+        _write_scenario(
+            tmp_path, "b_second.scenario.json",
+            _scenario(id="dup", name="Second"),
+        )
+
+        registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+        # Only one entry for the duplicated id
+        assert len(registry) == 1
+        # Sorted glob means b_second loads after a_first → overwrites
+        assert registry.get_scenario("dup").name == "Second"
+
 
 # ---------------------------------------------------------------------------
 # Empty directory
@@ -254,3 +272,67 @@ class TestRegistryLen:
         registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
 
         assert len(registry) == 0
+
+
+# ---------------------------------------------------------------------------
+# Email domain access control
+# ---------------------------------------------------------------------------
+
+
+class TestUserCanAccess:
+    def test_list_scenarios_filters_by_email_domain(self, tmp_path):
+        _write_scenario(
+            tmp_path, "public.scenario.json",
+            _scenario(id="public", name="Public"),
+        )
+        _write_scenario(
+            tmp_path, "restricted.scenario.json",
+            _scenario(id="restricted", name="Restricted", allowed_email_domains=["acme.com"]),
+        )
+
+        registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+        # No email → only public scenarios
+        result = registry.list_scenarios()
+        assert len(result) == 1
+        assert result[0]["id"] == "public"
+
+        # Matching domain → both visible
+        result = registry.list_scenarios(email="user@acme.com")
+        assert len(result) == 2
+
+        # Non-matching domain → only public
+        result = registry.list_scenarios(email="user@other.com")
+        assert len(result) == 1
+        assert result[0]["id"] == "public"
+
+    def test_get_scenario_raises_when_access_denied(self, tmp_path):
+        _write_scenario(
+            tmp_path, "locked.scenario.json",
+            _scenario(id="locked", name="Locked", allowed_email_domains=["vip.com"]),
+        )
+
+        registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+        # No email → denied
+        with pytest.raises(ScenarioNotFoundError):
+            registry.get_scenario("locked")
+
+        # Wrong domain → denied
+        with pytest.raises(ScenarioNotFoundError):
+            registry.get_scenario("locked", email="user@other.com")
+
+        # Correct domain → allowed
+        scenario = registry.get_scenario("locked", email="user@vip.com")
+        assert scenario.id == "locked"
+
+    def test_email_without_at_sign_is_denied(self, tmp_path):
+        _write_scenario(
+            tmp_path, "gated.scenario.json",
+            _scenario(id="gated", name="Gated", allowed_email_domains=["example.com"]),
+        )
+
+        registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+        with pytest.raises(ScenarioNotFoundError):
+            registry.get_scenario("gated", email="no-at-sign")
