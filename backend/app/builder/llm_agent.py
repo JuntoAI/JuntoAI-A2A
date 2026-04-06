@@ -64,11 +64,11 @@ with at least 1 having type "negotiator".
 
 
 def _build_default_model() -> BaseChatModel:
-    """Create the default Claude model via Vertex AI for the builder agent."""
-    from langchain_google_vertexai.model_garden import ChatAnthropicVertex
+    """Create the default Gemini model via Vertex AI for the builder agent."""
+    from langchain_google_vertexai import ChatVertexAI
 
-    return ChatAnthropicVertex(
-        model_name="claude-sonnet-4@20250514",
+    return ChatVertexAI(
+        model_name="gemini-2.5-pro-preview-05-06",
         project=settings.GOOGLE_CLOUD_PROJECT,
         location=os.environ.get("VERTEX_AI_LOCATION", "us-east5"),
         max_output_tokens=4096,
