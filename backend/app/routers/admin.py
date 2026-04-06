@@ -414,6 +414,8 @@ async def admin_list_users(
             user_tier = email_tier_map.get(email, compute_tier(None))
             user_status = wl_data.get("user_status", "active")
             signed_up_at = wl_data.get("signed_up_at")
+            if signed_up_at is not None and not isinstance(signed_up_at, str):
+                signed_up_at = signed_up_at.isoformat() if hasattr(signed_up_at, "isoformat") else str(signed_up_at)
 
             # Apply tier filter
             if tier is not None and user_tier != tier:
@@ -423,12 +425,16 @@ async def admin_list_users(
             if status is not None and user_status != status.value:
                 continue
 
+            last_reset_date = wl_data.get("last_reset_date")
+            if last_reset_date is not None and not isinstance(last_reset_date, str):
+                last_reset_date = last_reset_date.isoformat() if hasattr(last_reset_date, "isoformat") else str(last_reset_date)
+
             collected.append(
                 UserListItem(
                     email=email,
                     signed_up_at=signed_up_at,
                     token_balance=wl_data.get("token_balance", 0) or 0,
-                    last_reset_date=wl_data.get("last_reset_date"),
+                    last_reset_date=last_reset_date,
                     tier=user_tier,
                     user_status=user_status,
                 )
@@ -440,6 +446,8 @@ async def admin_list_users(
         # Update cursor for next batch
         last_doc = batch_docs[-1]
         last_signed_up_at = last_doc.get("signed_up_at")
+        if last_signed_up_at is not None and not isinstance(last_signed_up_at, str):
+            last_signed_up_at = last_signed_up_at.isoformat() if hasattr(last_signed_up_at, "isoformat") else str(last_signed_up_at)
         current_cursor = last_signed_up_at
 
         if len(batch_docs) < batch_size:
