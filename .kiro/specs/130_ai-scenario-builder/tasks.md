@@ -13,8 +13,8 @@ Incremental implementation of the AI-powered scenario builder: foundational back
 
 ## Tasks
 
-- [ ] 1. Backend data models and SSE events
-  - [ ] 1.1 Create builder SSE event models (`backend/app/builder/events.py`)
+- [x] 1. Backend data models and SSE events
+  - [x] 1.1 Create builder SSE event models (`backend/app/builder/events.py`)
     - Create `backend/app/builder/__init__.py` and `backend/app/builder/events.py`
     - Define Pydantic models: `BuilderTokenEvent`, `BuilderJsonDeltaEvent`, `BuilderCompleteEvent`, `BuilderErrorEvent`, `HealthCheckStartEvent`, `HealthCheckFindingEvent`, `HealthCheckCompleteEvent`
     - Each model must have a `event_type` Literal field matching the design discriminators
@@ -22,14 +22,14 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - `HealthCheckFindingEvent` must include `check_name`, `severity` (Literal["critical","warning","info"]), `agent_role: str | None`, `message: str`
     - _Requirements: 12.1, 12.2, 12.3, 23.1, 23.2, 23.3, 23.4_
 
-  - [ ] 1.2 Create health check report models (`backend/app/builder/models.py`)
+  - [x] 1.2 Create health check report models (`backend/app/builder/models.py`)
     - Define `AgentPromptScore`, `BudgetOverlapResult`, `StallRiskResult`, `HealthCheckReport`, `CustomScenarioDocument`
     - `HealthCheckReport.readiness_score` must be `Field(ge=0, le=100)`
     - `HealthCheckReport.tier` must be `Literal["Ready", "Needs Work", "Not Ready"]`
     - `BudgetOverlapResult` must include `overlap_zone`, `overlap_percentage`, `target_gap`, `agreement_threshold`, `threshold_ratio`
     - _Requirements: 22.1, 22.2, 22.5, 17.5_
 
-  - [ ]* 1.3 Write property test: SSE event structure and wire format (Property 3)
+  - [x] 1.3 Write property test: SSE event structure and wire format (Property 3)
     - **Property 3: Builder SSE event structure and wire format**
     - Create `backend/tests/property/test_builder_properties.py`
     - For each builder SSE event model, verify `format_sse_event(event, event_id)` produces `id: <id>\ndata: <valid JSON>\n\n` with correct `event_type` literal and all required fields (note: the existing `format_sse_event` includes an `id:` field when `event_id` is provided — builder events use this for reconnection support)
@@ -37,8 +37,8 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - **Validates: Requirements 12.1, 12.2, 12.3, 23.1, 23.2, 23.3, 23.4**
 
 
-- [ ] 2. Builder session management
-  - [ ] 2.1 Implement `BuilderSessionManager` (`backend/app/builder/session_manager.py`)
+- [x] 2. Builder session management
+  - [x] 2.1 Implement `BuilderSessionManager` (`backend/app/builder/session_manager.py`)
     - Define `BuilderSession` dataclass with fields: `session_id`, `email`, `conversation_history: list[dict]`, `partial_scenario: dict`, `message_count: int`, `created_at`, `last_activity`
     - Implement `create_session(email) -> BuilderSession` generating a UUID session_id
     - Implement `get_session(session_id) -> BuilderSession | None`
@@ -48,51 +48,51 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Implement `cleanup_stale(max_age_minutes=60) -> int` — removes sessions older than TTL
     - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-  - [ ]* 2.2 Write property test: Session conversation history preservation (Property 11)
+  - [x] 2.2 Write property test: Session conversation history preservation (Property 11)
     - **Property 11: Session conversation history preservation**
     - For any sequence of N messages added to a BuilderSession, `conversation_history` contains exactly N entries in order with matching role and content
     - **Validates: Requirements 9.1**
 
-  - [ ]* 2.3 Write property test: Session message limit enforcement (Property 12)
+  - [x] 2.3 Write property test: Session message limit enforcement (Property 12)
     - **Property 12: Session message limit enforcement**
     - For any session with 50 user messages, the 51st user message is rejected and `message_count` remains 50
     - **Validates: Requirements 9.4**
 
-  - [ ]* 2.4 Write unit tests for BuilderSessionManager
+  - [x] 2.4 Write unit tests for BuilderSessionManager
     - Test create, get, add_message, update_scenario, delete, cleanup_stale
     - Test message limit enforcement at boundary (49, 50, 51)
     - Test stale session cleanup with mocked timestamps
     - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 3. Checkpoint — Ensure all tests pass
+- [x] 3. Checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 4. LinkedIn URL detection and progress computation utilities
-  - [ ] 4.1 Implement LinkedIn URL detector (`backend/app/builder/linkedin.py`)
+- [x] 4. LinkedIn URL detection and progress computation utilities
+  - [x] 4.1 Implement LinkedIn URL detector (`backend/app/builder/linkedin.py`)
     - Create a function `is_linkedin_url(text: str) -> bool` matching `https://www.linkedin.com/in/.+`
     - _Requirements: 8.1_
 
-  - [ ]* 4.2 Write property test: LinkedIn URL pattern recognition (Property 10)
+  - [x] 4.2 Write property test: LinkedIn URL pattern recognition (Property 10)
     - **Property 10: LinkedIn URL pattern recognition**
     - For any string matching `https://www\.linkedin\.com/in/.+`, detector returns True; for non-matching strings, returns False
     - Use Hypothesis `st.from_regex` for positive cases and `st.text()` filtered for negative cases
     - **Validates: Requirements 8.1**
 
-  - [ ] 4.3 Implement progress percentage calculator (`backend/app/builder/progress.py`)
+  - [x] 4.3 Implement progress percentage calculator (`backend/app/builder/progress.py`)
     - Create `compute_progress(partial_scenario: dict) -> int` that counts populated top-level sections (id, name, description, agents, toggles, negotiation_params, outcome_receipt) and returns `round((count / 7) * 100)`
     - A section is "populated" if the key exists and the value is non-empty (non-empty string, non-empty list, non-empty dict)
     - _Requirements: 5.1_
 
-  - [ ]* 4.4 Write property test: Progress percentage computation (Property 4)
+  - [x] 4.4 Write property test: Progress percentage computation (Property 4)
     - **Property 4: Progress percentage computation**
     - For any subset of the 7 sections being populated, progress equals `round((populated_count / 7) * 100)`
     - Use Hypothesis `st.sets(st.sampled_from([...]))` to generate section subsets
     - **Validates: Requirements 5.1**
 
 
-- [ ] 5. Health check sub-computations
-  - [ ] 5.1 Implement budget overlap analysis (`backend/app/builder/health_checks/budget_overlap.py`)
+- [x] 5. Health check sub-computations
+  - [x] 5.1 Implement budget overlap analysis (`backend/app/builder/health_checks/budget_overlap.py`)
     - Create `backend/app/builder/health_checks/__init__.py`
     - Implement `compute_budget_overlap(agents: list[AgentDefinition]) -> BudgetOverlapResult`
     - Compute overlap zone as `[max(min1, min2), min(max1, max2)]` for each negotiator pair
@@ -100,19 +100,19 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Compute target gap vs agreement_threshold ratio; flag if gap < 3x threshold
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
 
-  - [ ]* 5.2 Write property test: Budget overlap computation (Property 15)
+  - [x] 5.2 Write property test: Budget overlap computation (Property 15)
     - **Property 15: Budget overlap computation and flagging**
     - For any two budget ranges, overlap zone is `[max(min1,min2), min(max1,max2)]` when valid, else None
     - Verify "no_overlap" and "excessive_overlap" flags trigger correctly
     - **Validates: Requirements 17.1, 17.2, 17.3**
 
-  - [ ]* 5.3 Write property test: Agreement threshold vs target gap (Property 16)
+  - [x] 5.3 Write property test: Agreement threshold vs target gap (Property 16)
     - **Property 16: Agreement threshold vs target gap analysis**
     - For any scenario with negotiators, verify gap < 3x threshold triggers convergence warning
     - **Validates: Requirements 17.4, 17.5**
 
 
-  - [ ] 5.4 Implement turn order and turn limit validation (`backend/app/builder/health_checks/turn_sanity.py`)
+  - [x] 5.4 Implement turn order and turn limit validation (`backend/app/builder/health_checks/turn_sanity.py`)
     - Implement `check_turn_sanity(agents, negotiation_params) -> tuple[int, list[HealthCheckFindingEvent]]`
     - Verify every agent role appears in turn_order; flag missing negotiators as critical
     - Verify max_turns >= 2 * unique roles in turn_order; flag insufficient turns as warning
@@ -120,43 +120,43 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Return turn_sanity_score (0-100) and list of findings
     - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5_
 
-  - [ ]* 5.5 Write property test: Turn order completeness and cycle validation (Property 17)
+  - [x] 5.5 Write property test: Turn order completeness and cycle validation (Property 17)
     - **Property 17: Turn order completeness and cycle validation**
     - For any scenario, missing negotiators flagged as critical, insufficient turns flagged as warning
     - **Validates: Requirements 19.1, 19.2, 19.3, 19.4, 19.5**
 
-  - [ ] 5.6 Implement stall risk assessment (`backend/app/builder/health_checks/stall_risk.py`)
+  - [x] 5.6 Implement stall risk assessment (`backend/app/builder/health_checks/stall_risk.py`)
     - Implement `assess_stall_risk(agents, negotiation_params) -> StallRiskResult`
     - Flag "instant_convergence_risk" if target prices within agreement_threshold
     - Flag "price_stagnation_risk" if budget range (max-min) < 3 * agreement_threshold
     - Return stall_risk_score 0-100
     - _Requirements: 20.1, 20.2, 20.4, 20.5_
 
-  - [ ]* 5.7 Write property test: Stall risk assessment (Property 18)
+  - [x] 5.7 Write property test: Stall risk assessment (Property 18)
     - **Property 18: Stall risk assessment**
     - Verify instant_convergence_risk and price_stagnation_risk flags trigger correctly
     - Verify stall_risk_score is in [0, 100]
     - **Validates: Requirements 20.1, 20.2, 20.4**
 
 
-  - [ ] 5.8 Implement readiness score computation (`backend/app/builder/health_checks/readiness.py`)
+  - [x] 5.8 Implement readiness score computation (`backend/app/builder/health_checks/readiness.py`)
     - Implement `compute_readiness_score(prompt_quality, tension, budget_overlap, toggle_effectiveness, turn_sanity, stall_risk) -> tuple[int, str]`
     - Formula: `round(pq*0.25 + t*0.20 + bo*0.20 + te*0.15 + ts*0.10 + (100-sr)*0.10)`
     - Tier: "Ready" 80-100, "Needs Work" 60-79, "Not Ready" 0-59
     - _Requirements: 22.1, 22.2_
 
-  - [ ]* 5.9 Write property test: Readiness score computation and tier classification (Property 19)
+  - [x] 5.9 Write property test: Readiness score computation and tier classification (Property 19)
     - **Property 19: Readiness score computation and tier classification**
     - For any 6 sub-scores in [0,100], verify weighted formula and tier boundaries
     - Use Hypothesis `st.integers(min_value=0, max_value=100)` for each sub-score
     - **Validates: Requirements 22.1, 22.2, 14.4, 14.5**
 
-- [ ] 6. Checkpoint — Ensure all health check sub-computation tests pass
+- [x] 6. Checkpoint — Ensure all health check sub-computation tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 7. Health Check Analyzer (LLM-powered)
-  - [ ] 7.1 Implement `HealthCheckAnalyzer` (`backend/app/builder/health_check.py`)
+- [x] 7. Health Check Analyzer (LLM-powered)
+  - [x] 7.1 Implement `HealthCheckAnalyzer` (`backend/app/builder/health_check.py`)
     - Implement `async analyze(scenario: ArenaScenario, gold_standard_scenarios: list[ArenaScenario]) -> AsyncIterator[HealthCheckSSEEvent]`
     - Load gold-standard scenarios (talent-war, b2b-sales, ma-buyout, freelance-gig, urban-development) as few-shot examples
     - Run 7 checks in sequence: prompt quality, goal tension, budget overlap, toggle effectiveness, turn sanity, stall risk, regulator feasibility
@@ -168,12 +168,12 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Order recommendations: critical findings first, then warnings sorted by score impact
     - _Requirements: 14.1, 14.2, 14.6, 15.1, 15.2, 15.3, 15.4, 16.1, 16.2, 16.3, 16.4, 18.1, 18.2, 18.3, 18.4, 21.1, 21.2, 21.3, 21.4, 22.3, 22.4, 22.5_
 
-  - [ ]* 7.2 Write property test: Health check report structure completeness (Property 20)
+  - [x] 7.2 Write property test: Health check report structure completeness (Property 20)
     - **Property 20: Health check report structure completeness**
     - For any HealthCheckReport, verify all required fields present, every critical/warning finding has a recommendation, recommendations ordered by severity
     - **Validates: Requirements 22.3, 22.4, 22.5, 15.4, 20.5**
 
-  - [ ]* 7.3 Write unit tests for HealthCheckAnalyzer
+  - [x] 7.3 Write unit tests for HealthCheckAnalyzer
     - Mock Vertex AI calls, verify correct SSE event sequence emitted
     - Test that gold-standard scenarios are loaded and included in prompts
     - Test prompt quality evaluation per-agent scoring
@@ -183,8 +183,8 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - _Requirements: 14.1, 14.2, 14.6, 15.1, 16.1, 18.1, 21.1_
 
 
-- [ ] 8. Builder LLM Agent
-  - [ ] 8.1 Implement `BuilderLLMAgent` (`backend/app/builder/llm_agent.py`)
+- [x] 8. Builder LLM Agent
+  - [x] 8.1 Implement `BuilderLLMAgent` (`backend/app/builder/llm_agent.py`)
     - Implement `async stream_response(conversation_history, partial_scenario, system_prompt) -> AsyncIterator[BuilderSSEEvent]`
     - Use Claude Opus 4.6 via Vertex AI (same model config as health check)
     - System prompt instructs structured collection order: metadata → agents → toggles → params → receipt
@@ -194,12 +194,12 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Enforce minimum 2 agents with at least 1 negotiator before proceeding past agents section
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 8.1, 8.2, 8.3, 8.4_
 
-  - [ ]* 8.2 Write property test: Agent minimum validation (Property 5)
+  - [x] 8.2 Write property test: Agent minimum validation (Property 5)
     - **Property 5: Agent minimum validation**
     - For any partial scenario with <2 agents or no negotiator, validation rejects proceeding past agents section
     - **Validates: Requirements 3.7**
 
-  - [ ]* 8.3 Write unit tests for BuilderLLMAgent
+  - [x] 8.3 Write unit tests for BuilderLLMAgent
     - Mock Vertex AI, verify token streaming produces correct SSE events
     - Test LinkedIn URL detection triggers persona generation
     - Test agent minimum enforcement
@@ -207,8 +207,8 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - _Requirements: 3.3, 3.4, 3.7, 8.1, 8.2_
 
 
-- [ ] 9. Custom Scenario Store (Firestore CRUD)
-  - [ ] 9.1 Implement `CustomScenarioStore` (`backend/app/builder/scenario_store.py`)
+- [x] 9. Custom Scenario Store (Firestore CRUD)
+  - [x] 9.1 Implement `CustomScenarioStore` (`backend/app/builder/scenario_store.py`)
     - Implement using Firestore sub-collection: `profiles/{email}/custom_scenarios/{scenario_id}`
     - Obtain Firestore `AsyncClient` via the shared `get_firestore_db()` factory from `backend/app/db/__init__.py` (introduced by Spec 140) — do NOT create a new Firestore client instance
     - Constructor takes `ProfileClient` (from Spec 140) dependency to verify profile existence
@@ -221,18 +221,18 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - For local mode (`RUN_MODE=local`): implement `SQLiteCustomScenarioStore` that stores custom scenarios in the same SQLite database (`data/juntoai.db`) in a `custom_scenarios` table with columns: `scenario_id`, `email`, `scenario_json` (JSON text), `created_at`, `updated_at`. Add a `get_custom_scenario_store()` factory in `backend/app/db/__init__.py`
     - _Requirements: 7.1, 7.2, 7.5, 7.6_
 
-  - [ ]* 9.2 Write property test: Scenario persistence round-trip (Property 7)
+  - [x] 9.2 Write property test: Scenario persistence round-trip (Property 7)
     - **Property 7: Scenario persistence round-trip**
     - For any valid ArenaScenario and email with an existing profile, save then retrieve from `profiles/{email}/custom_scenarios` produces equivalent scenario via `load_scenario_from_dict`
     - Mock Firestore client and ProfileClient
     - **Validates: Requirements 7.1, 7.2**
 
-  - [ ]* 9.3 Write property test: Custom scenario limit enforcement (Property 8)
+  - [x] 9.3 Write property test: Custom scenario limit enforcement (Property 8)
     - **Property 8: Custom scenario limit enforcement**
     - For any user with 20 scenarios, 21st save is rejected, count remains 20
     - **Validates: Requirements 7.5**
 
-  - [ ]* 9.4 Write unit tests for CustomScenarioStore
+  - [x] 9.4 Write unit tests for CustomScenarioStore
     - Test save, list, get, delete, count with mocked Firestore and ProfileClient
     - Test limit enforcement at boundary (19, 20, 21)
     - Test document structure includes all required fields (scenario_json, created_at, updated_at — no email field)
@@ -240,12 +240,12 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Test sub-collection path is `profiles/{email}/custom_scenarios/{scenario_id}`
     - _Requirements: 7.1, 7.2, 7.3, 7.5, 7.6_
 
-- [ ] 10. Checkpoint — Ensure all backend component tests pass
+- [x] 10. Checkpoint — Ensure all backend component tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 11. Builder Router (API endpoints)
-  - [ ] 11.1 Implement builder router (`backend/app/routers/builder.py`)
+- [x] 11. Builder Router (API endpoints)
+  - [x] 11.1 Implement builder router (`backend/app/routers/builder.py`)
     - Create FastAPI router mounted at `/api/v1/builder`
     - Define request/response models: `BuilderChatRequest`, `BuilderSaveRequest`, `BuilderSaveResponse`
     - `POST /builder/chat` — validate email (401 if missing), verify profile exists via ProfileClient (403 if not), check token balance using tier-aware system from Spec 140 (429 if zero), deduct 1 token, create/get session, call `BuilderLLMAgent.stream_response`, return `StreamingResponse` with SSE events
@@ -255,39 +255,39 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - All endpoints return 401 for missing/empty email, 403 for missing profile
     - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 6.1, 6.2, 6.3, 6.4, 7.6, 10.1, 10.2, 14.1, 14.3, 14.4, 14.5_
 
-  - [ ] 11.2 Register builder router in FastAPI app (`backend/app/main.py`)
+  - [x] 11.2 Register builder router in FastAPI app (`backend/app/main.py`)
     - Import builder router and add `api_router.include_router(builder_router)`
     - Ensure `DELETE` is in CORS `allow_methods` list (Spec 140 will have already added `PUT` and `DELETE` — verify they are present, add if not)
     - _Requirements: 11.1_
 
-  - [ ]* 11.3 Write property test: ArenaScenario validation error specificity (Property 6)
+  - [x] 11.3 Write property test: ArenaScenario validation error specificity (Property 6)
     - **Property 6: ArenaScenario validation error specificity**
     - For any invalid scenario dict, validation errors contain at least one error with specific `loc` and `msg`
     - **Validates: Requirements 6.1, 6.2**
 
-  - [ ]* 11.4 Write property test: ArenaScenario pretty_print round-trip (Property 1)
+  - [x] 11.4 Write property test: ArenaScenario pretty_print round-trip (Property 1)
     - **Property 1: ArenaScenario pretty_print round-trip**
     - For any valid ArenaScenario, `pretty_print` → JSON parse → `model_validate` produces equivalent `model_dump()`
     - Add to `backend/tests/property/test_builder_properties.py`
     - **Validates: Requirements 6.4, 13.1**
 
-  - [ ]* 11.5 Write property test: ArenaScenario model_dump round-trip (Property 2)
+  - [x] 11.5 Write property test: ArenaScenario model_dump round-trip (Property 2)
     - **Property 2: ArenaScenario model_dump round-trip**
     - For any valid ArenaScenario, `model_dump()` → `load_scenario_from_dict()` produces equivalent `model_dump()`
     - **Validates: Requirements 13.2**
 
-  - [ ]* 11.6 Write property test: Missing email returns 401 (Property 14)
+  - [x] 11.6 Write property test: Missing email returns 401 (Property 14)
     - **Property 14: Missing email returns 401**
     - For each builder endpoint, request without valid email returns HTTP 401
     - **Validates: Requirements 11.5**
 
-  - [ ]* 11.7 Write property test: Token budget enforcement (Property 13)
+  - [x] 11.7 Write property test: Token budget enforcement (Property 13)
     - **Property 13: Token budget enforcement**
     - For user with balance N>0, chat message results in balance N-1; for balance 0, returns HTTP 429
     - **Validates: Requirements 10.1, 10.2**
 
 
-  - [ ]* 11.8 Write integration tests for builder router
+  - [x] 11.8 Write integration tests for builder router
     - Test `POST /builder/chat`: valid request returns SSE stream, missing email returns 401, missing profile returns 403, zero tokens returns 429
     - Test `POST /builder/save`: valid scenario saves and returns summary, invalid scenario returns 422 with errors, scenario limit returns 409, missing profile returns 403
     - Test `GET /builder/scenarios`: returns user's scenarios, empty list for new user
@@ -296,39 +296,39 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Mock Firestore, Vertex AI, and ProfileClient (from Spec 140)
     - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 7.4, 7.6_
 
-  - [ ]* 11.9 Write property test: Custom scenario usability for negotiation (Property 9)
+  - [x] 11.9 Write property test: Custom scenario usability for negotiation (Property 9)
     - **Property 9: Custom scenario usability for negotiation**
     - For any valid custom scenario, `create_initial_state(session_id, scenario_json)` produces valid NegotiationState with turn_order containing only defined agent roles
     - **Validates: Requirements 7.4**
 
-- [ ] 12. Checkpoint — Ensure all backend tests pass
+- [x] 12. Checkpoint — Ensure all backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 13. Frontend TypeScript types and API client
-  - [ ] 13.1 Create builder TypeScript types (`frontend/lib/builder/types.ts`)
+- [x] 13. Frontend TypeScript types and API client
+  - [x] 13.1 Create builder TypeScript types (`frontend/lib/builder/types.ts`)
     - Create `frontend/lib/builder/` directory
     - Define `BuilderEventType` union, `BuilderTokenEvent`, `BuilderJsonDeltaEvent`, `BuilderCompleteEvent`, `BuilderErrorEvent`
     - Define `HealthCheckFinding`, `HealthCheckFullReport` with all sub-score fields
     - Define `BuilderChatMessage` type for chat UI
     - _Requirements: 12.1, 23.1_
 
-  - [ ] 13.2 Create builder SSE client (`frontend/lib/builder/sse-client.ts`)
+  - [x] 13.2 Create builder SSE client (`frontend/lib/builder/sse-client.ts`)
     - Implement `streamBuilderChat(email, sessionId, message)` using `fetch` with SSE parsing
     - Parse `data: <JSON>\n\n` events and dispatch to typed callbacks: `onToken`, `onJsonDelta`, `onComplete`, `onError`, `onHealthStart`, `onHealthFinding`, `onHealthComplete`
     - Implement reconnection with exponential backoff (max 3 retries)
     - Handle JSON parse errors gracefully (log and skip malformed events)
     - _Requirements: 3.3, 12.3, 23.4_
 
-  - [ ] 13.3 Create builder API client (`frontend/lib/builder/api.ts`)
+  - [x] 13.3 Create builder API client (`frontend/lib/builder/api.ts`)
     - Implement `saveScenario(email, scenarioJson)` — POST to `/api/v1/builder/save`
     - Implement `listCustomScenarios(email)` — GET `/api/v1/builder/scenarios?email=`
     - Implement `deleteCustomScenario(email, scenarioId)` — DELETE `/api/v1/builder/scenarios/{id}?email=`
     - _Requirements: 11.2, 11.3, 11.4_
 
 
-- [ ] 14. Frontend builder components
-  - [ ] 14.1 Implement `JsonPreview` component (`frontend/components/builder/JsonPreview.tsx`)
+- [x] 14. Frontend builder components
+  - [x] 14.1 Implement `JsonPreview` component (`frontend/components/builder/JsonPreview.tsx`)
     - Render partial scenario JSON with 2-space indentation
     - Syntax highlighting for keys, strings, numbers, booleans using Tailwind classes
     - Display placeholder markers (`"<not yet defined>"`) for unpopulated sections
@@ -336,18 +336,18 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Accept `scenarioJson: Partial<ArenaScenario>` and `highlightedSection: string | null` props
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
 
-  - [ ]* 14.2 Write property test: JSON preview placeholder rendering (Property 21)
+  - [x] 14.2 Write property test: JSON preview placeholder rendering (Property 21)
     - **Property 21: JSON preview placeholder rendering**
     - For any partial scenario, unpopulated sections show placeholders, populated sections show valid JSON
     - Implement as a Vitest test with generated partial scenario objects
     - **Validates: Requirements 4.2**
 
-  - [ ]* 14.3 Write property test: JSON preview 2-space indentation (Property 22)
+  - [x] 14.3 Write property test: JSON preview 2-space indentation (Property 22)
     - **Property 22: JSON preview 2-space indentation**
     - For any scenario JSON rendered in preview, output uses 2-space indentation
     - **Validates: Requirements 4.4**
 
-  - [ ] 14.4 Implement `ProgressIndicator` component (`frontend/components/builder/ProgressIndicator.tsx`)
+  - [x] 14.4 Implement `ProgressIndicator` component (`frontend/components/builder/ProgressIndicator.tsx`)
     - Track 7 sections: id, name, description, agents, toggles, negotiation_params, outcome_receipt
     - Display percentage bar with current completion
     - Show "Save Scenario" button when 100% and valid
@@ -355,7 +355,7 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Accept `scenarioJson`, `isValid`, `onSave` props
     - _Requirements: 5.1, 5.2, 5.3_
 
-  - [ ] 14.5 Implement `BuilderChat` component (`frontend/components/builder/BuilderChat.tsx`)
+  - [x] 14.5 Implement `BuilderChat` component (`frontend/components/builder/BuilderChat.tsx`)
     - Message list with user/assistant chat bubbles (distinct styling per role)
     - Input field with Enter-to-send, disabled when waiting for response
     - Streaming token display with typewriter effect for assistant messages
@@ -366,7 +366,7 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - _Requirements: 3.1, 3.3, 3.5, 3.6, 8.1_
 
 
-  - [ ] 14.6 Implement `HealthCheckReport` component (`frontend/components/builder/HealthCheckReport.tsx`)
+  - [x] 14.6 Implement `HealthCheckReport` component (`frontend/components/builder/HealthCheckReport.tsx`)
     - Progressive rendering of findings as they stream in
     - Display readiness_score with tier badge ("Ready" green, "Needs Work" yellow, "Not Ready" red)
     - Per-agent prompt quality scores
@@ -377,7 +377,7 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Accept `findings`, `report`, `isAnalyzing` props
     - _Requirements: 14.3, 14.4, 14.5, 22.2, 22.5, 23.1_
 
-  - [ ] 14.7 Implement `BuilderModal` component (`frontend/components/builder/BuilderModal.tsx`)
+  - [x] 14.7 Implement `BuilderModal` component (`frontend/components/builder/BuilderModal.tsx`)
     - Full-screen overlay with z-index above all page content
     - Split-screen layout: BuilderChat left, JsonPreview right
     - Responsive: stack vertically below 1024px viewport width
@@ -391,7 +391,7 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Accept `isOpen`, `onClose`, `onScenarioSaved`, `email`, `tokenBalance` props
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 10.3, 14.4, 14.5_
 
-  - [ ]* 14.8 Write unit tests for frontend builder components
+  - [x] 14.8 Write unit tests for frontend builder components
     - Test BuilderModal: renders split-screen, responsive stacking, close confirmation dialog
     - Test BuilderChat: message rendering, input validation, SSE event handling
     - Test JsonPreview: syntax highlighting, placeholder rendering, section highlight
@@ -400,12 +400,12 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Use Vitest + React Testing Library
     - _Requirements: 2.1, 2.3, 2.4, 3.1, 4.1, 4.2, 5.1, 5.3, 14.3_
 
-- [ ] 15. Checkpoint — Ensure all frontend component tests pass
+- [x] 15. Checkpoint — Ensure all frontend component tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 16. ScenarioSelector enhancement and integration wiring
-  - [ ] 16.1 Update `ScenarioSelector` component (`frontend/components/arena/ScenarioSelector.tsx`)
+- [x] 16. ScenarioSelector enhancement and integration wiring
+  - [x] 16.1 Update `ScenarioSelector` component (`frontend/components/arena/ScenarioSelector.tsx`)
     - Add `customScenarios: ScenarioSummary[]` and `onBuildOwn: () => void` props to interface
     - Add "My Scenarios" `<optgroup>` between pre-built scenarios and "Build Your Own"
     - Add "Build Your Own Scenario" option at bottom, visually separated with a divider
@@ -413,7 +413,7 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - Custom scenario selection invokes `onSelect` with the custom scenario ID
     - _Requirements: 1.1, 1.2, 1.3_
 
-  - [ ] 16.2 Wire ScenarioSelector and BuilderModal in Arena page (`frontend/app/(protected)/arena/page.tsx`)
+  - [x] 16.2 Wire ScenarioSelector and BuilderModal in Arena page (`frontend/app/(protected)/arena/page.tsx`)
     - Add state for `customScenarios`, `showBuilder`, `tokenBalance`
     - Fetch custom scenarios via `listCustomScenarios(email)` on page load
     - Pass `customScenarios` and `onBuildOwn` to ScenarioSelector
@@ -422,14 +422,14 @@ Incremental implementation of the AI-powered scenario builder: foundational back
     - When custom scenario selected, fetch full scenario JSON and use for negotiation initialization
     - _Requirements: 1.1, 1.2, 1.3, 7.3, 7.4_
 
-  - [ ]* 16.3 Write unit tests for updated ScenarioSelector
+  - [x] 16.3 Write unit tests for updated ScenarioSelector
     - Test "My Scenarios" group renders with custom scenarios
     - Test "Build Your Own Scenario" option renders and triggers callback
     - Test custom scenario selection triggers onSelect
     - Test empty custom scenarios hides "My Scenarios" group
     - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 17. Final checkpoint — Ensure all tests pass
+- [x] 17. Final checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

@@ -8,6 +8,11 @@ const mockScenarios: ScenarioSummary[] = [
   { id: "b2b_sales", name: "B2B Sales", description: "SaaS contract", difficulty: "advanced" },
 ];
 
+const mockCustomScenarios: ScenarioSummary[] = [
+  { id: "custom_1", name: "My Custom Scenario", description: "Custom desc", difficulty: "intermediate" },
+  { id: "custom_2", name: "Another Custom", description: "Another desc", difficulty: "beginner" },
+];
+
 describe("ScenarioSelector", () => {
   const defaultProps = {
     scenarios: mockScenarios,
@@ -31,9 +36,6 @@ describe("ScenarioSelector", () => {
     for (const s of mockScenarios) {
       expect(screen.getByText(new RegExp(s.name))).toBeInTheDocument();
     }
-    // placeholder + 3 scenarios
-    const options = screen.getAllByRole("option");
-    expect(options).toHaveLength(4);
   });
 
   // Req 1.5: loading state disables select
@@ -93,5 +95,84 @@ describe("ScenarioSelector", () => {
   it("reflects the selectedId prop as the current value", () => {
     render(<ScenarioSelector {...defaultProps} selectedId="b2b_sales" />);
     expect(screen.getByRole("combobox")).toHaveValue("b2b_sales");
+  });
+
+  // --- New tests for custom scenarios and Build Your Own ---
+
+  // Req 1.3: "My Scenarios" group renders with custom scenarios
+  it("renders 'My Scenarios' optgroup when customScenarios are provided", () => {
+    render(
+      <ScenarioSelector
+        {...defaultProps}
+        customScenarios={mockCustomScenarios}
+      />,
+    );
+    const optgroup = screen.getByRole("group", { name: "My Scenarios" });
+    expect(optgroup).toBeInTheDocument();
+    expect(screen.getByText("My Custom Scenario")).toBeInTheDocument();
+    expect(screen.getByText("Another Custom")).toBeInTheDocument();
+  });
+
+  // Req 1.3: empty custom scenarios hides "My Scenarios" group
+  it("does not render 'My Scenarios' optgroup when customScenarios is empty", () => {
+    render(
+      <ScenarioSelector {...defaultProps} customScenarios={[]} />,
+    );
+    expect(screen.queryByRole("group", { name: "My Scenarios" })).not.toBeInTheDocument();
+  });
+
+  // Backward compat: no customScenarios prop at all
+  it("does not render 'My Scenarios' optgroup when customScenarios prop is omitted", () => {
+    render(<ScenarioSelector {...defaultProps} />);
+    expect(screen.queryByRole("group", { name: "My Scenarios" })).not.toBeInTheDocument();
+  });
+
+  // Req 1.1: "Build Your Own Scenario" option renders
+  it("renders 'Build Your Own Scenario' option", () => {
+    render(<ScenarioSelector {...defaultProps} />);
+    expect(screen.getByText(/Build Your Own Scenario/)).toBeInTheDocument();
+  });
+
+  // Req 1.2: "Build Your Own" triggers onBuildOwn callback
+  it("calls onBuildOwn when 'Build Your Own Scenario' is selected", () => {
+    const onBuildOwn = vi.fn();
+    const onSelect = vi.fn();
+    render(
+      <ScenarioSelector
+        {...defaultProps}
+        onSelect={onSelect}
+        onBuildOwn={onBuildOwn}
+      />,
+    );
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "__build_your_own__" },
+    });
+    expect(onBuildOwn).toHaveBeenCalledTimes(1);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  // Custom scenario selection triggers onSelect with the custom scenario ID
+  it("calls onSelect with custom scenario ID when a custom scenario is selected", () => {
+    const onSelect = vi.fn();
+    render(
+      <ScenarioSelector
+        {...defaultProps}
+        onSelect={onSelect}
+        customScenarios={mockCustomScenarios}
+      />,
+    );
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "custom_1" },
+    });
+    expect(onSelect).toHaveBeenCalledWith("custom_1");
+  });
+
+  // Backward compat: works without onBuildOwn (no crash)
+  it("does not crash when Build Your Own is selected without onBuildOwn callback", () => {
+    render(<ScenarioSelector {...defaultProps} />);
+    // Should not throw
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: "__build_your_own__" },
+    });
   });
 });

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 _client: SessionStore | None = None
 _firestore_db = None
 _profile_client = None
+_custom_scenario_store = None
 
 
 def get_firestore_db():
@@ -66,6 +67,25 @@ def get_profile_client():
 
             _profile_client = ProfileClient(db=get_firestore_db())
     return _profile_client
+
+
+def get_custom_scenario_store():
+    """Return a module-level singleton CustomScenarioStore implementation.
+
+    - ``RUN_MODE=local``  → ``SQLiteCustomScenarioStore``
+    - ``RUN_MODE=cloud``  → ``CustomScenarioStore`` (Firestore)
+    """
+    global _custom_scenario_store
+    if _custom_scenario_store is None:
+        if settings.RUN_MODE == "local":
+            from app.builder.scenario_store import SQLiteCustomScenarioStore
+
+            _custom_scenario_store = SQLiteCustomScenarioStore(db_path=settings.SQLITE_DB_PATH)
+        else:
+            from app.builder.scenario_store import CustomScenarioStore
+
+            _custom_scenario_store = CustomScenarioStore(profile_client=get_profile_client())
+    return _custom_scenario_store
 
 
 # Backward-compat alias (deprecated) — keeps existing call sites working

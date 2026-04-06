@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.exceptions import DatabaseConnectionError, SessionNotFoundError
 from app.routers.auth import router as auth_router
+from app.routers.builder import router as builder_router
 from app.routers.health import router as health_router
 from app.routers.models import router as models_router
 from app.routers.negotiation import router as negotiation_router
@@ -48,6 +49,7 @@ api_router.include_router(negotiation_router)
 api_router.include_router(profile_router)
 api_router.include_router(auth_router)
 api_router.include_router(scenarios_router)
+api_router.include_router(builder_router)
 
 if settings.ADMIN_PASSWORD:
     from app.routers.admin import router as admin_router

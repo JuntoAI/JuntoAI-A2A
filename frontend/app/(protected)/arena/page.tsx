@@ -18,6 +18,8 @@ import { AgentCard } from "@/components/arena/AgentCard";
 import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
 import { AdvancedConfigModal, type MemoryStrategy } from "@/components/arena/AdvancedConfigModal";
+import { BuilderModal } from "@/components/builder/BuilderModal";
+import { listCustomScenarios } from "@/lib/builder/api";
 import { Spinner } from "@/components/ui/Spinner";
 
 function ArenaPageContent() {
@@ -34,6 +36,10 @@ function ArenaPageContent() {
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Builder state
+  const [customScenarios, setCustomScenarios] = useState<ScenarioSummary[]>([]);
+  const [showBuilder, setShowBuilder] = useState(false);
+
   // Advanced config state
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
   const [modelOverrides, setModelOverrides] = useState<Record<string, string>>({});
@@ -46,17 +52,38 @@ function ArenaPageContent() {
     defaultModelId: string;
   } | null>(null);
 
-  // Fetch scenarios on mount
+  // Fetch custom scenarios
+  const refreshCustomScenarios = useCallback(async () => {
+    if (!email) return;
+    try {
+      const list = await listCustomScenarios(email);
+      setCustomScenarios(
+        list.map((cs) => {
+          const json = cs.scenario_json as Record<string, string>;
+          return {
+            id: cs.scenario_id,
+            name: json.name ?? "Custom Scenario",
+            description: json.description ?? "",
+            difficulty: "intermediate" as const,
+          };
+        }),
+      );
+    } catch {
+      // Non-critical — custom scenarios just won't show
+    }
+  }, [email]);
+
+  // Fetch token balance + custom scenarios on mount
   useEffect(() => {
-    // Refresh token balance from profile on mount (catches post-negotiation deductions)
     if (email) {
       import("@/lib/profile").then(({ getProfile }) => {
         getProfile(email).then((p) => {
           updateTier(p.tier, p.daily_limit, p.token_balance);
         }).catch(() => {});
       });
+      refreshCustomScenarios();
     }
-  }, [email, updateTier]);
+  }, [email, updateTier, refreshCustomScenarios]);
 
   useEffect(() => {
     let cancelled = false;
@@ -211,6 +238,8 @@ function ArenaPageContent() {
           onSelect={handleScenarioSelect}
           isLoading={isLoadingScenarios}
           error={error && !selectedScenarioId && !isStarting ? error : null}
+          customScenarios={customScenarios}
+          onBuildOwn={() => setShowBuilder(true)}
         />
       )}
 
@@ -310,6 +339,20 @@ function ArenaPageContent() {
           onCancel={() => setAdvancedConfigAgent(null)}
         />
       )}
+
+      {/* Builder Modal */}
+      <BuilderModal
+        isOpen={showBuilder}
+        onClose={() => setShowBuilder(false)}
+        onScenarioSaved={(scenarioId) => {
+          setShowBuilder(false);
+          refreshCustomScenarios();
+          // Auto-select the newly saved custom scenario
+          handleScenarioSelect(scenarioId);
+        }}
+        email={email ?? ""}
+        tokenBalance={tokenBalance}
+      />
     </div>
   );
 }
