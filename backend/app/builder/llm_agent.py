@@ -68,7 +68,7 @@ def _build_default_model() -> BaseChatModel:
     from langchain_google_vertexai import ChatVertexAI
 
     return ChatVertexAI(
-        model_name="gemini-2.5-pro-preview-05-06",
+        model_name="gemini-3.1-pro-preview",
         project=settings.GOOGLE_CLOUD_PROJECT,
         location=os.environ.get("VERTEX_AI_LOCATION", "us-east5"),
         max_output_tokens=4096,
