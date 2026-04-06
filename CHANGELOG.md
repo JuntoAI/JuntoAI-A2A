@@ -6,6 +6,31 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## AI Scenario Builder (Spec 130) — 2026-04-06
+
+- AI-powered interactive scenario builder: guided chatbot conversation (Claude Opus 4.6 via Vertex AI) produces validated ArenaScenario JSON configs
+- "Build Your Own Scenario" entry point in ScenarioSelector with "My Scenarios" group for saved custom scenarios
+- Split-screen Builder Modal: chatbot on left, live JSON preview with syntax highlighting on right, progress indicator at top
+- Structured collection order: scenario metadata → agents (one at a time) → toggles → negotiation params → outcome receipt
+- Builder SSE streaming: `builder_token`, `builder_json_delta`, `builder_complete`, `builder_error` event types with `data: <JSON>\n\n` format
+- LinkedIn Persona Generator: paste a LinkedIn URL during agent definition and the AI generates a persona_prompt, role, goals, and tone from the profile
+- Scenario Health Check Analyzer: AI-powered simulation readiness analysis evaluating prompt quality, goal tension, budget overlap, toggle effectiveness, turn sanity, stall risk, and regulator feasibility
+- Readiness score 0-100 with weighted composite (prompt quality 25%, tension 20%, budget overlap 20%, toggle effectiveness 15%, turn sanity 10%, inverse stall risk 10%) and tier classification (Ready/Needs Work/Not Ready)
+- Health check SSE streaming: `builder_health_check_start`, `builder_health_check_finding`, `builder_health_check_complete` events with progressive rendering
+- Gold-standard scenario files (talent-war, b2b-sales, ma-buyout, freelance-gig, urban-development) used as few-shot reference examples in health check prompts
+- Budget overlap analysis: overlap zone computation, no_overlap/excessive_overlap flagging, agreement_threshold vs target gap ratio check
+- Turn order validation: missing negotiator detection (critical), insufficient turns warning, regulator interval check
+- Stall risk assessment: instant_convergence_risk, price_stagnation_risk, repetition_risk detection with composite stall_risk_score
+- Custom scenario persistence: Firestore sub-collection `profiles/{email}/custom_scenarios` with 20-scenario-per-user limit, profile existence verification (403 if no profile)
+- SQLiteCustomScenarioStore for local mode (`RUN_MODE=local`) — full builder functionality without cloud dependencies
+- Builder API: `POST /builder/chat` (SSE streaming), `POST /builder/save` (validate + health check + persist), `GET /builder/scenarios`, `DELETE /builder/scenarios/{id}`
+- Token budget enforcement: 1 token per builder message, tier-aware daily limits (20/50/100 from Spec 140), HTTP 429 on exhaustion
+- ArenaScenario round-trip validation: `pretty_print` → JSON parse → `model_validate` and `load_scenario_from_dict` equivalence checks before persistence
+- Builder session management: in-memory conversation history, 50-message limit per session, stale session cleanup (60min TTL)
+- Responsive Builder Modal: split-screen ≥1024px, stacked below; close confirmation dialog for unsaved progress
+- JSON preview: 2-space indentation, placeholder markers for unpopulated sections, 2-second highlight animation on section updates
+- Property tests (22 Hypothesis/fast-check properties): SSE wire format, round-trip serialization, progress computation, agent minimum validation, validation error specificity, session limits, budget overlap, turn sanity, stall risk, readiness scoring, scenario persistence, token enforcement, JSON preview rendering
+
 ## Admin Dashboard (Spec 150) — 2026-04-06
 
 - Cloud-only internal admin dashboard at `/admin` with shared-password authentication (`ADMIN_PASSWORD` env var)
