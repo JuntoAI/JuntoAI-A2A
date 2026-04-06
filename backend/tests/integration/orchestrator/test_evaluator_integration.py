@@ -216,7 +216,7 @@ class TestEvaluationGracefulDegradation:
         """When evaluator_config.enabled is False, no events are emitted."""
         scenario = _make_scenario(num_negotiators=2)
         scenario["evaluator_config"] = {
-            "model_id": "test-model",
+            "model_id": "gemini-2.5-flash",
             "enabled": False,
         }
         terminal_state = _make_terminal_state()

@@ -27,6 +27,7 @@ from app.models.events import (
 from app.orchestrator.evaluator import run_evaluation
 from app.models.negotiation import NegotiationStateModel
 from app.orchestrator import model_router
+from app.orchestrator.available_models import VALID_MODEL_IDS
 from app.orchestrator.graph import run_negotiation
 from app.orchestrator.state import create_initial_state
 from app.scenarios.registry import ScenarioRegistry
@@ -105,22 +106,11 @@ async def start_negotiation(
 
     # 2. Validate model_overrides against available models
     if body.model_overrides:
-        available_model_ids: set[str] = set()
-        for sc in registry._scenarios.values():
-            for agent in sc.agents:
-                available_model_ids.add(agent.model_id)
-                if agent.fallback_model_id:
-                    available_model_ids.add(agent.fallback_model_id)
-        # Filter to supported families only
-        available_model_ids = {
-            mid for mid in available_model_ids
-            if (mid.split("-", 1)[0] if "-" in mid else mid) in model_router.MODEL_FAMILIES
-        }
         for role, mid in body.model_overrides.items():
-            if mid not in available_model_ids:
+            if mid not in VALID_MODEL_IDS:
                 return JSONResponse(
                     status_code=422,
-                    content={"detail": f"Invalid model_id '{mid}' for role '{role}'. Available models: {sorted(available_model_ids)}"},
+                    content={"detail": f"Invalid model_id '{mid}' for role '{role}'. Available models: {sorted(VALID_MODEL_IDS)}"},
                 )
 
     # 3. Filter custom_prompts and model_overrides to valid agent roles

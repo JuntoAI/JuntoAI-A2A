@@ -390,7 +390,7 @@ def _make_negotiator(role: str, bmin: float, bmax: float, btarget: float) -> Age
         budget=Budget(min=bmin, max=bmax, target=btarget),
         tone="neutral",
         output_fields=["proposed_price"],
-        model_id="test-model",
+        model_id="gemini-2.5-flash",
     )
 
 
@@ -1008,7 +1008,7 @@ def _make_valid_scenario(**overrides) -> ArenaScenario:
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "assertive",
                 "output_fields": ["proposed_price"],
-                "model_id": "test-model",
+                "model_id": "gemini-2.5-flash",
             },
             {
                 "role": "Seller",
@@ -1019,7 +1019,7 @@ def _make_valid_scenario(**overrides) -> ArenaScenario:
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "firm",
                 "output_fields": ["proposed_price"],
-                "model_id": "test-model",
+                "model_id": "gemini-2.5-flash",
             },
         ],
         "toggles": [
@@ -1167,14 +1167,14 @@ def test_arena_scenario_validation_error_specificity_missing_field(missing_field
                 "persona_prompt": "You are a buyer.", "goals": ["Buy low"],
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "assertive", "output_fields": ["proposed_price"],
-                "model_id": "test-model",
+                "model_id": "gemini-2.5-flash",
             },
             {
                 "role": "Seller", "name": "Bob", "type": "negotiator",
                 "persona_prompt": "You are a seller.", "goals": ["Sell high"],
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "firm", "output_fields": ["proposed_price"],
-                "model_id": "test-model",
+                "model_id": "gemini-2.5-flash",
             },
         ],
         "toggles": [
@@ -1235,14 +1235,14 @@ def test_arena_scenario_validation_error_specificity_wrong_type(wrong_type):
                 "persona_prompt": "You are a buyer.", "goals": ["Buy low"],
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "assertive", "output_fields": ["proposed_price"],
-                "model_id": "test-model",
+                "model_id": "gemini-2.5-flash",
             },
             {
                 "role": "Seller", "name": "Bob", "type": "negotiator",
                 "persona_prompt": "You are a seller.", "goals": ["Sell high"],
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "firm", "output_fields": ["proposed_price"],
-                "model_id": "test-model",
+                "model_id": "gemini-2.5-flash",
             },
         ],
         "toggles": [
@@ -1307,7 +1307,7 @@ def _st_agent_definition(draw, role: str, agent_type: str = "negotiator"):
         budget=budget,
         tone=draw(st.sampled_from(["assertive", "firm", "neutral", "friendly"])),
         output_fields=["proposed_price"],
-        model_id="test-model",
+        model_id="gemini-2.5-flash",
     )
 
 

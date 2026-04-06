@@ -47,7 +47,7 @@ def _make_scenario(**overrides) -> ArenaScenario:
                 budget=Budget(min=300000, max=600000, target=450000),
                 tone="assertive",
                 output_fields=["proposed_price"],
-                model_id="test-model",
+                model_id="gemini-2.5-flash",
             ),
             AgentDefinition(
                 role="Seller",
@@ -58,7 +58,7 @@ def _make_scenario(**overrides) -> ArenaScenario:
                 budget=Budget(min=500000, max=900000, target=750000),
                 tone="firm",
                 output_fields=["proposed_price"],
-                model_id="test-model",
+                model_id="gemini-2.5-flash",
             ),
         ],
         "toggles": [
@@ -96,7 +96,7 @@ def _make_scenario_with_regulator() -> ArenaScenario:
                 budget=Budget(min=300000, max=600000, target=450000),
                 tone="assertive",
                 output_fields=["proposed_price"],
-                model_id="test-model",
+                model_id="gemini-2.5-flash",
             ),
             AgentDefinition(
                 role="Seller",
@@ -107,7 +107,7 @@ def _make_scenario_with_regulator() -> ArenaScenario:
                 budget=Budget(min=500000, max=900000, target=750000),
                 tone="firm",
                 output_fields=["proposed_price"],
-                model_id="test-model",
+                model_id="gemini-2.5-flash",
             ),
             AgentDefinition(
                 role="Regulator",
@@ -118,7 +118,7 @@ def _make_scenario_with_regulator() -> ArenaScenario:
                 budget=Budget(min=0, max=0, target=0),
                 tone="neutral",
                 output_fields=["status"],
-                model_id="test-model",
+                model_id="gemini-2.5-flash",
             ),
         ],
         negotiation_params=NegotiationParams(

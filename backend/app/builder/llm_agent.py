@@ -24,6 +24,7 @@ from app.builder.events import (
 )
 from app.builder.linkedin import is_linkedin_url
 from app.config import settings
+from app.orchestrator.available_models import MODELS_PROMPT_BLOCK
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ BuilderSSEEvent = BuilderTokenEvent | BuilderJsonDeltaEvent | BuilderCompleteEve
 # Regex to detect JSON delta markers emitted by the LLM
 _JSON_DELTA_RE = re.compile(r"<<JSON_DELTA:(\w+):(.*?)>>", re.DOTALL)
 
-BUILDER_SYSTEM_PROMPT = """\
+BUILDER_SYSTEM_PROMPT = f"""\
 You are an expert AI scenario builder for JuntoAI's negotiation arena. Your job \
 is to guide the user through creating a complete ArenaScenario JSON configuration \
 step by step.
@@ -47,6 +48,13 @@ with at least 1 negotiator required before moving on.
 4. **Negotiation Parameters**: max_turns, agreement_threshold, turn_order, \
 price_unit, value_label, value_format
 5. **Outcome Receipt**: equivalent_human_time, process_label
+
+## Available Models (use ONLY these for model_id and fallback_model_id)
+{MODELS_PROMPT_BLOCK}
+
+When assigning model_id to agents, pick from the list above. Suggest \
+a flash/smaller model for simpler roles and a pro/larger model for complex \
+reasoning roles. NEVER invent model IDs — only use the exact IDs listed above.
 
 ## Rules
 - Ask targeted follow-up questions for ambiguous or missing fields.

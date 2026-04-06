@@ -10,6 +10,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.orchestrator.available_models import VALID_MODEL_IDS
+
 # Canonical difficulty ordering — used by registry for sorting
 DIFFICULTY_ORDER = {"beginner": 0, "intermediate": 1, "advanced": 2, "fun": 3}
 
@@ -43,6 +45,26 @@ class AgentDefinition(BaseModel):
     output_fields: list[str] = Field(..., min_length=1)
     model_id: str = Field(..., min_length=1)
     fallback_model_id: str | None = Field(default=None)
+
+    @field_validator("model_id")
+    @classmethod
+    def validate_model_id(cls, v: str) -> str:
+        if v not in VALID_MODEL_IDS:
+            raise ValueError(
+                f"Unknown model_id '{v}'. "
+                f"Must be one of: {', '.join(sorted(VALID_MODEL_IDS))}"
+            )
+        return v
+
+    @field_validator("fallback_model_id")
+    @classmethod
+    def validate_fallback_model_id(cls, v: str | None) -> str | None:
+        if v is not None and v not in VALID_MODEL_IDS:
+            raise ValueError(
+                f"Unknown fallback_model_id '{v}'. "
+                f"Must be one of: {', '.join(sorted(VALID_MODEL_IDS))}"
+            )
+        return v
 
 
 class ToggleDefinition(BaseModel):
@@ -112,6 +134,26 @@ class EvaluatorConfig(BaseModel):
     model_id: str = Field(..., min_length=1)
     fallback_model_id: str | None = Field(default=None)
     enabled: bool = Field(default=True)
+
+    @field_validator("model_id")
+    @classmethod
+    def validate_model_id(cls, v: str) -> str:
+        if v not in VALID_MODEL_IDS:
+            raise ValueError(
+                f"Unknown model_id '{v}'. "
+                f"Must be one of: {', '.join(sorted(VALID_MODEL_IDS))}"
+            )
+        return v
+
+    @field_validator("fallback_model_id")
+    @classmethod
+    def validate_fallback_model_id(cls, v: str | None) -> str | None:
+        if v is not None and v not in VALID_MODEL_IDS:
+            raise ValueError(
+                f"Unknown fallback_model_id '{v}'. "
+                f"Must be one of: {', '.join(sorted(VALID_MODEL_IDS))}"
+            )
+        return v
 
 
 class ArenaScenario(BaseModel):

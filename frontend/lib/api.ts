@@ -165,6 +165,7 @@ export async function startNegotiation(
 export interface ModelInfo {
   model_id: string;
   family: string;
+  label: string;
 }
 
 export async function fetchAvailableModels(): Promise<ModelInfo[]> {

@@ -88,7 +88,13 @@ export function BuilderModal({
   // Handle JSON delta from chat
   const handleJsonDelta = useCallback(
     (section: string, data: Record<string, unknown>) => {
-      setScenarioJson((prev) => ({ ...prev, [section]: data }));
+      // The backend wraps non-dict values (arrays, strings) in {"value": ...}.
+      // Unwrap so the scenario JSON stays in the correct ArenaScenario shape.
+      const unwrapped =
+        "value" in data && Object.keys(data).length === 1
+          ? data.value
+          : data;
+      setScenarioJson((prev) => ({ ...prev, [section]: unwrapped }));
       setHighlightedSection(section);
       // Clear highlight after 2 seconds
       setTimeout(() => setHighlightedSection(null), 2000);
@@ -181,7 +187,7 @@ export function BuilderModal({
       {/* Main content — split screen */}
       <div className="flex flex-1 min-h-0 flex-col lg:flex-row">
         {/* Left: Chat */}
-        <div className="flex-1 min-h-0 lg:border-r lg:border-gray-700">
+        <div className="lg:w-1/2 min-h-0 min-w-0 lg:border-r lg:border-gray-700 flex flex-col">
           <BuilderChat
             sessionId={sessionId}
             email={email}
@@ -191,7 +197,7 @@ export function BuilderModal({
         </div>
 
         {/* Right: JSON Preview + Health Report */}
-        <div className="flex-1 min-h-0 flex flex-col">
+        <div className="lg:w-1/2 min-h-0 min-w-0 flex flex-col">
           <div className="flex-1 min-h-0 overflow-auto">
             <JsonPreview
               scenarioJson={scenarioJson}

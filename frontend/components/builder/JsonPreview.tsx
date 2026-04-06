@@ -211,7 +211,7 @@ export function JsonPreview({ scenarioJson, highlightedSection }: JsonPreviewPro
 
   return (
     <div
-      className="h-full overflow-auto rounded-lg bg-[#1C1C1E] p-4 font-mono text-sm"
+      className="h-full overflow-y-auto overflow-x-auto rounded-lg bg-[#1C1C1E] p-4 font-mono text-sm"
       data-testid="json-preview"
     >
       <pre className="whitespace-pre">

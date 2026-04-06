@@ -19,14 +19,23 @@ DEFAULT_MODEL_MAP: dict[str, dict[str, str]] = {
     "openai": {
         "gemini-2.5-flash": "gpt-4o-mini",
         "gemini-2.5-pro": "gpt-4o",
+        "gemini-3-flash-preview": "gpt-4o-mini",
+        "claude-3-5-sonnet": "gpt-4o",
+        "claude-sonnet-4": "gpt-4o",
     },
     "anthropic": {
         "gemini-2.5-flash": "claude-3-5-haiku-20241022",
         "gemini-2.5-pro": "claude-sonnet-4-20250514",
+        "gemini-3-flash-preview": "claude-3-5-haiku-20241022",
+        "claude-3-5-sonnet": "claude-3-5-sonnet-20241022",
+        "claude-sonnet-4": "claude-sonnet-4-20250514",
     },
     "ollama": {
         "gemini-2.5-flash": f"ollama/{_ollama_model}",
         "gemini-2.5-pro": f"ollama/{_ollama_model}",
+        "gemini-3-flash-preview": f"ollama/{_ollama_model}",
+        "claude-3-5-sonnet": f"ollama/{_ollama_model}",
+        "claude-sonnet-4": f"ollama/{_ollama_model}",
     },
 }
 

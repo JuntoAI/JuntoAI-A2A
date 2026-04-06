@@ -257,7 +257,7 @@ class TestAllFieldsPopulated:
                         role="Negotiator",
                         name="Nora",
                         type="negotiator",
-                        fallback_model_id="gpt-4o-mini",
+                        fallback_model_id="gemini-2.5-flash",
                     ),
                     _agent(role="Regulator", name="Rex", type="regulator"),
                     _agent(role="Observer", name="Ollie", type="observer"),
@@ -283,7 +283,7 @@ class TestAllFieldsPopulated:
                 },
                 "evaluator_config": {
                     "model_id": "gemini-2.5-pro",
-                    "fallback_model_id": "gpt-4o",
+                    "fallback_model_id": "gemini-2.5-flash",
                     "enabled": True,
                 },
                 "allowed_email_domains": ["example.com", "test.org"],
@@ -298,7 +298,7 @@ class TestAllFieldsPopulated:
 
         assert parsed["difficulty"] == "advanced"
         assert parsed["evaluator_config"]["model_id"] == "gemini-2.5-pro"
-        assert parsed["evaluator_config"]["fallback_model_id"] == "gpt-4o"
+        assert parsed["evaluator_config"]["fallback_model_id"] == "gemini-2.5-flash"
         assert parsed["evaluator_config"]["enabled"] is True
         assert parsed["allowed_email_domains"] == ["example.com", "test.org"]
 
@@ -323,7 +323,7 @@ class TestAllFieldsPopulated:
         parsed = json.loads(result)
 
         negotiator = next(a for a in parsed["agents"] if a["role"] == "Negotiator")
-        assert negotiator["fallback_model_id"] == "gpt-4o-mini"
+        assert negotiator["fallback_model_id"] == "gemini-2.5-flash"
 
     def test_round_trip_with_all_fields(self):
         scenario = self._full_scenario()
