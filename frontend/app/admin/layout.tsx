@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { LogoutButton } from "@/components/admin/LogoutButton";
 
 const NAV_ITEMS = [
   { label: "Overview", href: "/admin" },
@@ -44,13 +43,7 @@ export default async function AdminLayout({
       </aside>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col">
-        {/* Header with logout */}
-        <header className="flex items-center justify-end border-b border-gray-200 bg-white px-8 py-3">
-          <LogoutButton />
-        </header>
-        <main className="flex-1 bg-brand-offwhite p-8">{children}</main>
-      </div>
+      <main className="flex-1 bg-brand-offwhite p-8">{children}</main>
     </div>
   );
 }

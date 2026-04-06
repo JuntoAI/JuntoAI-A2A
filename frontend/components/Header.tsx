@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Github, ExternalLink, LogOut } from "lucide-react";
 import { useSession } from "@/context/SessionContext";
 import TokenDisplay from "@/components/TokenDisplay";
@@ -10,9 +11,12 @@ import TokenDisplay from "@/components/TokenDisplay";
 export default function Header() {
   const { isAuthenticated, isHydrated, email, logout } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
+  const [adminLoggingOut, setAdminLoggingOut] = useState(false);
 
   const showAuth = isHydrated && isAuthenticated;
   const isLanding = pathname === "/";
+  const isAdmin = pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
   const showNavLinks = isLanding;
 
   return (
@@ -101,6 +105,22 @@ export default function Header() {
                 <span className="hidden md:inline">Logout</span>
               </button>
             </>
+          )}
+
+          {isAdmin && (
+            <button
+              onClick={async () => {
+                setAdminLoggingOut(true);
+                try { await fetch("/api/v1/admin/logout", { method: "POST" }); } catch {}
+                router.push("/admin/login");
+              }}
+              disabled={adminLoggingOut}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-50"
+              aria-label="Admin Logout"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="hidden md:inline">{adminLoggingOut ? "Logging out…" : "Logout"}</span>
+            </button>
           )}
         </div>
       </div>
