@@ -6,6 +6,21 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Negotiation History Panel (Spec 197) — 2026-04-07
+
+- `GET /api/v1/negotiation/history` endpoint returning completed sessions grouped by UTC day with configurable `days` parameter (1–90, default 7)
+- `SessionHistoryItem`, `DayGroup`, `SessionHistoryResponse` Pydantic V2 models with field constraints and round-trip serialization
+- Shared `compute_token_cost` utility: `max(1, ceil(total_tokens_used / 1000))` — replaces inline formula in `stream_negotiation`
+- `list_sessions_by_owner` on both `FirestoreSessionClient` and `SQLiteSessionClient` with date filtering and descending sort
+- Day groups sorted descending by date, sessions within groups sorted descending by `created_at`, terminal sessions only (Agreed, Blocked, Failed)
+- `NegotiationHistory` panel below InitializeButton on `/arena` page: collapsible day groups, colored status badges, daily token cost as fraction of daily limit
+- Today group expanded by default, others collapsed; "Today" / "Yesterday" labels for recent dates
+- Session replay navigation: "View" link to `/arena/session/{session_id}` loads read-only Glass Box replay for terminal sessions
+- Loading skeleton, error state with retry, empty state messaging
+- Local mode: SQLite query with JSON column `owner_email` extraction, "∞" for unlimited daily token display
+- Responsive layout: single-column below 1024px, `max-w-4xl` container at 1024px+
+- Property tests (Hypothesis): token cost formula correctness, response round-trip serialization, grouping/sorting correctness, date range filtering, DayGroup token cost sum invariant
+
 ## AI Scenario Builder (Spec 130) — 2026-04-06
 
 - AI-powered interactive scenario builder: guided chatbot conversation (Claude Opus 4.6 via Vertex AI) produces validated ArenaScenario JSON configs
