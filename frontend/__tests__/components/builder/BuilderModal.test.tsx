@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ---------------------------------------------------------------------------
@@ -14,6 +14,11 @@ vi.mock("@/lib/builder/api", () => ({
 }));
 
 import { BuilderModal } from "@/components/builder/BuilderModal";
+import { streamBuilderChat } from "@/lib/builder/sse-client";
+import { saveScenario } from "@/lib/builder/api";
+
+const mockStreamBuilderChat = vi.mocked(streamBuilderChat);
+const mockSaveScenario = vi.mocked(saveScenario);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -106,24 +111,186 @@ describe("BuilderModal", () => {
 // ---------------------------------------------------------------------------
 
 describe("BuilderModal close confirmation", () => {
-  it("shows Continue Building and Discard & Close buttons", () => {
-    // We test the dialog by rendering it directly since triggering
-    // JSON delta from outside is complex. We verify the dialog elements exist
-    // by checking the component renders the dialog structure.
-    const { container } = render(
-      <BuilderModal
-        isOpen={true}
-        onClose={vi.fn()}
-        onScenarioSaved={vi.fn()}
-        email="user@example.com"
-        tokenBalance={50}
-      />,
-    );
+  const baseProps = {
+    isOpen: true,
+    onClose: vi.fn(),
+    onScenarioSaved: vi.fn(),
+    email: "user@example.com",
+    tokenBalance: 50,
+  };
 
-    // Dialog should not be visible initially (no progress)
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does not show dialog initially (no progress)", () => {
+    render(<BuilderModal {...baseProps} />);
     expect(screen.queryByTestId("confirm-close-dialog")).not.toBeInTheDocument();
+  });
 
-    // Verify the modal structure is correct
-    expect(container.querySelector("[data-testid='builder-modal']")).toBeInTheDocument();
+  it("shows confirmation dialog when closing with JSON progress", async () => {
+    mockStreamBuilderChat.mockImplementation((_email, _sid, _msg, callbacks) => {
+      queueMicrotask(() => {
+        callbacks.onJsonDelta("id", { value: "test-id" });
+        callbacks.onComplete();
+      });
+      return { abort: vi.fn() } as unknown as AbortController;
+    });
+
+    render(<BuilderModal {...baseProps} />);
+
+    const input = screen.getByTestId("chat-input");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Create scenario" } });
+      fireEvent.click(screen.getByTestId("send-button"));
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    fireEvent.click(screen.getByTestId("close-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("confirm-close-dialog")).toBeInTheDocument();
+    });
+  });
+
+  it("Continue Building dismisses the dialog", async () => {
+    mockStreamBuilderChat.mockImplementation((_email, _sid, _msg, callbacks) => {
+      queueMicrotask(() => {
+        callbacks.onJsonDelta("name", { value: "Test" });
+        callbacks.onComplete();
+      });
+      return { abort: vi.fn() } as unknown as AbortController;
+    });
+
+    render(<BuilderModal {...baseProps} />);
+
+    const input = screen.getByTestId("chat-input");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Go" } });
+      fireEvent.click(screen.getByTestId("send-button"));
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    fireEvent.click(screen.getByTestId("close-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("confirm-close-dialog")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("continue-building-button"));
+    expect(screen.queryByTestId("confirm-close-dialog")).not.toBeInTheDocument();
+    expect(baseProps.onClose).not.toHaveBeenCalled();
+  });
+
+  it("Discard & Close calls onClose", async () => {
+    mockStreamBuilderChat.mockImplementation((_email, _sid, _msg, callbacks) => {
+      queueMicrotask(() => {
+        callbacks.onJsonDelta("name", { value: "Test" });
+        callbacks.onComplete();
+      });
+      return { abort: vi.fn() } as unknown as AbortController;
+    });
+
+    render(<BuilderModal {...baseProps} />);
+
+    const input = screen.getByTestId("chat-input");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Go" } });
+      fireEvent.click(screen.getByTestId("send-button"));
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    fireEvent.click(screen.getByTestId("close-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("confirm-close-dialog")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("discard-close-button"));
+    expect(baseProps.onClose).toHaveBeenCalledOnce();
+  });
+
+  it("save calls saveScenario and triggers onScenarioSaved", async () => {
+    mockSaveScenario.mockResolvedValueOnce({
+      scenario_id: "new-id",
+      name: "Test",
+      readiness_score: 90,
+      tier: "Ready",
+    });
+
+    mockStreamBuilderChat.mockImplementation((_email, _sid, _msg, callbacks) => {
+      queueMicrotask(() => {
+        callbacks.onJsonDelta("id", { value: "test" });
+        callbacks.onJsonDelta("name", { value: "Test Scenario" });
+        callbacks.onJsonDelta("description", { value: "A test" });
+        callbacks.onJsonDelta("agents", { value: [{ role: "buyer" }, { role: "seller" }] });
+        callbacks.onJsonDelta("toggles", { value: [{ id: "t1" }] });
+        callbacks.onJsonDelta("negotiation_params", { max_turns: 10 });
+        callbacks.onJsonDelta("outcome_receipt", { show: true });
+        callbacks.onComplete();
+      });
+      return { abort: vi.fn() } as unknown as AbortController;
+    });
+
+    render(<BuilderModal {...baseProps} />);
+
+    const input = screen.getByTestId("chat-input");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Build" } });
+      fireEvent.click(screen.getByTestId("send-button"));
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("save-button")).not.toBeDisabled();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("save-button"));
+    });
+
+    await waitFor(() => {
+      expect(mockSaveScenario).toHaveBeenCalled();
+      expect(baseProps.onScenarioSaved).toHaveBeenCalledWith("new-id");
+    });
+  });
+
+  it("shows save error when saveScenario fails", async () => {
+    mockSaveScenario.mockRejectedValueOnce(new Error("Validation failed"));
+
+    mockStreamBuilderChat.mockImplementation((_email, _sid, _msg, callbacks) => {
+      queueMicrotask(() => {
+        callbacks.onJsonDelta("id", { value: "x" });
+        callbacks.onJsonDelta("name", { value: "X" });
+        callbacks.onJsonDelta("description", { value: "X" });
+        callbacks.onJsonDelta("agents", { value: [{ role: "a" }, { role: "b" }] });
+        callbacks.onJsonDelta("toggles", { value: [{ id: "t" }] });
+        callbacks.onJsonDelta("negotiation_params", { max_turns: 5 });
+        callbacks.onJsonDelta("outcome_receipt", { show: true });
+        callbacks.onComplete();
+      });
+      return { abort: vi.fn() } as unknown as AbortController;
+    });
+
+    render(<BuilderModal {...baseProps} />);
+
+    const input = screen.getByTestId("chat-input");
+    await act(async () => {
+      fireEvent.change(input, { target: { value: "Build" } });
+      fireEvent.click(screen.getByTestId("send-button"));
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("save-button")).not.toBeDisabled();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("save-button"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Validation failed")).toBeInTheDocument();
+    });
   });
 });

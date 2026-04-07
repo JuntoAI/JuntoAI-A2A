@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { containsLinkedInUrl } from "@/components/builder/BuilderChat";
 
@@ -98,6 +98,175 @@ describe("BuilderChat", () => {
     fireEvent.click(screen.getByTestId("send-button"));
 
     expect(input.value).toBe("");
+  });
+
+  it("shows thinking indicator while waiting before first token", () => {
+    render(<BuilderChat {...defaultProps} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    expect(screen.getByTestId("thinking-indicator")).toBeInTheDocument();
+  });
+
+  it("does not send on Shift+Enter", () => {
+    render(<BuilderChat {...defaultProps} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hello" } });
+    fireEvent.keyDown(input, { key: "Enter", shiftKey: true });
+
+    expect(mockStreamBuilderChat).not.toHaveBeenCalled();
+  });
+
+  it("does not send when input is only whitespace", () => {
+    render(<BuilderChat {...defaultProps} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    expect(mockStreamBuilderChat).not.toHaveBeenCalled();
+  });
+
+  it("displays assistant message after onComplete callback", async () => {
+    mockStreamBuilderChat.mockImplementation((_email: string, _sid: string, _msg: string, callbacks: { onToken: (t: string) => void; onComplete: () => void }) => {
+      // Simulate streaming tokens then completing
+      setTimeout(() => {
+        callbacks.onToken("Hello ");
+        callbacks.onToken("world");
+      }, 10);
+      setTimeout(() => {
+        callbacks.onComplete();
+      }, 20);
+      return { abort: vi.fn() };
+    });
+
+    render(<BuilderChat {...defaultProps} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hi" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("chat-message-assistant")).toHaveTextContent("Hello world");
+    });
+  });
+
+  it("displays error message from onError callback", async () => {
+    mockStreamBuilderChat.mockImplementation((_email: string, _sid: string, _msg: string, callbacks: { onError: (m: string) => void }) => {
+      setTimeout(() => {
+        callbacks.onError("Something went wrong");
+      }, 10);
+      return { abort: vi.fn() };
+    });
+
+    render(<BuilderChat {...defaultProps} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hi" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("chat-message-assistant")).toHaveTextContent("Error: Something went wrong");
+    });
+  });
+
+  it("calls onJsonDelta when SSE sends json delta", async () => {
+    const onJsonDelta = vi.fn();
+    mockStreamBuilderChat.mockImplementation((_email: string, _sid: string, _msg: string, callbacks: { onJsonDelta: (s: string, d: Record<string, unknown>) => void; onComplete: () => void }) => {
+      setTimeout(() => {
+        callbacks.onJsonDelta("agents", { name: "Bot" });
+        callbacks.onComplete();
+      }, 10);
+      return { abort: vi.fn() };
+    });
+
+    render(<BuilderChat {...defaultProps} onJsonDelta={onJsonDelta} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hi" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    await waitFor(() => {
+      expect(onJsonDelta).toHaveBeenCalledWith("agents", { name: "Bot" });
+    });
+  });
+
+  it("calls onHealthReport when SSE sends health complete", async () => {
+    const onHealthReport = vi.fn();
+    const report = { readiness_score: 85, tier: "Ready" };
+    mockStreamBuilderChat.mockImplementation((_email: string, _sid: string, _msg: string, callbacks: { onHealthComplete: (r: unknown) => void; onComplete: () => void }) => {
+      setTimeout(() => {
+        callbacks.onHealthComplete(report);
+        callbacks.onComplete();
+      }, 10);
+      return { abort: vi.fn() };
+    });
+
+    render(<BuilderChat {...defaultProps} onHealthReport={onHealthReport} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hi" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    await waitFor(() => {
+      expect(onHealthReport).toHaveBeenCalledWith(report);
+    });
+  });
+
+  it("shows streaming message with cursor while tokens arrive", async () => {
+    mockStreamBuilderChat.mockImplementation((_email: string, _sid: string, _msg: string, callbacks: { onToken: (t: string) => void }) => {
+      setTimeout(() => {
+        callbacks.onToken("Streaming...");
+      }, 10);
+      return { abort: vi.fn() };
+    });
+
+    render(<BuilderChat {...defaultProps} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hi" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("streaming-message")).toBeInTheDocument();
+    });
+  });
+
+  it("re-enables input after onComplete", async () => {
+    mockStreamBuilderChat.mockImplementation((_email: string, _sid: string, _msg: string, callbacks: { onComplete: () => void }) => {
+      setTimeout(() => callbacks.onComplete(), 10);
+      return { abort: vi.fn() };
+    });
+
+    render(<BuilderChat {...defaultProps} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hi" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    await waitFor(() => {
+      expect(input).not.toBeDisabled();
+    });
+  });
+
+  it("re-enables input after onError", async () => {
+    mockStreamBuilderChat.mockImplementation((_email: string, _sid: string, _msg: string, callbacks: { onError: (m: string) => void }) => {
+      setTimeout(() => callbacks.onError("fail"), 10);
+      return { abort: vi.fn() };
+    });
+
+    render(<BuilderChat {...defaultProps} />);
+    const input = screen.getByTestId("chat-input");
+
+    fireEvent.change(input, { target: { value: "Hi" } });
+    fireEvent.click(screen.getByTestId("send-button"));
+
+    await waitFor(() => {
+      expect(input).not.toBeDisabled();
+    });
   });
 });
 
