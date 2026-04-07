@@ -5,6 +5,7 @@ import * as fc from "fast-check";
 import { AdvancedConfigModal } from "@/components/arena/AdvancedConfigModal";
 import type { AdvancedConfigModalProps } from "@/components/arena/AdvancedConfigModal";
 import type { ModelInfo } from "@/lib/api";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: agent-advanced-config, Property 12: Model selector default ordering and labeling
@@ -105,7 +106,7 @@ describe("Property 12: Model selector default ordering and labeling", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -150,7 +151,7 @@ describe("Property 12: Model selector default ordering and labeling", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -184,7 +185,7 @@ describe("Property 12: Model selector default ordering and labeling", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -224,7 +225,7 @@ describe("Property 12: Model selector default ordering and labeling", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

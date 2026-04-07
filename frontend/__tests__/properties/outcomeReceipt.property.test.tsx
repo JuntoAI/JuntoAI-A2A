@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, within } from "@testing-library/react";
 import * as fc from "fast-check";
 import OutcomeReceipt from "@/components/glassbox/OutcomeReceipt";
+import { FC_NUM_RUNS } from "../fc-config";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),

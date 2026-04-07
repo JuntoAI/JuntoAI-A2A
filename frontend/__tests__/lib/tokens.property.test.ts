@@ -7,6 +7,7 @@ vi.mock("../../lib/firebase", () => ({
 }));
 
 import { formatTokenDisplay } from "../../lib/tokens";
+import { FC_NUM_RUNS } from "../fc-config";
 
 describe("Property 13: Token display format", () => {
   /**
@@ -27,7 +28,7 @@ describe("Property 13: Token display format", () => {
 
         expect(result).toBe(`Tokens: ${clampedBalance} / ${dailyLimit}`);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

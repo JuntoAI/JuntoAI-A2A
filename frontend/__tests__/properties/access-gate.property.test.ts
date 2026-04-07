@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fc from "fast-check";
 import { NextRequest } from "next/server";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 050_a2a-frontend-gate-waitlist
@@ -69,7 +70,7 @@ describe("Property 6: Access gate blocks unauthenticated users (cloud mode)", ()
         expect(res.status).toBe(307);
         expect(new URL(res.headers.get("location")!).pathname).toBe("/");
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });
@@ -99,7 +100,7 @@ describe("Property 7: Access gate allows authenticated users (cloud mode)", () =
         expect(res.status).toBe(200);
         expect(res.headers.get("location")).toBeNull();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });
@@ -129,7 +130,7 @@ describe("Local mode: Access gate bypassed", () => {
         expect(res.status).toBe(200);
         expect(res.headers.get("location")).toBeNull();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

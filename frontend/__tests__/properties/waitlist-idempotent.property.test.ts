@@ -20,6 +20,7 @@ vi.mock("../../lib/firebase", () => ({
 }));
 
 import { joinWaitlist, type WaitlistDocument } from "../../lib/waitlist";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /** Arbitrary for a valid YYYY-MM-DD date string. */
 const dateStringArb = fc
@@ -88,7 +89,7 @@ describe("Property 3: Idempotent re-submission", () => {
         vi.mocked(getDoc).mockReset();
         vi.mocked(setDoc).mockReset();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

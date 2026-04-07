@@ -51,6 +51,7 @@ vi.mock("../../lib/profile", () => ({
 
 import { SessionProvider } from "../../context/SessionContext";
 import WaitlistForm from "../../components/WaitlistForm";
+import { FC_NUM_RUNS } from "../fc-config";
 
 function Wrapper({ children }: { children: ReactNode }) {
   return createElement(SessionProvider, null, children);
@@ -134,7 +135,7 @@ describe("Property 5: Error display on Firestore failure", () => {
           // Clean up DOM for next iteration
           cleanup();
         }),
-        { numRuns: 100 },
+        { numRuns: FC_NUM_RUNS },
       );
     },
   );

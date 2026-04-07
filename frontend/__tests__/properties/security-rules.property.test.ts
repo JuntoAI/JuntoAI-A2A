@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 050_a2a-frontend-gate-waitlist
@@ -95,7 +96,7 @@ describe("Property 14: Waitlist document write validation", () => {
           expect(result).toBe(false);
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -112,7 +113,7 @@ describe("Property 14: Waitlist document write validation", () => {
           expect(result).toBe(false);
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -125,7 +126,7 @@ describe("Property 14: Waitlist document write validation", () => {
         });
         expect(result).toBe(true);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -142,7 +143,7 @@ describe("Property 14: Waitlist document write validation", () => {
           expect(result).toBe(false);
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -159,7 +160,7 @@ describe("Property 14: Waitlist document write validation", () => {
           expect(result).toBe(false);
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -178,7 +179,7 @@ describe("Property 14: Waitlist document write validation", () => {
           expect(result).toBe(false);
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -195,7 +196,7 @@ describe("Property 14: Waitlist document write validation", () => {
           expect(result).toBe(true);
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });
@@ -220,7 +221,7 @@ describe("Property 15: Waitlist document read scoping", () => {
         // Reading a specific doc by ID is always allowed per the rules
         expect(isReadAllowed(email)).toBe(true);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -239,7 +240,7 @@ describe("Property 15: Waitlist document read scoping", () => {
         // Only the waitlist collection is allowed, and only via specific doc ID.
         expect(isCollectionAllowed("waitlist")).toBe(true);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });
@@ -261,7 +262,7 @@ describe("Property 16: Default deny for unauthorized operations", () => {
       fc.property(emailArb, (_email) => {
         expect(isDeleteAllowed()).toBe(false);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -282,7 +283,7 @@ describe("Property 16: Default deny for unauthorized operations", () => {
       fc.property(nonWaitlistCollectionArb, (collection) => {
         expect(isCollectionAllowed(collection)).toBe(false);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -324,7 +325,7 @@ describe("Property 16: Default deny for unauthorized operations", () => {
           }
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

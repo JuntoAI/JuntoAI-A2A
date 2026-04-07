@@ -10,6 +10,16 @@ steps:
       - --cache-ttl=168h
     waitFor: ["-"]
 
+  - id: build-frontend-test-image
+    name: gcr.io/kaniko-project/executor:latest
+    args:
+      - --dockerfile=./frontend/Dockerfile.test
+      - --context=dir:///workspace/frontend
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend-test:latest
+      - --cache=true
+      - --cache-ttl=168h
+    waitFor: ["-"]
+
   # --- Test (uses cached images with pre-installed deps) ---
   - id: test-backend
     name: ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend-test:latest
@@ -24,15 +34,16 @@ steps:
     waitFor: ["build-test-image"]
 
   - id: test-frontend
-    name: node:20-slim
+    name: ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend-test:latest
     entrypoint: bash
+    env:
+      - FAST_CHECK_CI=1
     args:
       - -c
       - |
-        npm ci --silent &&
         npx vitest run --coverage
     dir: frontend
-    waitFor: ["-"]
+    waitFor: ["build-frontend-test-image"]
 
   # --- Build + Push with kaniko layer caching (parallel) ---
   - id: build-backend

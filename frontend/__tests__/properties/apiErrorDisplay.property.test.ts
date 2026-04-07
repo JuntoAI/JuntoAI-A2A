@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fc from "fast-check";
 import { startNegotiation, TokenLimitError } from "@/lib/api";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 060_a2a-glass-box-ui
@@ -82,7 +83,7 @@ describe("Property 13: API error display on negotiation start failure", () => {
         expect(err).not.toBeInstanceOf(TokenLimitError);
         expect((err as Error).message).toBe(detail);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -104,7 +105,7 @@ describe("Property 13: API error display on negotiation start failure", () => {
         expect(err).toBeInstanceOf(TokenLimitError);
         expect((err as Error).message).toBe(detail);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

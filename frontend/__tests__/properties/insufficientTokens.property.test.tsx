@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import * as fc from "fast-check";
 import { InitializeButton } from "@/components/arena/InitializeButton";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 060_a2a-glass-box-ui, Property 6: Insufficient tokens disables Initialize button
@@ -54,7 +55,7 @@ describe("Property 6: Insufficient tokens disables Initialize button", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -83,7 +84,7 @@ describe("Property 6: Insufficient tokens disables Initialize button", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -117,7 +118,7 @@ describe("Property 6: Insufficient tokens disables Initialize button", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

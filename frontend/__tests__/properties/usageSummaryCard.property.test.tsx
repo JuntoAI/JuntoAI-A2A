@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, within, fireEvent } from "@testing-library/react";
 import * as fc from "fast-check";
 import UsageSummaryCard from "@/components/glassbox/UsageSummaryCard";
+import { FC_NUM_RUNS } from "../fc-config";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -159,7 +160,7 @@ describe("Property 3: Usage section renders all data when total_calls > 0", () =
 
         unmount();
       }),
-      { numRuns: 40 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });
@@ -224,7 +225,7 @@ describe("Property 4: Personas sorted by total_tokens descending", () => {
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });
@@ -290,7 +291,7 @@ describe("Property 5: Input-to-output ratio string correctness", () => {
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });
@@ -367,7 +368,7 @@ describe("Property 6: Most verbose badge on correct persona", () => {
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

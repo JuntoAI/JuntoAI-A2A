@@ -3,6 +3,7 @@ import * as fc from "fast-check";
 import { renderHook, act } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
 import { SessionProvider, useSession } from "../../context/SessionContext";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 050_a2a-frontend-gate-waitlist
@@ -83,7 +84,7 @@ describe("Property 4: Session state loaded on auth", () => {
         expect(sessionStorage.getItem("junto_token_balance")).toBe(String(tokenBalance));
         expect(sessionStorage.getItem("junto_last_reset")).toBe(lastResetDate);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

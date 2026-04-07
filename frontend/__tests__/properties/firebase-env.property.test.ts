@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fc from "fast-check";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 050_a2a-frontend-gate-waitlist

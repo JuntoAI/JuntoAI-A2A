@@ -4,6 +4,7 @@ import * as fc from "fast-check";
 import MetricsDashboard from "@/components/glassbox/MetricsDashboard";
 import ChatPanel from "@/components/glassbox/ChatPanel";
 import type { MessageEntry } from "@/lib/glassBoxReducer";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 060_a2a-glass-box-ui, Property 11: Regulator status to color mapping
@@ -57,7 +58,7 @@ describe("Property 11: Regulator status to color mapping", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -83,7 +84,7 @@ describe("Property 11: Regulator status to color mapping", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

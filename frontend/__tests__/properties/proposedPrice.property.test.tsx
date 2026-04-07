@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import * as fc from "fast-check";
 import ChatPanel from "@/components/glassbox/ChatPanel";
 import type { MessageEntry } from "@/lib/glassBoxReducer";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 060_a2a-glass-box-ui, Property 12: Proposed price rendering in Chat Panel
@@ -54,7 +55,7 @@ describe("Property 12: Proposed price rendering in Chat Panel", () => {
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, within } from "@testing-library/react";
 import * as fc from "fast-check";
 import OutcomeReceipt from "@/components/glassbox/OutcomeReceipt";
+import { FC_NUM_RUNS } from "../fc-config";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -50,7 +51,7 @@ describe("Property 9: Outcome Receipt displays both metric groups", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -81,7 +82,7 @@ describe("Property 9: Outcome Receipt displays both metric groups", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -104,7 +105,7 @@ describe("Property 9: Outcome Receipt displays both metric groups", () => {
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

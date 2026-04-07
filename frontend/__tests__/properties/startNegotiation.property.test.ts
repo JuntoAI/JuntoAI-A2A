@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as fc from "fast-check";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 060_a2a-glass-box-ui, Property 7: Start negotiation request contains correct payload
@@ -54,7 +55,7 @@ describe("Property 7: Start negotiation request contains correct payload", () =>
         expect(body.scenario_id).toBe(scenarioId);
         expect(body.active_toggles).toEqual(toggles);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

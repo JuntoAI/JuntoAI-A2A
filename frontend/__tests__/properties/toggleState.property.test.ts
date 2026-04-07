@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 060_a2a-glass-box-ui, Property 5: Toggle state management and reset
@@ -89,7 +90,7 @@ describe("Property 5: Toggle state management and reset", () => {
           expect(lastOpById.has(id)).toBe(true);
         }
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -112,7 +113,7 @@ describe("Property 5: Toggle state management and reset", () => {
         // This is just a sanity check — the real property is the reset
         expect(ops.length).toBeGreaterThan(0);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -140,7 +141,7 @@ describe("Property 5: Toggle state management and reset", () => {
           }
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

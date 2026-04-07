@@ -18,6 +18,7 @@ vi.mock("../../lib/firebase", () => ({
 }));
 
 import { formatTokenDisplay } from "../../lib/tokens";
+import { FC_NUM_RUNS } from "../fc-config";
 
 describe("Property 10: Token balance display formatting", () => {
   /**
@@ -43,7 +44,7 @@ describe("Property 10: Token balance display formatting", () => {
         expect(match).not.toBeNull();
         expect(Number(match![1])).toBeGreaterThanOrEqual(0);
       }),
-      { numRuns: 200 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

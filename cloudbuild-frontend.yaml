@@ -1,15 +1,27 @@
 steps:
-  # --- Test (parallel with build) ---
+  # --- Build cached test image (only re-installs when deps change) ---
+  - id: build-test-image
+    name: gcr.io/kaniko-project/executor:latest
+    args:
+      - --dockerfile=./frontend/Dockerfile.test
+      - --context=dir:///workspace/frontend
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend-test:latest
+      - --cache=true
+      - --cache-ttl=168h
+    waitFor: ["-"]
+
+  # --- Test (uses cached image with pre-installed deps) ---
   - id: test-frontend
-    name: node:20-slim
+    name: ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/frontend-test:latest
     entrypoint: bash
+    env:
+      - FAST_CHECK_CI=1
     args:
       - -c
       - |
-        npm ci --silent &&
         npx vitest run --coverage
     dir: frontend
-    waitFor: ["-"]
+    waitFor: ["build-test-image"]
 
   - id: build-frontend
     name: gcr.io/kaniko-project/executor:latest
@@ -78,6 +90,7 @@ steps:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
 
 substitutions:
   _REGION: europe-west1

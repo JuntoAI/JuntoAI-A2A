@@ -4,6 +4,7 @@ import * as fc from "fast-check";
 import { ScenarioSelector } from "@/components/arena/ScenarioSelector";
 import { AgentCard } from "@/components/arena/AgentCard";
 import { InformationToggle } from "@/components/arena/InformationToggle";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 060_a2a-glass-box-ui, Property 3: Scenario selection renders correct component counts
@@ -80,7 +81,7 @@ describe("Property 3: Scenario selection renders correct component counts", () =
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -117,7 +118,7 @@ describe("Property 3: Scenario selection renders correct component counts", () =
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -149,7 +150,7 @@ describe("Property 3: Scenario selection renders correct component counts", () =
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

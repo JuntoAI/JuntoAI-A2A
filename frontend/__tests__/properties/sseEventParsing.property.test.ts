@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
+import { FC_NUM_RUNS } from "../fc-config";
 import type {
   SSEEvent,
   AgentThoughtEvent,
@@ -119,7 +120,7 @@ describe("Property 2: SSE event JSON parsing correctness", () => {
           }
         }
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -137,7 +138,7 @@ describe("Property 2: SSE event JSON parsing correctness", () => {
         const parsed: SSEEvent = JSON.parse(JSON.stringify(event));
         expect(validTypes).toContain(parsed.event_type);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -174,7 +175,7 @@ describe("Property 2: SSE event JSON parsing correctness", () => {
           expect(parsed).not.toHaveProperty("status");
         }
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

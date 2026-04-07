@@ -5,6 +5,7 @@ import * as fc from "fast-check";
 import { AdvancedConfigModal } from "@/components/arena/AdvancedConfigModal";
 import type { AdvancedConfigModalProps } from "@/components/arena/AdvancedConfigModal";
 import type { ModelInfo } from "@/lib/api";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: agent-advanced-config, Property 13: Config save-and-reload round-trip
@@ -173,7 +174,7 @@ describe("Property 13: Config save-and-reload round-trip", () => {
           unmount2();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

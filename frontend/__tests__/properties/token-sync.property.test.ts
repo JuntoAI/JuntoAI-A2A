@@ -29,6 +29,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import StartNegotiationButton from "../../components/StartNegotiationButton";
+import { FC_NUM_RUNS } from "../fc-config";
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(SessionProvider, null, children);
@@ -76,7 +77,7 @@ describe("Property 11: Token balance sync from backend", () => {
           String(tokensRemaining),
         );
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });
@@ -139,7 +140,7 @@ describe("Property 12: Insufficient tokens disables action", () => {
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
+import { FC_NUM_RUNS } from "../fc-config";
 import type { AgentThoughtEvent, AgentMessageEvent, NegotiationCompleteEvent } from "@/types/sse";
 import {
   createInitialState,
@@ -146,7 +147,7 @@ describe("Property 1: Reducer state invariant under event sequences", () => {
         const thoughtCount = actions.filter((a) => a.type === "AGENT_THOUGHT").length;
         expect(state.thoughts).toHaveLength(thoughtCount);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -162,7 +163,7 @@ describe("Property 1: Reducer state invariant under event sequences", () => {
         const messageCount = actions.filter((a) => a.type === "AGENT_MESSAGE").length;
         expect(state.messages).toHaveLength(messageCount);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -189,7 +190,7 @@ describe("Property 1: Reducer state invariant under event sequences", () => {
           expect(state.currentOffer).toBe(lastPrice);
         }
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -214,7 +215,7 @@ describe("Property 1: Reducer state invariant under event sequences", () => {
 
         expect(state.regulatorStatuses).toEqual(expected);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -239,7 +240,7 @@ describe("Property 1: Reducer state invariant under event sequences", () => {
         const expectedMax = turnNumbers.length > 0 ? Math.max(...turnNumbers) : 0;
         expect(state.turnNumber).toBe(expectedMax);
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -266,7 +267,7 @@ describe("Property 1: Reducer state invariant under event sequences", () => {
           expect(state.dealStatus).toBe(lastComplete.payload.deal_status);
         }
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

@@ -4,6 +4,7 @@ import { createElement } from "react";
 import * as fc from "fast-check";
 import { AgentCard } from "@/components/arena/AgentCard";
 import type { AgentCardProps } from "@/components/arena/AgentCard";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: agent-advanced-config, Property 11: Agent card visual indicators reflect configuration state
@@ -81,7 +82,7 @@ describe("Property 11: Agent card visual indicators reflect configuration state"
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -127,7 +128,7 @@ describe("Property 11: Agent card visual indicators reflect configuration state"
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

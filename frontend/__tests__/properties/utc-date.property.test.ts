@@ -18,6 +18,7 @@ vi.mock("../../lib/firebase", () => ({
 }));
 
 import { getUtcDateString } from "../../lib/tokens";
+import { FC_NUM_RUNS } from "../fc-config";
 
 describe("Property 9: UTC date consistency", () => {
   afterEach(() => {
@@ -59,7 +60,7 @@ describe("Property 9: UTC date consistency", () => {
 
         expect(result).toBe(expected);
       }),
-      { numRuns: 200 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

@@ -14,6 +14,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./__tests__/setup.ts"],
     include: ["__tests__/**/*.test.{ts,tsx}"],
+    pool: "threads",
+    testTimeout: 15000,
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],

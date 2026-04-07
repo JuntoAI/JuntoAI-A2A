@@ -4,6 +4,7 @@ import { createElement } from "react";
 import * as fc from "fast-check";
 import { AdvancedConfigModal } from "@/components/arena/AdvancedConfigModal";
 import type { AdvancedConfigModalProps } from "@/components/arena/AdvancedConfigModal";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: agent-advanced-config, Property 8: Custom prompt character limit enforcement in textarea
@@ -70,7 +71,7 @@ describe("Property 8: Custom prompt character limit enforcement in textarea", ()
           unmount();
         },
       ),
-      { numRuns: 30 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -110,7 +111,7 @@ describe("Property 8: Custom prompt character limit enforcement in textarea", ()
           unmount();
         },
       ),
-      { numRuns: 30 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -146,7 +147,7 @@ describe("Property 8: Custom prompt character limit enforcement in textarea", ()
           unmount();
         },
       ),
-      { numRuns: 30 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

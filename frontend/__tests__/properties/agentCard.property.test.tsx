@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 import * as fc from "fast-check";
 import { AgentCard } from "@/components/arena/AgentCard";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: 060_a2a-glass-box-ui, Property 4: Agent Card displays all required fields
@@ -71,7 +72,7 @@ describe("Property 4: Agent Card displays all required fields", () => {
           unmount();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

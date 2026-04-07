@@ -32,6 +32,7 @@ export function useSSE(
 ): { isConnected: boolean; startTime: number | null; stop: () => void } {
   const [isConnected, setIsConnected] = useState(false);
   const [startTime, setStartTime] = useState<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const lastEventIdRef = useRef<string | null>(null);
@@ -68,7 +69,11 @@ export function useSSE(
         // Connected successfully — reset retry counter
         retryCountRef.current = 0;
         setIsConnected(true);
-        if (!startTime) setStartTime(Date.now());
+        if (!startTimeRef.current) {
+          const now = Date.now();
+          startTimeRef.current = now;
+          setStartTime(now);
+        }
         dispatch({ type: "CONNECTION_OPENED" });
 
         const decoder = new TextDecoder();
@@ -190,6 +195,7 @@ export function useSSE(
     // Reset state for new session
     stoppedRef.current = false;
     isTerminalRef.current = false;
+    startTimeRef.current = null;
     lastEventIdRef.current = null;
     retryCountRef.current = 0;
 

@@ -41,6 +41,7 @@ vi.mock("../../lib/tokens", () => ({
 
 import { SessionProvider } from "../../context/SessionContext";
 import WaitlistForm from "../../components/WaitlistForm";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /** The regex used by WaitlistForm for validation */
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -150,7 +151,7 @@ describe("Property 1: Invalid email rejection", () => {
         // Clean up DOM for next iteration
         cleanup();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

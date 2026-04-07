@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as fc from "fast-check";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /**
  * Feature: agent-advanced-config, Property 9: Request payload includes only non-empty overrides
@@ -81,7 +82,7 @@ describe("Property 9: Request payload includes only non-empty overrides", () => 
           }
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -112,7 +113,7 @@ describe("Property 9: Request payload includes only non-empty overrides", () => 
           expect(body).not.toHaveProperty("model_overrides");
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -143,7 +144,7 @@ describe("Property 9: Request payload includes only non-empty overrides", () => 
           expect(body).not.toHaveProperty("model_overrides");
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

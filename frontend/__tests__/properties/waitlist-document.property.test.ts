@@ -20,6 +20,7 @@ vi.mock("../../lib/firebase", () => ({
 }));
 
 import { joinWaitlist } from "../../lib/waitlist";
+import { FC_NUM_RUNS } from "../fc-config";
 
 describe("Property 2: New waitlist document structure", () => {
   const FIXED_DATE = new Date("2025-06-15T14:30:00.000Z");
@@ -78,7 +79,7 @@ describe("Property 2: New waitlist document structure", () => {
         vi.mocked(getDoc).mockReset();
         vi.mocked(setDoc).mockReset();
       }),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

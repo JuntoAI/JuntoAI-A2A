@@ -21,6 +21,7 @@ vi.mock("../../lib/firebase", () => ({
 }));
 
 import { needsReset, resetTokens, getUtcDateString } from "../../lib/tokens";
+import { FC_NUM_RUNS } from "../fc-config";
 
 /** Helper: format a Date as "YYYY-MM-DD" in UTC. */
 function toUtcDateString(d: Date): string {
@@ -75,7 +76,7 @@ describe("Property 8: Token daily reset logic", () => {
           expect(result).toBe(false);
         }
       }),
-      { numRuns: 200 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 
@@ -117,7 +118,7 @@ describe("Property 8: Token daily reset logic", () => {
           vi.mocked(doc).mockReset();
         },
       ),
-      { numRuns: 100 },
+      { numRuns: FC_NUM_RUNS },
     );
   });
 });

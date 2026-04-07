@@ -71,9 +71,20 @@ export default function GlassBoxPage() {
     !isTerminal;
 
   const elapsedTimeMs = useMemo(() => {
-    if (!isTerminal || !startTime) return 0;
+    if (!isTerminal) return 0;
+
+    // Prefer server-computed duration from usage_summary (accurate, timestamp-based)
+    const serverDuration =
+      (state.finalSummary?.usage_summary as Record<string, unknown> | undefined)
+        ?.negotiation_duration_ms;
+    if (typeof serverDuration === "number" && serverDuration > 0) {
+      return serverDuration;
+    }
+
+    // Fall back to client-side wall-clock time
+    if (!startTime) return 0;
     return Date.now() - startTime;
-  }, [isTerminal, startTime]);
+  }, [isTerminal, startTime, state.finalSummary]);
 
   const handleStop = useCallback(() => {
     stop();
