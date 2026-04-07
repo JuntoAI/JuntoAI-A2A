@@ -87,6 +87,7 @@ def mock_profile_client():
     """Mock ProfileClient with async methods."""
     pc = MagicMock()
     pc.get_profile = AsyncMock(return_value=None)
+    pc.update_profile = AsyncMock(return_value=None)
 
     # Mock _db for waitlist access
     waitlist_doc = MagicMock()
