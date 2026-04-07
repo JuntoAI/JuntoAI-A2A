@@ -1,4 +1,16 @@
 steps:
+  # --- Test (parallel with build) ---
+  - id: test-frontend
+    name: node:20-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        npm ci --silent &&
+        npx vitest run --coverage
+    dir: frontend
+    waitFor: ["-"]
+
   - id: build-frontend
     name: gcr.io/kaniko-project/executor:latest
     args:
@@ -47,7 +59,7 @@ steps:
       - --tag
       - canary
       - --quiet
-    waitFor: ["build-frontend", "write-frontend-env"]
+    waitFor: ["build-frontend", "write-frontend-env", "test-frontend"]
 
   # Migrate traffic — Cloud Run drains old instances gracefully
   - id: migrate-frontend-traffic

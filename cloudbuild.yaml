@@ -1,4 +1,27 @@
 steps:
+  # --- Test (parallel with builds) ---
+  - id: test-backend
+    name: python:3.11-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install --quiet -r requirements.txt &&
+        pytest --cov=app --cov-fail-under=70 -x -q
+    dir: backend
+    waitFor: ["-"]
+
+  - id: test-frontend
+    name: node:20-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        npm ci --silent &&
+        npx vitest run --coverage
+    dir: frontend
+    waitFor: ["-"]
+
   # --- Build + Push with kaniko layer caching (parallel) ---
   - id: build-backend
     name: gcr.io/kaniko-project/executor:latest
@@ -83,7 +106,7 @@ steps:
       - --tag
       - canary
       - --quiet
-    waitFor: ["build-backend", "write-backend-env"]
+    waitFor: ["build-backend", "write-backend-env", "test-backend"]
 
   - id: deploy-frontend-no-traffic
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
@@ -104,7 +127,7 @@ steps:
       - --tag
       - canary
       - --quiet
-    waitFor: ["build-frontend", "write-frontend-env"]
+    waitFor: ["build-frontend", "write-frontend-env", "test-frontend"]
 
   # --- Migrate traffic: old instances drain active SSE connections gracefully ---
   - id: migrate-backend-traffic

@@ -1,4 +1,16 @@
 steps:
+  # --- Test (parallel with build) ---
+  - id: test-backend
+    name: python:3.11-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install --quiet -r requirements.txt &&
+        pytest --cov=app --cov-fail-under=70 -x -q
+    dir: backend
+    waitFor: ["-"]
+
   - id: build-backend
     name: gcr.io/kaniko-project/executor:latest
     args:
@@ -49,7 +61,7 @@ steps:
       - --tag
       - canary
       - --quiet
-    waitFor: ["build-backend", "write-backend-env"]
+    waitFor: ["build-backend", "write-backend-env", "test-backend"]
 
   # Migrate traffic — Cloud Run drains old instances gracefully
   - id: migrate-backend-traffic

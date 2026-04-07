@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Backend Unit Tests on Save",
+  "description": "Runs backend unit tests (pytest -m unit) whenever a Python file in backend/app/ is saved, providing instant feedback on regressions before commit.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "backend/app/**/*.py"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "cd backend && python -m pytest -m unit -x -q --tb=short 2>&1 | tail -20",
+    "timeout": 120
+  }
+}

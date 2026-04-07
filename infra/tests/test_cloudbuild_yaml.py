@@ -62,14 +62,16 @@ class TestFullstackPipeline:
     """cloudbuild.yaml — builds and deploys both services with no-traffic + migrate."""
 
     def test_step_count(self, fullstack_pipeline):
+        # test-backend, test-frontend,
         # build-backend, build-frontend, write-backend-env, write-frontend-env,
         # deploy-backend-no-traffic, deploy-frontend-no-traffic,
         # migrate-backend-traffic, migrate-frontend-traffic
-        assert len(fullstack_pipeline["steps"]) == 8
+        assert len(fullstack_pipeline["steps"]) == 10
 
     def test_step_ids(self, fullstack_pipeline):
         ids = {s["id"] for s in fullstack_pipeline["steps"]}
         expected = {
+            "test-backend", "test-frontend",
             "build-backend", "build-frontend",
             "write-backend-env", "write-frontend-env",
             "deploy-backend-no-traffic", "deploy-frontend-no-traffic",
@@ -97,7 +99,9 @@ class TestFullstackPipeline:
         steps = _steps_by_id(fullstack_pipeline)
         assert "build-backend" in steps["deploy-backend-no-traffic"]["waitFor"]
         assert "write-backend-env" in steps["deploy-backend-no-traffic"]["waitFor"]
+        assert "test-backend" in steps["deploy-backend-no-traffic"]["waitFor"]
         assert "build-frontend" in steps["deploy-frontend-no-traffic"]["waitFor"]
+        assert "test-frontend" in steps["deploy-frontend-no-traffic"]["waitFor"]
 
     def test_deploy_uses_no_traffic_flag(self, fullstack_pipeline):
         steps = _steps_by_id(fullstack_pipeline)
@@ -123,12 +127,13 @@ class TestBackendPipeline:
     """cloudbuild-backend.yaml — backend only with no-traffic + migrate."""
 
     def test_step_count(self, backend_pipeline):
-        # build-backend, write-backend-env, deploy-backend-no-traffic, migrate-backend-traffic
-        assert len(backend_pipeline["steps"]) == 4
+        # test-backend, build-backend, write-backend-env,
+        # deploy-backend-no-traffic, migrate-backend-traffic
+        assert len(backend_pipeline["steps"]) == 5
 
     def test_step_ids(self, backend_pipeline):
         ids = {s["id"] for s in backend_pipeline["steps"]}
-        assert ids == {"build-backend", "write-backend-env",
+        assert ids == {"test-backend", "build-backend", "write-backend-env",
                        "deploy-backend-no-traffic", "migrate-backend-traffic"}
 
     def test_build_runs_first(self, backend_pipeline):
@@ -157,6 +162,7 @@ class TestBackendPipeline:
         steps = _steps_by_id(backend_pipeline)
         assert "build-backend" in steps["deploy-backend-no-traffic"]["waitFor"]
         assert "write-backend-env" in steps["deploy-backend-no-traffic"]["waitFor"]
+        assert "test-backend" in steps["deploy-backend-no-traffic"]["waitFor"]
 
     def test_deploy_uses_no_traffic_flag(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
@@ -220,13 +226,13 @@ class TestFrontendPipeline:
     """cloudbuild-frontend.yaml — frontend only with no-traffic + migrate."""
 
     def test_step_count(self, frontend_pipeline):
-        # build-frontend, write-frontend-env,
+        # test-frontend, build-frontend, write-frontend-env,
         # deploy-frontend-no-traffic, migrate-frontend-traffic
-        assert len(frontend_pipeline["steps"]) == 4
+        assert len(frontend_pipeline["steps"]) == 5
 
     def test_step_ids(self, frontend_pipeline):
         ids = {s["id"] for s in frontend_pipeline["steps"]}
-        assert ids == {"build-frontend", "write-frontend-env",
+        assert ids == {"test-frontend", "build-frontend", "write-frontend-env",
                        "deploy-frontend-no-traffic",
                        "migrate-frontend-traffic"}
 
@@ -255,6 +261,7 @@ class TestFrontendPipeline:
     def test_deploy_no_traffic_waits_for_build(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)
         assert "build-frontend" in steps["deploy-frontend-no-traffic"]["waitFor"]
+        assert "test-frontend" in steps["deploy-frontend-no-traffic"]["waitFor"]
 
     def test_deploy_uses_no_traffic_flag(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)
