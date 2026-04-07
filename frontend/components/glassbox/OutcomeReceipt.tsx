@@ -83,15 +83,15 @@ export default function OutcomeReceipt({
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
+                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 ? (
                   <span>Final {valueLabel}: <span className="font-semibold">{formatValue(Number(finalSummary.current_offer), valueFormat)}</span></span>
-                )}
-                {finalSummary.turns_completed != null && (
+                ) : null}
+                {finalSummary.turns_completed != null ? (
                   <span>Turns: {String(finalSummary.turns_completed)}</span>
-                )}
-                {finalSummary.total_warnings != null && Number(finalSummary.total_warnings) > 0 && (
+                ) : null}
+                {finalSummary.total_warnings != null && Number(finalSummary.total_warnings) > 0 ? (
                   <span>Warnings: {String(finalSummary.total_warnings)}</span>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -109,16 +109,16 @@ export default function OutcomeReceipt({
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
+                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 ? (
                   <span>Last Offer: {formatValue(Number(finalSummary.current_offer), valueFormat)}</span>
-                )}
-                {finalSummary.total_warnings != null && (
+                ) : null}
+                {finalSummary.total_warnings != null ? (
                   <span>Total Warnings: {String(finalSummary.total_warnings)}</span>
-                )}
+                ) : null}
               </div>
 
               {/* Actionable advice for re-running with better outcome */}
-              {Array.isArray(finalSummary.advice) && (finalSummary.advice as Array<Record<string, unknown>>).length > 0 && (
+              {Array.isArray(finalSummary.advice) && (finalSummary.advice as Array<Record<string, unknown>>).length > 0 ? (
                 <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-4" data-testid="block-advice">
                   <h4 className="text-sm font-semibold text-blue-900 mb-2">
                     How to get a different outcome
@@ -142,7 +142,7 @@ export default function OutcomeReceipt({
                     </div>
                   ))}
                 </div>
-              )}
+              ) : null}
             </div>
           )}
 
@@ -154,19 +154,19 @@ export default function OutcomeReceipt({
                   : "Negotiation reached maximum turns without agreement"}
               </p>
               <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 && (
+                {finalSummary.current_offer != null && Number(finalSummary.current_offer) > 0 ? (
                   <span>Last Offer: {formatValue(Number(finalSummary.current_offer), valueFormat)}</span>
-                )}
-                {finalSummary.total_warnings != null && Number(finalSummary.total_warnings) > 0 && (
+                ) : null}
+                {finalSummary.total_warnings != null && Number(finalSummary.total_warnings) > 0 ? (
                   <span>Warnings: {String(finalSummary.total_warnings)}</span>
-                )}
+                ) : null}
               </div>
             </div>
           )}
         </div>
 
         {/* Per-agent argument summaries */}
-        {Array.isArray(finalSummary.participant_summaries) && (finalSummary.participant_summaries as Array<Record<string, unknown>>).length > 0 && (
+        {Array.isArray(finalSummary.participant_summaries) && (finalSummary.participant_summaries as Array<Record<string, unknown>>).length > 0 ? (
           <div className="border-t border-gray-200 pt-4 mb-6" data-testid="participant-summaries">
             <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
               Participant Summary
@@ -188,16 +188,16 @@ export default function OutcomeReceipt({
               ))}
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* LLM Usage Summary */}
         {finalSummary.usage_summary &&
-         (finalSummary.usage_summary as UsageSummary).total_calls > 0 && (
+         (finalSummary.usage_summary as UsageSummary).total_calls > 0 ? (
           <UsageSummaryCard usageSummary={finalSummary.usage_summary as UsageSummary} />
-        )}
+        ) : null}
 
         {/* Tipping Point Analysis */}
-        {typeof finalSummary.tipping_point === "string" && finalSummary.tipping_point.length > 0 && (
+        {typeof finalSummary.tipping_point === "string" && finalSummary.tipping_point.length > 0 ? (
           <div className="border-t border-gray-200 pt-4 mb-6" data-testid="tipping-point-section">
             <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
               Tipping Point
@@ -206,10 +206,10 @@ export default function OutcomeReceipt({
               {String(finalSummary.tipping_point)}
             </p>
           </div>
-        )}
+        ) : null}
 
         {/* Evaluation Score */}
-        {typeof finalSummary.evaluation === "object" && finalSummary.evaluation !== null && (
+        {typeof finalSummary.evaluation === "object" && finalSummary.evaluation !== null ? (
           <div className="border-t border-gray-200 pt-4 mb-6" data-testid="evaluation-section">
             <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
               Negotiation Evaluation
@@ -296,7 +296,7 @@ export default function OutcomeReceipt({
               );
             })()}
           </div>
-        )}
+        ) : null}
 
         {/* ROI Metrics */}
         <div className="border-t border-gray-200 pt-4 mb-6">
@@ -312,11 +312,11 @@ export default function OutcomeReceipt({
             <p className="text-sm font-medium text-gray-900">
               Time Elapsed: {elapsedSeconds}s
             </p>
-            {finalSummary.ai_tokens_used != null && Number(finalSummary.ai_tokens_used) > 0 && (
+            {finalSummary.ai_tokens_used != null && Number(finalSummary.ai_tokens_used) > 0 ? (
               <p className="text-sm font-medium text-gray-900">
                 AI Tokens: {Number(finalSummary.ai_tokens_used).toLocaleString("en-US")} ({Math.max(1, Math.ceil(Number(finalSummary.ai_tokens_used) / 1000))} credits used)
               </p>
-            )}
+            ) : null}
           </div>
 
           {/* Scenario-estimated metrics */}
