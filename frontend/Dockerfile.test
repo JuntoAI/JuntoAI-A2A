@@ -9,5 +9,3 @@ ENV NODE_PATH=/opt/test-deps/node_modules
 ENV PATH="/opt/test-deps/node_modules/.bin:$PATH"
 
 WORKDIR /workspace/frontend
-
-# No COPY of source — Cloud Build mounts /workspace automatically

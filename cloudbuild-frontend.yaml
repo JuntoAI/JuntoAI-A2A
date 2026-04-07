@@ -19,6 +19,7 @@ steps:
     args:
       - -c
       - |
+        ln -sf /opt/test-deps/node_modules ./node_modules
         npx vitest run --coverage
     dir: frontend
     waitFor: ["build-test-image"]
