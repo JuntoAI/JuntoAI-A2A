@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { formatValue, type ValueFormat } from "@/lib/valueFormat";
+import UsageSummaryCard from "./UsageSummaryCard";
+import type { UsageSummary } from "@/types/sse";
 
 export interface OutcomeReceiptProps {
   dealStatus: "Agreed" | "Blocked" | "Failed";
@@ -186,6 +188,12 @@ export default function OutcomeReceipt({
               ))}
             </div>
           </div>
+        )}
+
+        {/* LLM Usage Summary */}
+        {finalSummary.usage_summary &&
+         (finalSummary.usage_summary as UsageSummary).total_calls > 0 && (
+          <UsageSummaryCard usageSummary={finalSummary.usage_summary as UsageSummary} />
         )}
 
         {/* Tipping Point Analysis */}

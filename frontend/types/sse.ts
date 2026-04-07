@@ -43,3 +43,39 @@ export type SSEEvent =
   | NegotiationCompleteEvent
   | EvaluationInterviewEvent
   | SSEErrorEvent;
+
+export interface PersonaUsageStats {
+  agent_role: string;
+  agent_type: string;
+  model_id: string;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_tokens: number;
+  call_count: number;
+  error_count: number;
+  avg_latency_ms: number;
+  tokens_per_message: number;
+}
+
+export interface ModelUsageStats {
+  model_id: string;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_tokens: number;
+  call_count: number;
+  error_count: number;
+  avg_latency_ms: number;
+  tokens_per_message: number;
+}
+
+export interface UsageSummary {
+  per_persona: PersonaUsageStats[];
+  per_model: ModelUsageStats[];
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_tokens: number;
+  total_calls: number;
+  total_errors: number;
+  avg_latency_ms: number;
+  negotiation_duration_ms: number;
+}

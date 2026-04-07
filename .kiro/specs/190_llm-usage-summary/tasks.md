@@ -17,19 +17,19 @@
 
 ## Task 4: Create frontend UsageSummaryCard component
 - [x] 4.1 Add TypeScript types for `PersonaUsageStats`, `ModelUsageStats`, and `UsageSummary` in `frontend/types/sse.ts`
-- [-] 4.2 Create `frontend/components/glassbox/UsageSummaryCard.tsx` — collapsible section (`data-testid="usage-summary-section"`) with toggle button (`data-testid="usage-summary-toggle"`), collapsed by default
-- [~] 4.3 Implement per-persona breakdown table sorted by `total_tokens` descending, showing agent_role, model_id, total_tokens, call_count, avg_latency_ms (with "ms" suffix), tokens_per_message, and input:output ratio formatted as "X.Y:1"
-- [~] 4.4 Implement per-model breakdown table showing model_id, total_tokens, call_count, avg_latency_ms, tokens_per_message
-- [~] 4.5 Implement session-wide totals display: total_tokens, total_calls, total_errors (only if > 0), avg_latency_ms, negotiation_duration_ms formatted as seconds with 1 decimal
-- [~] 4.6 Add most-verbose-badge (`data-testid="most-verbose-badge"`) on persona with highest `tokens_per_message` when 2+ personas exist
-- [~] 4.7 Add responsive layout: stacked tables on mobile, side-by-side at ≥1024px (`lg:` breakpoint)
+- [x] 4.2 Create `frontend/components/glassbox/UsageSummaryCard.tsx` — collapsible section (`data-testid="usage-summary-section"`) with toggle button (`data-testid="usage-summary-toggle"`), collapsed by default
+- [x] 4.3 Implement per-persona breakdown table sorted by `total_tokens` descending, showing agent_role, model_id, total_tokens, call_count, avg_latency_ms (with "ms" suffix), tokens_per_message, and input:output ratio formatted as "X.Y:1"
+- [x] 4.4 Implement per-model breakdown table showing model_id, total_tokens, call_count, avg_latency_ms, tokens_per_message
+- [x] 4.5 Implement session-wide totals display: total_tokens, total_calls, total_errors (only if > 0), avg_latency_ms, negotiation_duration_ms formatted as seconds with 1 decimal
+- [x] 4.6 Add most-verbose-badge (`data-testid="most-verbose-badge"`) on persona with highest `tokens_per_message` when 2+ personas exist
+- [x] 4.7 Add responsive layout: stacked tables on mobile, side-by-side at ≥1024px (`lg:` breakpoint)
 
 ## Task 5: Integrate UsageSummaryCard into OutcomeReceipt
-- [~] 5.1 In `frontend/components/glassbox/OutcomeReceipt.tsx`, conditionally render `UsageSummaryCard` when `finalSummary.usage_summary` exists and `total_calls > 0`; do not render when absent or `total_calls === 0`
+- [x] 5.1 In `frontend/components/glassbox/OutcomeReceipt.tsx`, conditionally render `UsageSummaryCard` when `finalSummary.usage_summary` exists and `total_calls > 0`; do not render when absent or `total_calls === 0`
 
 ## Task 6: Frontend tests
-- [~] 6.1 Add property-based tests `frontend/__tests__/properties/usageSummaryCard.property.test.tsx` — Property 3: renders all persona roles, model IDs, and total_tokens (fast-check, 100 iterations)
-- [~] 6.2 Add property-based test — Property 4: personas sorted by total_tokens descending (fast-check, 100 iterations)
-- [~] 6.3 Add property-based test — Property 5: input:output ratio string correctness (fast-check, 100 iterations)
-- [~] 6.4 Add property-based test — Property 6: most-verbose-badge on correct persona (fast-check, 100 iterations)
-- [~] 6.5 Add unit tests `frontend/__tests__/components/UsageSummaryCard.test.tsx` — section not rendered when absent, not rendered when total_calls=0, collapsed by default, toggle expands, errors hidden when 0, duration formatted correctly
+- [x] 6.1 Add property-based tests `frontend/__tests__/properties/usageSummaryCard.property.test.tsx` — Property 3: renders all persona roles, model IDs, and total_tokens (fast-check, 100 iterations)
+- [x] 6.2 Add property-based test — Property 4: personas sorted by total_tokens descending (fast-check, 100 iterations)
+- [x] 6.3 Add property-based test — Property 5: input:output ratio string correctness (fast-check, 100 iterations)
+- [x] 6.4 Add property-based test — Property 6: most-verbose-badge on correct persona (fast-check, 100 iterations)
+- [x] 6.5 Add unit tests `frontend/__tests__/components/UsageSummaryCard.test.tsx` — section not rendered when absent, not rendered when total_calls=0, collapsed by default, toggle expands, errors hidden when 0, duration formatted correctly
