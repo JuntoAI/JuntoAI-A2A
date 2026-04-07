@@ -12,7 +12,7 @@ export function needsReset(lastResetDate: string): boolean {
 }
 
 /** Resets token balance and updates last_reset_date in Firestore. */
-export async function resetTokens(email: string, dailyLimit: number = 100): Promise<void> {
+export async function resetTokens(email: string, dailyLimit: number): Promise<void> {
   await updateDoc(doc(getDb(), "waitlist", email), {
     token_balance: dailyLimit,
     last_reset_date: getUtcDateString(),
@@ -20,6 +20,6 @@ export async function resetTokens(email: string, dailyLimit: number = 100): Prom
 }
 
 /** Formats token balance for display, clamping to min 0. */
-export function formatTokenDisplay(balance: number, dailyLimit: number = 100): string {
+export function formatTokenDisplay(balance: number, dailyLimit: number): string {
   return `Tokens: ${Math.max(0, balance)} / ${dailyLimit}`;
 }

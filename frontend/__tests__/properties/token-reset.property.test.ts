@@ -85,17 +85,18 @@ describe("Property 8: Token daily reset logic", () => {
    * resetTokens calls updateDoc with token_balance: 100 and
    * last_reset_date set to the current UTC date string.
    */
-  it("resetTokens persists token_balance=100 and last_reset_date=todayUTC to Firestore", { timeout: 30_000 }, async () => {
+  it("resetTokens persists token_balance=dailyLimit and last_reset_date=todayUTC to Firestore", { timeout: 30_000 }, async () => {
     await fc.assert(
       fc.asyncProperty(
         dateArb,
         fc.emailAddress().map((e) => e.toLowerCase()),
-        async (systemDate, email) => {
+        fc.constantFrom(20, 50, 100),
+        async (systemDate, email, dailyLimit) => {
           vi.setSystemTime(systemDate);
           vi.mocked(updateDoc).mockResolvedValue(undefined);
           vi.mocked(doc).mockReturnValue({ id: email } as any);
 
-          await resetTokens(email);
+          await resetTokens(email, dailyLimit);
 
           const todayUtc = toUtcDateString(systemDate);
 
@@ -106,7 +107,7 @@ describe("Property 8: Token daily reset logic", () => {
           expect(updateDoc).toHaveBeenCalledWith(
             expect.anything(),
             {
-              token_balance: 100,
+              token_balance: dailyLimit,
               last_reset_date: todayUtc,
             },
           );

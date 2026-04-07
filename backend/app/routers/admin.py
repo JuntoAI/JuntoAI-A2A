@@ -589,7 +589,7 @@ async def admin_delete_user(
         await profile_ref.delete()
 
     # 3. Delete simulations owned by this user
-    sims_query = db.collection("sessions").where("owner_email", "==", normalised_email)
+    sims_query = db.collection("negotiation_sessions").where("owner_email", "==", normalised_email)
     async for sim_doc in sims_query.stream():
         await sim_doc.reference.delete()
 
@@ -623,87 +623,73 @@ async def admin_list_simulations(
 ) -> SimulationListResponse:
     """Return a paginated, filterable list of simulations.
 
-    Cursor-based pagination uses ``created_at``. Filtering by
-    ``scenario_id``, ``deal_status``, and ``owner_email`` is applied
-    in application code to avoid requiring Firestore compound indexes.
+    Loads all sessions and sorts/filters/paginates in application code.
+    Firestore ``order_by("created_at")`` silently drops documents that
+    lack the field, so we stream the full collection and handle ordering
+    in Python to guarantee every session is visible.
     """
     from app.db import get_firestore_db
 
     # Clamp page_size to [1, 200]
     page_size = max(1, min(page_size, 200))
 
-    # Normalise order
-    direction = "ASCENDING" if order == "asc" else "DESCENDING"
+    reverse = order != "asc"
 
     db = get_firestore_db()
 
-    collected: list[SimulationListItem] = []
-    batch_size = page_size * 3  # over-fetch to account for filtering
-    exhausted = False
-    current_cursor = cursor
+    # Stream all sessions (same approach the overview endpoint uses)
+    all_sessions: list[dict] = []
+    async for doc in db.collection("negotiation_sessions").stream():
+        all_sessions.append(doc.to_dict())
 
-    while len(collected) < page_size and not exhausted:
-        query = db.collection("negotiation_sessions").order_by(
-            "created_at", direction=direction
+    # Sort in Python — treat missing/None created_at as empty string so
+    # those sessions sort to the end rather than being silently dropped.
+    all_sessions.sort(
+        key=lambda s: s.get("created_at") or "",
+        reverse=reverse,
+    )
+
+    # Apply filters
+    filtered: list[SimulationListItem] = []
+    for s in all_sessions:
+        if scenario_id is not None and s.get("scenario_id") != scenario_id:
+            continue
+        if deal_status is not None and s.get("deal_status") != deal_status:
+            continue
+        if owner_email is not None and s.get("owner_email") != owner_email:
+            continue
+        filtered.append(
+            SimulationListItem(
+                session_id=s.get("session_id", ""),
+                scenario_id=s.get("scenario_id", ""),
+                owner_email=s.get("owner_email"),
+                deal_status=s.get("deal_status", ""),
+                turn_count=s.get("turn_count", 0) or 0,
+                max_turns=s.get("max_turns", 15) or 15,
+                total_tokens_used=s.get("total_tokens_used", 0) or 0,
+                active_toggles=s.get("active_toggles") or [],
+                model_overrides=s.get("model_overrides") or {},
+                created_at=s.get("created_at"),
+            )
         )
 
-        if current_cursor:
-            query = query.start_after({"created_at": current_cursor})
-
-        query = query.limit(batch_size)
-
-        batch_docs: list[dict] = []
-        async for doc in query.stream():
-            batch_docs.append(doc.to_dict())
-
-        if not batch_docs:
-            exhausted = True
-            break
-
-        for s in batch_docs:
-            # Apply filters in application code
-            if scenario_id is not None and s.get("scenario_id") != scenario_id:
-                continue
-            if deal_status is not None and s.get("deal_status") != deal_status:
-                continue
-            if owner_email is not None and s.get("owner_email") != owner_email:
-                continue
-
-            collected.append(
-                SimulationListItem(
-                    session_id=s.get("session_id", ""),
-                    scenario_id=s.get("scenario_id", ""),
-                    owner_email=s.get("owner_email"),
-                    deal_status=s.get("deal_status", ""),
-                    turn_count=s.get("turn_count", 0) or 0,
-                    max_turns=s.get("max_turns", 15) or 15,
-                    total_tokens_used=s.get("total_tokens_used", 0) or 0,
-                    active_toggles=s.get("active_toggles") or [],
-                    model_overrides=s.get("model_overrides") or {},
-                    created_at=s.get("created_at"),
-                )
-            )
-
-            if len(collected) >= page_size:
+    # Cursor-based pagination: find the offset of the cursor item
+    start_idx = 0
+    if cursor:
+        for i, item in enumerate(filtered):
+            if item.created_at == cursor:
+                start_idx = i + 1
                 break
 
-        # Update cursor for next batch
-        last_doc = batch_docs[-1]
-        current_cursor = last_doc.get("created_at")
+    page = filtered[start_idx : start_idx + page_size]
+    exhausted = (start_idx + page_size) >= len(filtered)
 
-        if len(batch_docs) < batch_size:
-            exhausted = True
-
-    # Trim to page_size (safety)
-    result_simulations = collected[:page_size]
-
-    # Compute next_cursor from the last item returned
     next_cursor: str | None = None
-    if result_simulations and not exhausted:
-        next_cursor = result_simulations[-1].created_at
+    if page and not exhausted:
+        next_cursor = page[-1].created_at
 
     return SimulationListResponse(
-        simulations=result_simulations, next_cursor=next_cursor
+        simulations=page, next_cursor=next_cursor
     )
 
 

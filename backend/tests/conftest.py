@@ -1,5 +1,6 @@
 """Shared test fixtures for the JuntoAI A2A backend test suite."""
 
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
@@ -90,9 +91,13 @@ def mock_profile_client():
     # Mock _db for waitlist access
     waitlist_doc = MagicMock()
     waitlist_doc.exists = True
-    waitlist_doc.to_dict.return_value = {"token_balance": 100}
+    waitlist_doc.to_dict.return_value = {
+        "token_balance": 100,
+        "last_reset_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+    }
     waitlist_ref = MagicMock()
     waitlist_ref.get = AsyncMock(return_value=waitlist_doc)
+    waitlist_ref.update = AsyncMock()
     pc._db = MagicMock()
     pc._db.collection.return_value = MagicMock()
     pc._db.collection.return_value.document.return_value = waitlist_ref

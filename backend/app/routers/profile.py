@@ -86,6 +86,55 @@ async def _get_waitlist_token_balance(profile_client, email: str) -> int:
         return 20
 
 
+async def _check_and_reset_tokens(
+    profile_client, email: str, daily_limit: int
+) -> int:
+    """Check if tokens need a daily reset and apply it server-side.
+
+    Compares ``last_reset_date`` against today (UTC). If stale, resets
+    ``token_balance`` to ``daily_limit`` and updates ``last_reset_date``.
+    Returns the (possibly refreshed) token balance.
+    """
+    email_key = email.lower().strip()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    if settings.RUN_MODE == "local":
+        import aiosqlite
+
+        db_path = settings.SQLITE_DB_PATH
+        async with aiosqlite.connect(db_path) as conn:
+            cursor = await conn.execute(
+                "SELECT token_balance, last_reset_date FROM waitlist WHERE email = ?",
+                (email_key,),
+            )
+            row = await cursor.fetchone()
+            if not row:
+                return daily_limit
+            balance, last_reset = int(row[0]), row[1] or ""
+            if last_reset < today:
+                await conn.execute(
+                    "UPDATE waitlist SET token_balance = ?, last_reset_date = ? WHERE email = ?",
+                    (daily_limit, today, email_key),
+                )
+                await conn.commit()
+                return daily_limit
+            return balance
+    else:
+        waitlist_ref = profile_client._db.collection("waitlist").document(email_key)
+        doc = await waitlist_ref.get()
+        if not doc.exists:
+            return daily_limit
+        data = doc.to_dict()
+        last_reset = data.get("last_reset_date", "")
+        if last_reset < today:
+            await waitlist_ref.update({
+                "token_balance": daily_limit,
+                "last_reset_date": today,
+            })
+            return daily_limit
+        return data.get("token_balance", daily_limit)
+
+
 async def _update_waitlist_token_balance(
     profile_client, email: str, new_balance: int
 ) -> None:
@@ -114,14 +163,18 @@ async def _update_waitlist_token_balance(
 
 @router.get("/profile/{email}")
 async def get_profile(email: str, profile_client=Depends(get_profile_client)):
-    """Return the profile for *email*, creating one with defaults if needed."""
+    """Return the profile for *email*, creating one with defaults if needed.
+
+    Also performs a server-side daily token reset when ``last_reset_date``
+    is before today (UTC), ensuring tokens refresh even without a fresh login.
+    """
     profile = await profile_client.get_or_create_profile(email)
 
     tier = calculate_tier(
         profile.get("profile_completed_at"), profile.get("email_verified", False)
     )
     daily_limit = get_daily_limit(tier)
-    token_balance = await _get_waitlist_token_balance(profile_client, email)
+    token_balance = await _check_and_reset_tokens(profile_client, email, daily_limit)
 
     return _build_profile_response(profile, tier, daily_limit, token_balance)
 

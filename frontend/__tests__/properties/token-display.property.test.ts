@@ -32,7 +32,7 @@ describe("Property 10: Token balance display formatting", () => {
 
     fc.assert(
       fc.property(balanceArb, (balance) => {
-        const result = formatTokenDisplay(balance);
+        const result = formatTokenDisplay(balance, 100);
         const expected = Math.max(0, balance);
 
         // Result matches exact expected format

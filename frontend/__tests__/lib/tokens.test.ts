@@ -69,7 +69,7 @@ describe("resetTokens", () => {
   it("calls updateDoc with correct args", async () => {
     const { updateDoc, doc } = await import("firebase/firestore");
 
-    await resetTokens("test@example.com");
+    await resetTokens("test@example.com", 100);
 
     expect(doc).toHaveBeenCalledWith(expect.anything(), "waitlist", "test@example.com");
     expect(updateDoc).toHaveBeenCalled();
@@ -80,18 +80,18 @@ describe("resetTokens", () => {
 
 describe("formatTokenDisplay", () => {
   it("formats positive balance", () => {
-    expect(formatTokenDisplay(75)).toBe("Tokens: 75 / 100");
+    expect(formatTokenDisplay(75, 100)).toBe("Tokens: 75 / 100");
   });
 
   it("formats zero balance", () => {
-    expect(formatTokenDisplay(0)).toBe("Tokens: 0 / 100");
+    expect(formatTokenDisplay(0, 100)).toBe("Tokens: 0 / 100");
   });
 
   it("clamps negative balance to 0", () => {
-    expect(formatTokenDisplay(-5)).toBe("Tokens: 0 / 100");
+    expect(formatTokenDisplay(-5, 100)).toBe("Tokens: 0 / 100");
   });
 
   it("formats max balance", () => {
-    expect(formatTokenDisplay(100)).toBe("Tokens: 100 / 100");
+    expect(formatTokenDisplay(100, 100)).toBe("Tokens: 100 / 100");
   });
 });
