@@ -82,12 +82,14 @@ describe("AdminUsersPage", () => {
     });
 
     // Column headers (use selector to avoid matching action buttons)
-    expect(screen.getByText("Email")).toBeInTheDocument();
-    expect(screen.getByText("Tier", { selector: "th" })).toBeInTheDocument();
-    expect(screen.getByText("Token Balance")).toBeInTheDocument();
-    expect(screen.getByText("Status", { selector: "th" })).toBeInTheDocument();
-    expect(screen.getByText("Signed Up")).toBeInTheDocument();
-    expect(screen.getByText("Actions")).toBeInTheDocument();
+    const headers = Array.from(document.querySelectorAll("th")).map((th) => th.textContent?.trim() ?? "");
+    expect(headers).toContain("Email");
+    expect(headers).toContain("Tier");
+    expect(headers).toContain("Token Balance");
+    expect(headers.some((h) => h.startsWith("Status"))).toBe(true);
+    expect(headers).toContain("Signed Up");
+    expect(headers).toContain("Last Login");
+    expect(headers).toContain("Actions");
   });
 
   it("renders user data in table rows", async () => {

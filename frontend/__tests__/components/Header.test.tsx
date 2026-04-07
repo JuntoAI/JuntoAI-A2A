@@ -25,6 +25,7 @@ let mockPathname = "/";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), forward: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() }),
 }));
 
 vi.mock("@/components/TokenDisplay", () => ({

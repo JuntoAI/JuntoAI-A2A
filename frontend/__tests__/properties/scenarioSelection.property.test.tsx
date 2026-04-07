@@ -50,11 +50,14 @@ describe("Property 3: Scenario selection renders correct component counts", () =
    * ScenarioSelector option count must equal scenarios.length + 1 (placeholder).
    */
   it("ScenarioSelector renders one option per scenario plus placeholder", { timeout: 30000 }, () => {
+    const difficultyArb = fc.constantFrom("beginner", "intermediate", "advanced", "fun") as fc.Arbitrary<"beginner" | "intermediate" | "advanced" | "fun">;
+
     const scenarioSummaryArb = fc.array(
       fc.record({
         id: fc.stringMatching(/^[a-z][a-z0-9_]{2,14}$/),
         name: safeStringArb,
         description: safeStringArb,
+        difficulty: difficultyArb,
       }),
       { minLength: 1, maxLength: 6 },
     );
@@ -72,8 +75,8 @@ describe("Property 3: Scenario selection renders correct component counts", () =
         );
 
         const options = screen.getAllByRole("option");
-        // +1 for the placeholder "Select Simulation Environment"
-        expect(options).toHaveLength(scenarios.length + 1);
+        // +1 placeholder + scenarios + 1 disabled divider + 1 "Build Your Own"
+        expect(options).toHaveLength(scenarios.length + 3);
 
         unmount();
       }),
