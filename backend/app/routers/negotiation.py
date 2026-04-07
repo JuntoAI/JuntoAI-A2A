@@ -37,6 +37,7 @@ from app.scenarios.registry import ScenarioRegistry
 from app.scenarios.router import get_scenario_registry
 from app.services.tier_calculator import calculate_tier, get_daily_limit
 from app.utils.sse import format_sse_event
+from app.orchestrator.usage_summary import compute_usage_summary
 from app.utils.token_cost import compute_token_cost
 
 logger = logging.getLogger(__name__)
@@ -781,6 +782,9 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
                         ))
                     else:
                         summary["reason"] = f"Reached maximum of {max_turns} turns without agreement"
+                summary["usage_summary"] = compute_usage_summary(
+                    state.get("agent_calls", [])
+                )
                 events.append(NegotiationCompleteEvent(
                     event_type="negotiation_complete",
                     session_id=session_id,
@@ -906,6 +910,9 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
                         details=stall.get("details", {}),
                     ))
 
+            summary["usage_summary"] = compute_usage_summary(
+                state.get("agent_calls", [])
+            )
             events.append(NegotiationCompleteEvent(
                 event_type="negotiation_complete",
                 session_id=session_id,
