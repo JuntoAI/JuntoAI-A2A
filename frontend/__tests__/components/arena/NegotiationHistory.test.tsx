@@ -321,7 +321,7 @@ describe("NegotiationHistory", () => {
     render(<NegotiationHistory {...defaultProps} />);
     await waitFor(() => screen.getByText("Test"));
     const link = screen.getByRole("link", { name: "View" });
-    expect(link).toHaveAttribute("href", "/arena/session/abc-123");
+    expect(link).toHaveAttribute("href", "/arena/session/abc-123?mode=replay");
   });
 
   // Collapsible toggle
