@@ -28,6 +28,7 @@ export interface AgentDefinition {
   goals: string[];
   model_id: string;
   type: "negotiator" | "regulator" | "observer";
+  example_prompt?: string | null;
 }
 
 export interface ToggleDefinition {

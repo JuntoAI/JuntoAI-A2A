@@ -15,10 +15,19 @@
         "Get permission without excessive conditions like calling every 30 minutes",
         "If curfew is before midnight, negotiate a later curfew for the next event as a trust-building deal"
       ],
-      "budget": { "min": 90, "max": 180, "target": 120 },
+      "budget": {
+        "min": 90,
+        "max": 180,
+        "target": 120
+      },
       "tone": "earnest and slightly dramatic",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Propose a trial period with check-ins instead of a fixed curfew. Show maturity by offering compromises first."
     },
     {
       "role": "Parent",
@@ -31,10 +40,19 @@
         "Know the party address, host parent contact info, and Jamie's ride home plan before saying yes",
         "If extending past 11:30 PM, require a check-in text at 11 PM confirming plans haven't changed"
       ],
-      "budget": { "min": 0, "max": 120, "target": 100 },
+      "budget": {
+        "min": 0,
+        "max": 120,
+        "target": 100
+      },
       "tone": "warm but firm",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-pro"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-2.5-pro",
+      "example_prompt": "Be open to flexibility on weekends but firm on school nights. Tie curfew extensions to demonstrated responsibility."
     },
     {
       "role": "Regulator",
@@ -48,11 +66,20 @@
         "Warn if the curfew discussion ignores the teenager's emotional need for peer acceptance",
         "Block agreements where safety conditions are accepted verbally but have no enforcement mechanism"
       ],
-      "budget": { "min": 0, "max": 0, "target": 0 },
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
       "tone": "empathetic and constructive",
-      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "output_fields": [
+        "compliance_status",
+        "warnings",
+        "recommendation"
+      ],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-3-flash-preview"
+      "fallback_model_id": "gemini-3-flash-preview",
+      "example_prompt": "Emphasize the importance of sleep for adolescent development. Suggest graduated independence milestones."
     }
   ],
   "toggles": [
@@ -78,7 +105,12 @@
   "negotiation_params": {
     "max_turns": 8,
     "agreement_threshold": 30,
-    "turn_order": ["Teenager", "Regulator", "Parent", "Regulator"],
+    "turn_order": [
+      "Teenager",
+      "Regulator",
+      "Parent",
+      "Regulator"
+    ],
     "value_label": "Curfew Time",
     "value_format": "time_from_22"
   },

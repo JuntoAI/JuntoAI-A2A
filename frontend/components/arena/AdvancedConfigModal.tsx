@@ -16,6 +16,7 @@ export interface AdvancedConfigModalProps {
   initialModelOverride: string | null;
   initialMemoryStrategy: MemoryStrategy;
   milestoneSummariesEnabled: boolean;
+  examplePrompt?: string | null;
   onMilestoneSummariesChange: (enabled: boolean) => void;
   onSave: (customPrompt: string, modelOverride: string | null, memoryStrategy: MemoryStrategy) => void;
   onCancel: () => void;
@@ -57,6 +58,7 @@ export function AdvancedConfigModal({
   initialModelOverride,
   initialMemoryStrategy,
   milestoneSummariesEnabled,
+  examplePrompt,
   onMilestoneSummariesChange,
   onSave,
   onCancel,
@@ -193,7 +195,7 @@ export function AdvancedConfigModal({
             onChange={handlePromptChange}
             onPaste={handlePaste}
             maxLength={MAX_PROMPT_LENGTH}
-            placeholder="e.g., Be more aggressive in counter-offers and always cite market data to justify your position."
+            placeholder={examplePrompt || "e.g., Be more aggressive in counter-offers and always cite market data to justify your position."}
             className="w-full min-h-[120px] rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue resize-y"
           />
           <p className="mt-1 text-right text-xs text-gray-400">

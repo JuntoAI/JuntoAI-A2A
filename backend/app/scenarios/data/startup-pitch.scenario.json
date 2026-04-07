@@ -15,10 +15,19 @@
         "Retain board control: 2 founder seats, 1 investor seat, 1 independent, reject investor board majority",
         "Reject full-ratchet anti-dilution and participating preferred, accept only 1x non-participating liquidation preference"
       ],
-      "budget": { "min": 2000000, "max": 5000000, "target": 3000000 },
+      "budget": {
+        "min": 2000000,
+        "max": 5000000,
+        "target": 3000000
+      },
       "tone": "passionate and data-driven",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Lead with traction metrics and market size. Be willing to give up board seats but protect founder vesting."
     },
     {
       "role": "Investor",
@@ -31,10 +40,19 @@
         "Require 2 board seats (1 investor + 1 investor-approved independent) out of 4 total",
         "Insist on 1x participating preferred liquidation preference and standard anti-dilution protection"
       ],
-      "budget": { "min": 2000000, "max": 4000000, "target": 3000000 },
+      "budget": {
+        "min": 2000000,
+        "max": 4000000,
+        "target": 3000000
+      },
       "tone": "analytical and strategically patient",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-pro"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-2.5-pro",
+      "example_prompt": "Push for stronger liquidation preferences and anti-dilution protection. Question unit economics aggressively."
     },
     {
       "role": "Regulator",
@@ -48,11 +66,20 @@
         "Warn if vesting terms deviate from standard 4-year schedule with 1-year cliff",
         "Block deals with drag-along provisions lacking minimum valuation floors"
       ],
-      "budget": { "min": 0, "max": 0, "target": 0 },
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
       "tone": "precise and protective",
-      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "output_fields": [
+        "compliance_status",
+        "warnings",
+        "recommendation"
+      ],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-3-flash-preview"
+      "fallback_model_id": "gemini-3-flash-preview",
+      "example_prompt": "Focus on term sheet fairness and founder protection. Flag any predatory clauses immediately."
     }
   ],
   "toggles": [
@@ -80,7 +107,12 @@
   "negotiation_params": {
     "max_turns": 10,
     "agreement_threshold": 500000,
-    "turn_order": ["Founder", "Regulator", "Investor", "Regulator"],
+    "turn_order": [
+      "Founder",
+      "Regulator",
+      "Investor",
+      "Regulator"
+    ],
     "value_label": "Valuation (€)"
   },
   "outcome_receipt": {

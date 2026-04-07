@@ -3,7 +3,9 @@
   "name": "PLG vs SLG: JuntoAI Growth Strategy",
   "description": "JuntoAI co-founders debate whether Product-Led Growth or Sales-Led Growth is the right strategy for scaling the company. Markus champions radical transparency and letting the product sell itself. Miriam advocates for a team-driven sales motion inspired by Netflix culture and Teams of Teams principles.",
   "difficulty": "fun",
-  "allowed_email_domains": ["juntoai.org"],
+  "allowed_email_domains": [
+    "juntoai.org"
+  ],
   "agents": [
     {
       "role": "CTO",
@@ -16,10 +18,19 @@
         "Push for radical transparency in pricing — no sales calls needed",
         "Cite data showing PLG companies have better net revenue retention"
       ],
-      "budget": {"min": 60, "max": 100, "target": 85},
+      "budget": {
+        "min": 60,
+        "max": 100,
+        "target": 85
+      },
       "tone": "radically honest and direct",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Argue for developer experience and self-serve adoption. Use data on PLG conversion funnels from similar companies."
     },
     {
       "role": "CEO",
@@ -32,10 +43,19 @@
         "Push for autonomous sales pods organized as teams of teams",
         "Cite Netflix culture principles — freedom and responsibility applied to sales"
       ],
-      "budget": {"min": 0, "max": 40, "target": 15},
+      "budget": {
+        "min": 0,
+        "max": 40,
+        "target": 15
+      },
       "tone": "strategic and people-oriented",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Emphasize enterprise deal sizes and predictable revenue. Push for a hybrid approach if pure SLG is rejected."
     }
   ],
   "toggles": [
@@ -64,7 +84,10 @@
   "negotiation_params": {
     "max_turns": 10,
     "agreement_threshold": 10,
-    "turn_order": ["CTO", "CEO"],
+    "turn_order": [
+      "CTO",
+      "CEO"
+    ],
     "value_label": "PLG Budget Allocation (%)",
     "value_format": "percent"
   },

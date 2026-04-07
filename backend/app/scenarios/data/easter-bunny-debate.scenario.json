@@ -15,10 +15,19 @@
         "Propose a compromise: the Easter Bunny is 'real' in the way that love or justice is real, as an idea",
         "If the Bunny presents surprisingly good arguments, admit you're impressed but ask for physical evidence"
       ],
-      "budget": { "min": 0, "max": 100, "target": 50 },
+      "budget": {
+        "min": 0,
+        "max": 100,
+        "target": 50
+      },
       "tone": "curious and good-humored",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Use scientific method arguments. Demand falsifiable evidence rather than anecdotal stories."
     },
     {
       "role": "EasterBunny",
@@ -31,10 +40,19 @@
         "If cornered on physical evidence, pivot to philosophical arguments about the nature of reality, but ground them in observable phenomena (the tradition exists, the joy is real, the coordination is real)",
         "Accept a compromise that acknowledges you as 'real in a way that works through human participation' — you are the inspiration, they are the instruments"
       ],
-      "budget": { "min": 50, "max": 100, "target": 80 },
+      "budget": {
+        "min": 50,
+        "max": 100,
+        "target": 80
+      },
       "tone": "charming and playfully stubborn",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-pro"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-2.5-pro",
+      "example_prompt": "Appeal to cultural significance and the joy of belief. Use philosophical arguments about the nature of reality."
     },
     {
       "role": "Regulator",
@@ -48,11 +66,20 @@
         "Acknowledge particularly creative or entertaining arguments, even while flagging their flaws",
         "Block the debate if argument quality degrades into pure silliness with no substance"
       ],
-      "budget": { "min": 0, "max": 0, "target": 0 },
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
       "tone": "dry wit with judicial authority",
-      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "output_fields": [
+        "compliance_status",
+        "warnings",
+        "recommendation"
+      ],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-3-flash-preview"
+      "fallback_model_id": "gemini-3-flash-preview",
+      "example_prompt": "Evaluate arguments on logical consistency, not emotional appeal. Penalize logical fallacies from both sides."
     }
   ],
   "toggles": [
@@ -78,7 +105,12 @@
   "negotiation_params": {
     "max_turns": 8,
     "agreement_threshold": 20,
-    "turn_order": ["Skeptic", "Regulator", "EasterBunny", "Regulator"],
+    "turn_order": [
+      "Skeptic",
+      "Regulator",
+      "EasterBunny",
+      "Regulator"
+    ],
     "value_label": "Belief Score",
     "value_format": "percent"
   },

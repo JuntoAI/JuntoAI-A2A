@@ -15,10 +15,19 @@
         "If offering multi-year discounts, require minimum 3-year commitment with annual price escalators",
         "Push for implementation fees, training packages, or premium support as add-ons to recover margin"
       ],
-      "budget": { "min": 65000, "max": 100000, "target": 85000 },
+      "budget": {
+        "min": 65000,
+        "max": 100000,
+        "target": 85000
+      },
       "tone": "confident and strategic",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-pro"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-2.5-pro",
+      "example_prompt": "Emphasize ROI and cost savings over feature lists. Use case studies to justify premium pricing."
     },
     {
       "role": "Buyer",
@@ -31,10 +40,19 @@
         "Require a 90-day exit clause in year 1 if SLA targets are missed",
         "Use competing vendor quotes as leverage, you have a Salesforce quote at €62,000/year"
       ],
-      "budget": { "min": 50000, "max": 72000, "target": 62000 },
+      "budget": {
+        "min": 50000,
+        "max": 72000,
+        "target": 62000
+      },
       "tone": "analytical and firm",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Push hard on implementation timeline and SLA guarantees. Price is secondary to reliability."
     },
     {
       "role": "Regulator",
@@ -48,11 +66,20 @@
         "Flag any agreement lacking clear scope of included users, storage, and API call limits",
         "Issue WARNING if compliance items are acknowledged but not contractually committed"
       ],
-      "budget": { "min": 0, "max": 0, "target": 0 },
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
       "tone": "rigorous and detail-oriented",
-      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "output_fields": [
+        "compliance_status",
+        "warnings",
+        "recommendation"
+      ],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-3-flash-preview"
+      "fallback_model_id": "gemini-3-flash-preview",
+      "example_prompt": "Focus on data security and compliance requirements. Block any deal without SOC 2 certification."
     }
   ],
   "toggles": [
@@ -79,7 +106,12 @@
   "negotiation_params": {
     "max_turns": 10,
     "agreement_threshold": 3000,
-    "turn_order": ["Seller", "Regulator", "Buyer", "Regulator"],
+    "turn_order": [
+      "Seller",
+      "Regulator",
+      "Buyer",
+      "Regulator"
+    ],
     "value_label": "Price (€)"
   },
   "outcome_receipt": {

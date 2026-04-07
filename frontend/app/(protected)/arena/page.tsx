@@ -325,6 +325,7 @@ function ArenaPageContent() {
           initialModelOverride={modelOverrides[advancedConfigAgent.role] ?? null}
           initialMemoryStrategy={memoryStrategies[advancedConfigAgent.role] ?? "structured"}
           milestoneSummariesEnabled={milestoneSummariesEnabled}
+          examplePrompt={scenarioDetail?.agents.find((a) => a.role === advancedConfigAgent.role)?.example_prompt}
           onMilestoneSummariesChange={handleMilestoneSummariesChange}
           onSave={(customPrompt, modelOverride, memoryStrategy) => {
             const role = advancedConfigAgent.role;

@@ -45,6 +45,11 @@ class AgentDefinition(BaseModel):
     output_fields: list[str] = Field(..., min_length=1)
     model_id: str = Field(..., min_length=1)
     fallback_model_id: str | None = Field(default=None)
+    example_prompt: str | None = Field(
+        default=None,
+        description="Example custom prompt shown as placeholder text in the "
+        "advanced config UI. Only used for system-built scenarios.",
+    )
 
     @field_validator("model_id")
     @classmethod

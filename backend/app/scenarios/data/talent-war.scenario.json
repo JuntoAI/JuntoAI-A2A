@@ -15,10 +15,19 @@
         "Require a start date within 4 weeks and 18-month minimum tenure commitment",
         "If salary exceeds €120,000, require VP approval framing, use this as a negotiation brake"
       ],
-      "budget": { "min": 90000, "max": 130000, "target": 110000 },
+      "budget": {
+        "min": 90000,
+        "max": 130000,
+        "target": 110000
+      },
       "tone": "warm but strategically firm",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Focus on total compensation packaging instead of base salary. Lead with equity and signing bonus before increasing base."
     },
     {
       "role": "Candidate",
@@ -31,10 +40,19 @@
         "Secure a signing bonus of at least €10,000 to offset transition costs",
         "If salary is below €130,000, demand accelerated equity vesting or annual review guarantee"
       ],
-      "budget": { "min": 125000, "max": 160000, "target": 135000 },
+      "budget": {
+        "min": 125000,
+        "max": 160000,
+        "target": 135000
+      },
       "tone": "confident and data-driven",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-pro"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-2.5-pro",
+      "example_prompt": "Prioritize remote work flexibility over salary. Be willing to accept a lower base if you get 4+ days remote."
     },
     {
       "role": "Regulator",
@@ -47,11 +65,20 @@
         "Flag signing bonuses above €15,000 as requiring CFO approval",
         "Warn against any promises about future promotions, guaranteed raises, or title changes"
       ],
-      "budget": { "min": 0, "max": 0, "target": 0 },
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
       "tone": "firm and policy-driven",
-      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "output_fields": [
+        "compliance_status",
+        "warnings",
+        "recommendation"
+      ],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-3-flash-preview"
+      "fallback_model_id": "gemini-3-flash-preview",
+      "example_prompt": "Be stricter about policy enforcement. Flag any verbal promises about future promotions immediately."
     }
   ],
   "toggles": [
@@ -80,7 +107,12 @@
   "negotiation_params": {
     "max_turns": 12,
     "agreement_threshold": 5000,
-    "turn_order": ["Recruiter", "Regulator", "Candidate", "Regulator"],
+    "turn_order": [
+      "Recruiter",
+      "Regulator",
+      "Candidate",
+      "Regulator"
+    ],
     "value_label": "Salary (€)"
   },
   "outcome_receipt": {

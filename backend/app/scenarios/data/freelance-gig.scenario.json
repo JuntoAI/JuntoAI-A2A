@@ -15,10 +15,19 @@
         "Insist on a written scope document, refuse to start without one",
         "If the client pushes below €80/hour, demand either reduced scope or a longer contract term to compensate"
       ],
-      "budget": { "min": 75, "max": 120, "target": 90 },
+      "budget": {
+        "min": 75,
+        "max": 120,
+        "target": 90
+      },
       "tone": "friendly but direct",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Negotiate for milestone-based payments instead of hourly. Push for a kill fee if the project is cancelled."
     },
     {
       "role": "Client",
@@ -31,10 +40,19 @@
         "If hourly rate exceeds €80/hour, negotiate reduced weekly hours (30h instead of 40h) or offer equity to bridge the gap",
         "Require a 2-week trial period before committing to the full 3-month engagement"
       ],
-      "budget": { "min": 62, "max": 100, "target": 83 },
+      "budget": {
+        "min": 62,
+        "max": 100,
+        "target": 83
+      },
       "tone": "pragmatic and transparent",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-pro"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-2.5-pro",
+      "example_prompt": "Prioritize fixed-price contracts with clear deliverables. Offer a longer engagement in exchange for a lower rate."
     }
   ],
   "toggles": [
@@ -62,7 +80,10 @@
   "negotiation_params": {
     "max_turns": 8,
     "agreement_threshold": 5,
-    "turn_order": ["Client", "Freelancer"],
+    "turn_order": [
+      "Client",
+      "Freelancer"
+    ],
     "value_label": "Rate (€/hr)"
   },
   "outcome_receipt": {

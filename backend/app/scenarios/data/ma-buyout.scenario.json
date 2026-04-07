@@ -15,10 +15,19 @@
         "Secure full IP assignment and 2-year non-compete for the founding team",
         "If price exceeds 42M EUR demand board seats and operational control provisions"
       ],
-      "budget": { "min": 25000000, "max": 50000000, "target": 38000000 },
+      "budget": {
+        "min": 25000000,
+        "max": 50000000,
+        "target": 38000000
+      },
       "tone": "analytical and strategically patient",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-3-flash-preview",
+      "example_prompt": "Lead with strategic synergies rather than price. Emphasize growth potential and market expansion."
     },
     {
       "role": "Seller",
@@ -31,10 +40,19 @@
         "Require guaranteed 2-year no-layoff clause for all 50 employees with severance protections",
         "Retain CTO title and autonomous division leadership for minimum 3 years"
       ],
-      "budget": { "min": 45000000, "max": 80000000, "target": 55000000 },
+      "budget": {
+        "min": 45000000,
+        "max": 80000000,
+        "target": 55000000
+      },
       "tone": "confident and protective",
-      "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-pro"
+      "output_fields": [
+        "offer",
+        "reasoning",
+        "counter_terms"
+      ],
+      "model_id": "gemini-2.5-pro",
+      "example_prompt": "Anchor high and protect employee retention terms. Don't concede on earn-out structure easily."
     },
     {
       "role": "Regulator",
@@ -47,11 +65,20 @@
         "Demand concrete data silo commitments if combined entity handles EU citizen data from both companies",
         "Flag any earn-out structure that could create perverse incentives violating EU consumer protection"
       ],
-      "budget": { "min": 0, "max": 0, "target": 0 },
+      "budget": {
+        "min": 0,
+        "max": 0,
+        "target": 0
+      },
       "tone": "authoritative and analytically rigorous",
-      "output_fields": ["compliance_status", "warnings", "recommendation"],
+      "output_fields": [
+        "compliance_status",
+        "warnings",
+        "recommendation"
+      ],
       "model_id": "gemini-2.5-pro",
-      "fallback_model_id": "gemini-3-flash-preview"
+      "fallback_model_id": "gemini-3-flash-preview",
+      "example_prompt": "Scrutinize market concentration effects. Require detailed remedies for any anti-competitive concerns."
     }
   ],
   "toggles": [
@@ -78,7 +105,12 @@
   "negotiation_params": {
     "max_turns": 12,
     "agreement_threshold": 2000000,
-    "turn_order": ["Buyer", "Regulator", "Seller", "Regulator"],
+    "turn_order": [
+      "Buyer",
+      "Regulator",
+      "Seller",
+      "Regulator"
+    ],
     "value_label": "Price (€)"
   },
   "outcome_receipt": {
