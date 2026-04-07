@@ -390,13 +390,9 @@ def _build_participant_summaries(
             if last_msg:
                 # Take first sentence of last public message as their final stance
                 first_sentence = last_msg.split(".")[0].strip()
-                if len(first_sentence) > 150:
-                    first_sentence = first_sentence[:147] + "..."
                 parts.append(first_sentence)
             elif first_msg:
                 first_sentence = first_msg.split(".")[0].strip()
-                if len(first_sentence) > 150:
-                    first_sentence = first_sentence[:147] + "..."
                 parts.append(first_sentence)
 
             summaries.append({
@@ -411,8 +407,6 @@ def _build_participant_summaries(
             status = content.get("status", "")
             reasoning = content.get("reasoning", "") or content.get("public_message", "")
             first_sentence = reasoning.split(".")[0].strip() if reasoning else ""
-            if len(first_sentence) > 150:
-                first_sentence = first_sentence[:147] + "..."
 
             summary_text = ""
             if status == "BLOCKED":
@@ -432,8 +426,6 @@ def _build_participant_summaries(
         elif agent_type == "observer":
             observation = content.get("observation", "") or content.get("public_message", "")
             first_sentence = observation.split(".")[0].strip() if observation else ""
-            if len(first_sentence) > 150:
-                first_sentence = first_sentence[:147] + "..."
             summaries.append({
                 "role": role,
                 "name": name,

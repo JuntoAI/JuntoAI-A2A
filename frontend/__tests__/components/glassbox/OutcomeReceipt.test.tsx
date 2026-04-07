@@ -481,8 +481,8 @@ describe("OutcomeReceipt", () => {
       expect(bars[2].className).toContain("bg-red-400");
     });
 
-    it("truncates long criticism to 80 chars in participant display", () => {
-      const longCriticism = "a".repeat(150);
+    it("renders full criticism text without truncation", () => {
+      const longCriticism = "The process felt rushed and I would have preferred more time to consider the final terms before committing.";
       render(
         <OutcomeReceipt
           {...defaultProps}
@@ -498,8 +498,7 @@ describe("OutcomeReceipt", () => {
         />,
       );
       const participants = screen.getByTestId("evaluation-participants");
-      expect(participants).toHaveTextContent("a".repeat(80));
-      expect(participants).not.toHaveTextContent("a".repeat(81));
+      expect(participants).toHaveTextContent(longCriticism);
     });
   });
 });

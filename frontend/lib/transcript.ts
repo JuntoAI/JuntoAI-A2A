@@ -64,6 +64,49 @@ export function buildTranscript(
       }
       if (summary.turns_completed != null) lines.push(`Turns Completed: ${summary.turns_completed}`);
       if (summary.total_warnings != null) lines.push(`Total Warnings: ${summary.total_warnings}`);
+
+      // Participant summaries
+      const participantSummaries = summary.participant_summaries as
+        | Array<Record<string, unknown>>
+        | undefined;
+      if (Array.isArray(participantSummaries) && participantSummaries.length > 0) {
+        lines.push("");
+        lines.push("--- Participant Summaries ---");
+        for (const p of participantSummaries) {
+          lines.push(`[${p.name ?? p.role}] ${p.summary}`);
+        }
+      }
+
+      // Evaluation
+      const evaluation = summary.evaluation as Record<string, unknown> | undefined;
+      if (evaluation && typeof evaluation === "object") {
+        lines.push("");
+        lines.push("--- Negotiation Evaluation ---");
+        if (evaluation.overall_score != null) {
+          lines.push(`Overall Score: ${evaluation.overall_score}/10`);
+        }
+        const dims = evaluation.dimensions as Record<string, number> | undefined;
+        if (dims) {
+          for (const [key, val] of Object.entries(dims)) {
+            lines.push(`  ${key.replace(/_/g, " ")}: ${val}/10`);
+          }
+        }
+        if (evaluation.verdict) {
+          lines.push(`Verdict: ${evaluation.verdict}`);
+        }
+        const interviews = evaluation.participant_interviews as
+          | Array<Record<string, unknown>>
+          | undefined;
+        if (Array.isArray(interviews) && interviews.length > 0) {
+          lines.push("");
+          lines.push("Participant Satisfaction:");
+          for (const p of interviews) {
+            const parts = [`${p.role}: ${p.satisfaction_rating}/10`];
+            if (p.criticism) parts.push(String(p.criticism));
+            lines.push(`  ${parts.join(" — ")}`);
+          }
+        }
+      }
     }
     const elapsedSec = Math.round(outcome.elapsedTimeMs / 1000);
     lines.push(`Time Elapsed: ${elapsedSec}s`);

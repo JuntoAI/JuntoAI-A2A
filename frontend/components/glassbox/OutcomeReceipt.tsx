@@ -266,7 +266,7 @@ export default function OutcomeReceipt({
                         {String(p.satisfaction_rating)}/10
                       </span>
                       {p.criticism ? (
-                        <span className="text-gray-500 truncate">{String(p.criticism).slice(0, 80)}</span>
+                        <span className="text-gray-500">{String(p.criticism)}</span>
                       ) : null}
                     </div>
                   ))}
