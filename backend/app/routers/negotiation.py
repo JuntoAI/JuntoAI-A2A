@@ -380,41 +380,40 @@ def _build_participant_summaries(
         if agent_type == "negotiator":
             # Extract final proposed price and core argument
             final_price = content.get("proposed_price", 0)
-            # Use the first message for their opening stance
-            first_msg = (first or {}).get("content", {}).get("public_message", "")
             last_msg = content.get("public_message", "")
-            # Build a concise summary
-            parts = [f"{name}"]
+            # Build a meaningful summary from the last message
+            parts: list[str] = []
             if final_price and final_price > 0:
-                parts.append(f"ended at {_format_price_for_summary(final_price, value_format, value_label)}")
+                parts.append(f"Ended at {_format_price_for_summary(final_price, value_format, value_label)}")
             if last_msg:
-                # Take first sentence of last public message as their final stance
-                first_sentence = last_msg.split(".")[0].strip()
-                parts.append(first_sentence)
-            elif first_msg:
-                first_sentence = first_msg.split(".")[0].strip()
-                parts.append(first_sentence)
+                # Use the last 2 meaningful sentences (skip short greetings)
+                sentences = [s.strip() for s in last_msg.replace("!", ".").replace("?", ".").split(".") if len(s.strip()) > 15]
+                tail = sentences[-2:] if len(sentences) >= 2 else sentences
+                if tail:
+                    parts.append(". ".join(tail))
 
             summaries.append({
                 "role": role,
                 "name": name,
                 "agent_type": agent_type,
-                "summary": ". ".join(parts[1:]) if len(parts) > 1 else f"Participated as {name}",
+                "summary": ". ".join(parts) if parts else f"Participated as {name}",
             })
 
         elif agent_type == "regulator":
             warning_count = info.get("warning_count", 0)
             status = content.get("status", "")
             reasoning = content.get("reasoning", "") or content.get("public_message", "")
-            first_sentence = reasoning.split(".")[0].strip() if reasoning else ""
+            # Use last 2 meaningful sentences instead of just the first
+            sentences = [s.strip() for s in reasoning.replace("!", ".").replace("?", ".").split(".") if len(s.strip()) > 15] if reasoning else []
+            stance = ". ".join(sentences[-2:]) if sentences else ""
 
             summary_text = ""
             if status == "BLOCKED":
-                summary_text = f"Blocked the deal after issuing {warning_count} warning(s). {first_sentence}"
+                summary_text = f"Blocked the deal after issuing {warning_count} warning(s). {stance}"
             elif warning_count > 0:
-                summary_text = f"Issued {warning_count} warning(s). {first_sentence}"
+                summary_text = f"Issued {warning_count} warning(s). {stance}"
             else:
-                summary_text = first_sentence or f"Monitored the negotiation as {name}"
+                summary_text = stance or f"Monitored the negotiation as {name}"
 
             summaries.append({
                 "role": role,
@@ -425,12 +424,13 @@ def _build_participant_summaries(
 
         elif agent_type == "observer":
             observation = content.get("observation", "") or content.get("public_message", "")
-            first_sentence = observation.split(".")[0].strip() if observation else ""
+            sentences = [s.strip() for s in observation.replace("!", ".").replace("?", ".").split(".") if len(s.strip()) > 15] if observation else []
+            stance = ". ".join(sentences[-2:]) if sentences else ""
             summaries.append({
                 "role": role,
                 "name": name,
                 "agent_type": agent_type,
-                "summary": first_sentence or f"Observed as {name}",
+                "summary": stance or f"Observed as {name}",
             })
 
     return summaries
