@@ -43,6 +43,22 @@ class StatusChangeRequest(BaseModel):
     user_status: UserStatus
 
 
+class BroadcastEmailRequest(BaseModel):
+    """Request body for POST /api/v1/admin/broadcast."""
+
+    subject: str = Field(..., min_length=1, max_length=200)
+    body_text: str = Field(..., min_length=1, max_length=50000)
+
+
+class BroadcastEmailResponse(BaseModel):
+    """Response body for POST /api/v1/admin/broadcast."""
+
+    total_users: int
+    sent: int
+    failed: int
+    errors: list[str] = Field(default_factory=list)
+
+
 # --- Response Models ---
 
 

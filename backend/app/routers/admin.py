@@ -21,6 +21,8 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from app.config import settings
 from app.models.admin import (
     AdminLoginRequest,
+    BroadcastEmailRequest,
+    BroadcastEmailResponse,
     ModelPerformance,
     OverviewResponse,
     RecentSimulation,
@@ -989,4 +991,84 @@ async def admin_export_simulations(
         headers={
             "Content-Disposition": f'attachment; filename="simulations_export_{today}.csv"',
         },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Broadcast email
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/broadcast",
+    response_model=BroadcastEmailResponse,
+    dependencies=[Depends(verify_admin_session)],
+)
+async def admin_broadcast_email(body: BroadcastEmailRequest) -> BroadcastEmailResponse:
+    """Send a broadcast email to all active users in the waitlist.
+
+    Uses Amazon SES to deliver the email. Skips suspended/banned users.
+    Returns counts of sent/failed deliveries.
+    """
+    import boto3
+    from botocore.exceptions import ClientError
+
+    from app.db import get_firestore_db
+
+    db = get_firestore_db()
+
+    # Collect all active user emails from the waitlist collection
+    emails: list[str] = []
+    async for doc in db.collection("waitlist").stream():
+        data = doc.to_dict()
+        status = data.get("user_status", "active")
+        if status != "active":
+            continue
+        email = data.get("email", doc.id)
+        if email:
+            emails.append(email)
+
+    if not emails:
+        return BroadcastEmailResponse(total_users=0, sent=0, failed=0)
+
+    ses = boto3.client("ses", region_name=settings.AWS_SES_REGION)
+    sent = 0
+    failed = 0
+    errors: list[str] = []
+
+    for recipient in emails:
+        try:
+            ses.send_email(
+                Source=settings.SES_SENDER_EMAIL,
+                Destination={"ToAddresses": [recipient]},
+                Message={
+                    "Subject": {"Data": body.subject, "Charset": "UTF-8"},
+                    "Body": {
+                        "Text": {"Data": body.body_text, "Charset": "UTF-8"},
+                        "Html": {
+                            "Data": body.body_text.replace("\n", "<br>"),
+                            "Charset": "UTF-8",
+                        },
+                    },
+                },
+            )
+            sent += 1
+        except ClientError as exc:
+            failed += 1
+            error_msg = f"{recipient}: {exc.response['Error']['Message']}"
+            errors.append(error_msg)
+            logger.error("Broadcast email failed for %s: %s", recipient, exc)
+
+    logger.info(
+        "Broadcast email sent: %d/%d succeeded, subject=%r",
+        sent,
+        len(emails),
+        body.subject,
+    )
+
+    return BroadcastEmailResponse(
+        total_users=len(emails),
+        sent=sent,
+        failed=failed,
+        errors=errors[:50],  # Cap error list to avoid huge responses
     )
