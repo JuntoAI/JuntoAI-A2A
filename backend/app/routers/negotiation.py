@@ -644,6 +644,11 @@ def _reconstruct_events_from_session(session_id: str, raw_doc: dict) -> list:
         else:
             summary["reason"] = f"Reached maximum of {max_turns} turns without agreement"
 
+    # Include persisted evaluation report if available
+    evaluation = raw_doc.get("evaluation")
+    if evaluation and isinstance(evaluation, dict):
+        summary["evaluation"] = evaluation
+
     events.append(NegotiationCompleteEvent(
         event_type="negotiation_complete",
         session_id=session_id,
@@ -1059,6 +1064,8 @@ async def stream_negotiation(
                             # Attach evaluation to the held-back complete event
                             if evaluation_report:
                                 held_complete_event.final_summary["evaluation"] = evaluation_report
+                                # Persist evaluation to session document so history replay includes it
+                                final_state["evaluation"] = evaluation_report
                     except Exception:
                         logger.exception("Evaluation failed for session %s", session_id)
 
