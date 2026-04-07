@@ -6,6 +6,22 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## LLM Usage Summary (Spec 190) — 2026-04-07
+
+- `compute_usage_summary(agent_calls)` pure aggregator: groups by `agent_role` and `model_id`, computes per-persona stats, per-model stats, session-wide totals, and `negotiation_duration_ms` from timestamp range
+- `PersonaUsageStats`, `ModelUsageStats`, `UsageSummary` Pydantic V2 models with `ge=0` constraints and JSON round-trip property
+- Edge cases: empty list → zero-valued summary, all-error persona → `tokens_per_message = 0`, single record → `negotiation_duration_ms = 0`, missing timestamps → duration 0
+- Integration into `_snapshot_to_events`: `usage_summary` key added to `final_summary` dict in `NegotiationCompleteEvent` at all terminal-state code paths
+- Existing `ai_tokens_used` field continues to be populated — usage summary is additive, not a replacement
+- Collapsible "LLM Usage" section on Outcome Receipt (`data-testid="usage-summary-section"`), collapsed by default with toggle button
+- Per-persona breakdown table sorted by `total_tokens` descending: agent_role, model_id, total_tokens, call_count, avg_latency_ms, tokens_per_message, input:output ratio ("X.Y:1")
+- Per-model breakdown table: model_id, total_tokens, call_count, avg_latency_ms, tokens_per_message
+- Session-wide totals: total_tokens, total_calls, total_errors (only if > 0), avg_latency_ms, negotiation_duration_ms formatted as seconds
+- Most-verbose badge (`data-testid="most-verbose-badge"`) on persona with highest `tokens_per_message` when 2+ personas exist
+- Responsive layout: stacked tables on mobile, side-by-side at ≥1024px (`lg:` breakpoint)
+- Backward compatibility: missing `agent_calls` treated as empty list, absent `usage_summary` → section not rendered
+- Property tests (Hypothesis + fast-check): UsageSummary JSON round-trip, aggregation correctness, persona sorting, input:output ratio string, most-verbose-badge placement
+
 ## Negotiation History Panel (Spec 197) — 2026-04-07
 
 - `GET /api/v1/negotiation/history` endpoint returning completed sessions grouped by UTC day with configurable `days` parameter (1–90, default 7)
