@@ -1057,8 +1057,6 @@ async def stream_negotiation(
 
                 # Run evaluation if enabled (between negotiation end and complete event)
                 if held_complete_event is not None:
-                    import asyncio
-
                     evaluation_report = None
 
                     terminal_for_work = {
