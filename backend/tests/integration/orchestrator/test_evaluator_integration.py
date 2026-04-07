@@ -104,7 +104,7 @@ class TestEvaluationEventOrdering:
     @patch("app.orchestrator.evaluator.model_router")
     @pytest.mark.asyncio
     async def test_event_ordering_two_negotiators(self, mock_router):
-        """Events: interviewing(0) → complete(0) → interviewing(1) → complete(1) → evaluation_complete."""
+        """Concurrent impl: interviewing(0) → interviewing(1) → complete(0) → complete(1) → evaluation_complete."""
         call_count = 0
 
         def _invoke(messages):
@@ -127,22 +127,23 @@ class TestEvaluationEventOrdering:
         async for event in run_evaluation(terminal_state, scenario):
             events.append(event)
 
-        # Expect: 2 interview pairs (interviewing + complete each) + 1 evaluation_complete = 5
+        # Expect: 2 interviewing + 2 complete + 1 evaluation_complete = 5
         assert len(events) == 5
 
-        # Verify ordering
+        # All "interviewing" events emitted upfront before concurrent interviews run
         assert isinstance(events[0], EvaluationInterviewEvent)
         assert events[0].status == "interviewing"
         assert events[0].agent_name == "Agent0"
 
         assert isinstance(events[1], EvaluationInterviewEvent)
-        assert events[1].status == "complete"
-        assert events[1].agent_name == "Agent0"
-        assert events[1].satisfaction_rating == 7
+        assert events[1].status == "interviewing"
+        assert events[1].agent_name == "Agent1"
 
+        # "complete" events emitted after all interviews finish
         assert isinstance(events[2], EvaluationInterviewEvent)
-        assert events[2].status == "interviewing"
-        assert events[2].agent_name == "Agent1"
+        assert events[2].status == "complete"
+        assert events[2].agent_name == "Agent0"
+        assert events[2].satisfaction_rating == 7
 
         assert isinstance(events[3], EvaluationInterviewEvent)
         assert events[3].status == "complete"
