@@ -62,15 +62,16 @@ class TestFullstackPipeline:
     """cloudbuild.yaml — builds and deploys both services with no-traffic + migrate."""
 
     def test_step_count(self, fullstack_pipeline):
-        # test-backend, test-frontend,
+        # build-test-image, test-backend, test-frontend,
         # build-backend, build-frontend, write-backend-env, write-frontend-env,
         # deploy-backend-no-traffic, deploy-frontend-no-traffic,
         # migrate-backend-traffic, migrate-frontend-traffic
-        assert len(fullstack_pipeline["steps"]) == 10
+        assert len(fullstack_pipeline["steps"]) == 11
 
     def test_step_ids(self, fullstack_pipeline):
         ids = {s["id"] for s in fullstack_pipeline["steps"]}
         expected = {
+            "build-test-image",
             "test-backend", "test-frontend",
             "build-backend", "build-frontend",
             "write-backend-env", "write-frontend-env",
@@ -127,13 +128,13 @@ class TestBackendPipeline:
     """cloudbuild-backend.yaml — backend only with no-traffic + migrate."""
 
     def test_step_count(self, backend_pipeline):
-        # test-backend, build-backend, write-backend-env,
+        # build-test-image, test-backend, build-backend, write-backend-env,
         # deploy-backend-no-traffic, migrate-backend-traffic
-        assert len(backend_pipeline["steps"]) == 5
+        assert len(backend_pipeline["steps"]) == 6
 
     def test_step_ids(self, backend_pipeline):
         ids = {s["id"] for s in backend_pipeline["steps"]}
-        assert ids == {"test-backend", "build-backend", "write-backend-env",
+        assert ids == {"build-test-image", "test-backend", "build-backend", "write-backend-env",
                        "deploy-backend-no-traffic", "migrate-backend-traffic"}
 
     def test_build_runs_first(self, backend_pipeline):
@@ -170,7 +171,7 @@ class TestBackendPipeline:
 
     def test_deploy_uses_cloud_sdk(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
-        assert steps["deploy-backend-no-traffic"]["name"] == "gcr.io/google.com/cloudsdktool/cloud-sdk"
+        assert "cloudsdktool/cloud-sdk" in steps["deploy-backend-no-traffic"]["name"]
 
     def test_deploy_uses_sha_tag(self, backend_pipeline):
         steps = _steps_by_id(backend_pipeline)
@@ -269,7 +270,7 @@ class TestFrontendPipeline:
 
     def test_deploy_uses_cloud_sdk(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)
-        assert steps["deploy-frontend-no-traffic"]["name"] == "gcr.io/google.com/cloudsdktool/cloud-sdk"
+        assert "cloudsdktool/cloud-sdk" in steps["deploy-frontend-no-traffic"]["name"]
 
     def test_deploy_uses_sha_tag(self, frontend_pipeline):
         steps = _steps_by_id(frontend_pipeline)

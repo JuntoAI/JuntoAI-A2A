@@ -1,15 +1,25 @@
 steps:
-  # --- Test (parallel with build) ---
+  # --- Build cached test image (only re-installs when requirements.txt changes) ---
+  - id: build-test-image
+    name: gcr.io/kaniko-project/executor:latest
+    args:
+      - --dockerfile=./backend/Dockerfile.test
+      - --context=dir:///workspace/backend
+      - --destination=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend-test:latest
+      - --cache=true
+      - --cache-ttl=168h
+    waitFor: ["-"]
+
+  # --- Test (uses cached image with pre-installed deps) ---
   - id: test-backend
-    name: python:3.11-slim
+    name: ${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend-test:latest
     entrypoint: bash
     args:
       - -c
       - |
-        pip install --quiet -r requirements.txt &&
         pytest --cov=app --cov-fail-under=70 -x -q
     dir: backend
-    waitFor: ["-"]
+    waitFor: ["build-test-image"]
 
   - id: build-backend
     name: gcr.io/kaniko-project/executor:latest

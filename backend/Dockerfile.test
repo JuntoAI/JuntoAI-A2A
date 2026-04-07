@@ -1,0 +1,8 @@
+FROM python:3.11-slim
+
+WORKDIR /workspace/backend
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --quiet -r requirements.txt
+
+# No COPY of source — Cloud Build mounts /workspace automatically
