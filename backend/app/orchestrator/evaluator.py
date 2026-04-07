@@ -218,7 +218,11 @@ async def run_evaluation(
 
     Called from the streaming endpoint AFTER run_negotiation() completes.
     NOT a LangGraph node. Does NOT modify NegotiationState.
+
+    Interviews are run concurrently via asyncio.gather() for speed.
     """
+    import asyncio
+
     evaluator_config = scenario_config.get("evaluator_config")
     if evaluator_config and not evaluator_config.get("enabled", True):
         return
@@ -228,23 +232,27 @@ async def run_evaluation(
     history = terminal_state.get("history", [])
     deal_status = terminal_state.get("deal_status", "")
 
-    interviews: list[dict[str, Any]] = []
-
+    # Emit all "interviewing" events upfront
     for step, agent_config in enumerate(negotiators, 1):
-        role = agent_config["role"]
-
-        # Emit "interviewing" event
         yield EvaluationInterviewEvent(
             event_type="evaluation_interview",
-            agent_name=role,
+            agent_name=agent_config["role"],
             turn_number=step,
             status="interviewing",
         )
 
-        # Conduct interview
-        interview = await _interview_participant(
-            model, agent_config, history, terminal_state,
-        )
+    # Run all interviews concurrently
+    interview_tasks = [
+        _interview_participant(model, agent_config, history, terminal_state)
+        for agent_config in negotiators
+    ]
+    interview_results = await asyncio.gather(*interview_tasks)
+
+    interviews: list[dict[str, Any]] = []
+    for step, (agent_config, interview) in enumerate(
+        zip(negotiators, interview_results), 1,
+    ):
+        role = agent_config["role"]
         interviews.append({"role": role, **interview.model_dump()})
 
         # Emit "complete" event with results

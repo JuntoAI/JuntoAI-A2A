@@ -1057,36 +1057,42 @@ async def stream_negotiation(
 
                 # Run evaluation if enabled (between negotiation end and complete event)
                 if held_complete_event is not None:
+                    import asyncio
+
+                    evaluation_report = None
+
+                    terminal_for_work = {
+                        **(last_terminal_state or {}),
+                        "history": accumulated_history,
+                    }
+
+                    # Kick off post-analysis immediately — it only needs the transcript,
+                    # not the evaluation results, so it can run concurrently.
+                    post_analysis_task = asyncio.create_task(
+                        run_post_analysis(terminal_for_work, scenario_config)
+                    )
+
                     try:
                         evaluator_config = scenario_config.get("evaluator_config")
                         evaluator_enabled = evaluator_config is None or evaluator_config.get("enabled", True)
                         if evaluator_enabled and last_terminal_state is not None:
-                            terminal_for_eval = {
-                                **(last_terminal_state or {}),
-                                "history": accumulated_history,
-                            }
-                            evaluation_report = None
-                            async for eval_event in run_evaluation(terminal_for_eval, scenario_config):
+                            # Interviews inside run_evaluation are parallelized via asyncio.gather
+                            async for eval_event in run_evaluation(terminal_for_work, scenario_config):
                                 json_data = eval_event.model_dump_json()
                                 eid = await event_buffer.append(session_id, json_data)
                                 yield format_sse_event(eval_event, event_id=eid)
                                 if isinstance(eval_event, EvaluationCompleteEvent):
                                     evaluation_report = eval_event.model_dump()
-                            # Attach evaluation to the held-back complete event
+
                             if evaluation_report:
                                 held_complete_event.final_summary["evaluation"] = evaluation_report
-                                # Persist evaluation to session document so history replay includes it
                                 final_state["evaluation"] = evaluation_report
                     except Exception:
                         logger.exception("Evaluation failed for session %s", session_id)
 
-                    # Run AI-powered post-analysis (participant summaries + tipping point)
+                    # Await post-analysis (likely already done by now since it ran concurrently)
                     try:
-                        terminal_for_analysis = {
-                            **(last_terminal_state or {}),
-                            "history": accumulated_history,
-                        }
-                        analysis = await run_post_analysis(terminal_for_analysis, scenario_config)
+                        analysis = await post_analysis_task
                         if analysis.get("participant_summaries"):
                             held_complete_event.final_summary["participant_summaries"] = analysis["participant_summaries"]
                             final_state["participant_summaries"] = analysis["participant_summaries"]

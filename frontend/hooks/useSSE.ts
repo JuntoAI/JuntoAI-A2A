@@ -120,6 +120,9 @@ export function useSSE(
               case "agent_message":
                 dispatch({ type: "AGENT_MESSAGE", payload: parsed });
                 break;
+              case "evaluation_interview":
+                dispatch({ type: "EVALUATION_INTERVIEW", payload: parsed });
+                break;
               case "negotiation_complete":
                 dispatch({ type: "NEGOTIATION_COMPLETE", payload: parsed });
                 isTerminalRef.current = true;

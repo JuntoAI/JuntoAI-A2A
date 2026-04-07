@@ -9,6 +9,7 @@ export interface ChatPanelProps {
   messages: MessageEntry[];
   isConnected: boolean;
   valueFormat?: ValueFormat;
+  isEvaluating?: boolean;
 }
 
 const AGENT_COLOR_PALETTE = [
@@ -28,7 +29,7 @@ const REGULATOR_STATUS_COLORS: Record<string, string> = {
   BLOCKED: "text-red-400 bg-red-900/30 border-red-700",
 };
 
-export default function ChatPanel({ messages, isConnected, valueFormat = "currency" }: ChatPanelProps) {
+export default function ChatPanel({ messages, isConnected, valueFormat = "currency", isEvaluating = false }: ChatPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Build a stable agent → color index map based on first-appearance order
@@ -97,7 +98,9 @@ export default function ChatPanel({ messages, isConnected, valueFormat = "curren
       {isConnected && messages.length > 0 && (
         <div className="flex items-center gap-2">
           <div className="h-3 w-3 animate-spin rounded-full border-2 border-brand-blue/30 border-t-brand-blue" />
-          <span className="text-gray-400 text-xs">Agent is thinking…</span>
+          <span className="text-gray-400 text-xs">
+            {isEvaluating ? "AI is evaluating the negotiation…" : "Agent is thinking…"}
+          </span>
         </div>
       )}
 

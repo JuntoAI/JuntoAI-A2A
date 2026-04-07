@@ -2,6 +2,7 @@ import type {
   AgentThoughtEvent,
   AgentMessageEvent,
   NegotiationCompleteEvent,
+  EvaluationInterviewEvent,
 } from "@/types/sse";
 
 // ---------------------------------------------------------------------------
@@ -33,6 +34,7 @@ export interface GlassBoxState {
   turnNumber: number;
   maxTurns: number;
   dealStatus: "Negotiating" | "Agreed" | "Blocked" | "Failed";
+  isEvaluating: boolean;
   finalSummary: Record<string, unknown> | null;
   error: string | null;
   isConnected: boolean;
@@ -46,6 +48,7 @@ export type GlassBoxAction =
   | { type: "AGENT_THOUGHT"; payload: AgentThoughtEvent }
   | { type: "AGENT_MESSAGE"; payload: AgentMessageEvent }
   | { type: "NEGOTIATION_COMPLETE"; payload: NegotiationCompleteEvent }
+  | { type: "EVALUATION_INTERVIEW"; payload: EvaluationInterviewEvent }
   | { type: "SSE_ERROR"; payload: { message: string } }
   | { type: "CONNECTION_OPENED" }
   | { type: "CONNECTION_ERROR"; payload: { message: string } };
@@ -63,6 +66,7 @@ export function createInitialState(maxTurns: number): GlassBoxState {
     turnNumber: 0,
     maxTurns,
     dealStatus: "Negotiating",
+    isEvaluating: false,
     finalSummary: null,
     error: null,
     isConnected: false,
@@ -128,8 +132,16 @@ export function glassBoxReducer(
       return {
         ...state,
         dealStatus: deal_status,
+        isEvaluating: false,
         finalSummary: final_summary,
         isConnected: false,
+      };
+    }
+
+    case "EVALUATION_INTERVIEW": {
+      return {
+        ...state,
+        isEvaluating: true,
       };
     }
 

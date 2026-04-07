@@ -49,6 +49,15 @@ describe("TerminalPanel", () => {
     expect(screen.getByText("Agent is thinking…")).toBeInTheDocument();
   });
 
+  it("shows evaluating message when isEvaluating is true", () => {
+    render(
+      <TerminalPanel thoughts={[]} isConnected={true} dealStatus="Negotiating" isEvaluating={true} />,
+    );
+
+    expect(screen.getByText("AI is evaluating the negotiation…")).toBeInTheDocument();
+    expect(screen.queryByText("Agent is thinking…")).not.toBeInTheDocument();
+  });
+
   it("does not show thinking indicator when not connected", () => {
     render(
       <TerminalPanel thoughts={[]} isConnected={false} dealStatus="Negotiating" />,

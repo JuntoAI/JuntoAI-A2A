@@ -7,12 +7,14 @@ export interface TerminalPanelProps {
   thoughts: ThoughtEntry[];
   isConnected: boolean;
   dealStatus: string;
+  isEvaluating?: boolean;
 }
 
 export default function TerminalPanel({
   thoughts,
   isConnected,
   dealStatus,
+  isEvaluating = false,
 }: TerminalPanelProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +44,9 @@ export default function TerminalPanel({
       {isConnected && dealStatus === "Negotiating" && (
         <div className="flex items-center gap-2 mt-2">
           <div className="h-3 w-3 animate-spin rounded-full border-2 border-green-400/30 border-t-green-400" />
-          <span className="text-green-400/70 text-xs">Agent is thinking…</span>
+          <span className="text-green-400/70 text-xs">
+            {isEvaluating ? "AI is evaluating the negotiation…" : "Agent is thinking…"}
+          </span>
         </div>
       )}
 

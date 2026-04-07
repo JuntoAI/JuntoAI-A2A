@@ -491,19 +491,19 @@ class TestRunEvaluationFullFlow:
         assert events[0].status == "interviewing"
         assert events[0].turn_number == 1
 
-        # Event 1: Buyer complete with results
+        # Event 1: Seller interviewing (all interviewing events emitted upfront)
         assert isinstance(events[1], EvaluationInterviewEvent)
-        assert events[1].agent_name == "Buyer"
-        assert events[1].status == "complete"
-        assert events[1].satisfaction_rating == 8
-        assert events[1].felt_respected is True
-        assert events[1].is_win_win is True
+        assert events[1].agent_name == "Seller"
+        assert events[1].status == "interviewing"
+        assert events[1].turn_number == 2
 
-        # Event 2: Seller interviewing
+        # Event 2: Buyer complete with results (after parallel interviews finish)
         assert isinstance(events[2], EvaluationInterviewEvent)
-        assert events[2].agent_name == "Seller"
-        assert events[2].status == "interviewing"
-        assert events[2].turn_number == 2
+        assert events[2].agent_name == "Buyer"
+        assert events[2].status == "complete"
+        assert events[2].satisfaction_rating == 8
+        assert events[2].felt_respected is True
+        assert events[2].is_win_win is True
 
         # Event 3: Seller complete
         assert isinstance(events[3], EvaluationInterviewEvent)
@@ -574,8 +574,10 @@ class TestRunEvaluationInvalidJsonFallback:
         # Still yields 5 events (2 × interviewing/complete + 1 evaluation_complete)
         assert len(events) == 5
 
-        # Interview complete events should have fallback satisfaction_rating=5
-        buyer_complete = events[1]
+        # With parallelized interviews, order is:
+        # 0: Buyer interviewing, 1: Seller interviewing,
+        # 2: Buyer complete, 3: Seller complete, 4: evaluation_complete
+        buyer_complete = events[2]
         assert buyer_complete.satisfaction_rating == 5
 
         seller_complete = events[3]
@@ -614,8 +616,8 @@ class TestRunEvaluationInvalidJsonFallback:
 
         assert len(events) == 5
 
-        # Interviews used fallback
-        assert events[1].satisfaction_rating == 5
+        # With parallelized interviews, complete events are at indices 2 and 3
+        assert events[2].satisfaction_rating == 5
         assert events[3].satisfaction_rating == 5
 
         # But scoring succeeded
@@ -674,7 +676,7 @@ class TestRunEvaluationDifferentScenarios:
         ]
         assert "Regulator" not in interview_names
         assert "Analyst" not in interview_names
-        assert interview_names == ["Buyer", "Buyer", "Seller", "Seller"]
+        assert interview_names == ["Buyer", "Seller", "Buyer", "Seller"]
 
     @pytest.mark.asyncio
     async def test_single_negotiator_scenario(self):
@@ -791,6 +793,7 @@ class TestRunEvaluationDifferentScenarios:
                 events.append(event)
 
         assert len(events) == 5
-        assert events[1].satisfaction_rating == 8
+        # Complete events are at indices 2 and 3 (after all interviewing events)
+        assert events[2].satisfaction_rating == 8
         report = events[-1]
         assert report.overall_score == 7

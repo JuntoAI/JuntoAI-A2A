@@ -22,6 +22,16 @@ export interface NegotiationCompleteEvent {
   final_summary: Record<string, unknown>;
 }
 
+export interface EvaluationInterviewEvent {
+  event_type: "evaluation_interview";
+  agent_name: string;
+  turn_number: number;
+  status: "interviewing" | "complete";
+  satisfaction_rating?: number;
+  felt_respected?: boolean;
+  is_win_win?: boolean;
+}
+
 export interface SSEErrorEvent {
   event_type: "error";
   message: string;
@@ -31,4 +41,5 @@ export type SSEEvent =
   | AgentThoughtEvent
   | AgentMessageEvent
   | NegotiationCompleteEvent
+  | EvaluationInterviewEvent
   | SSEErrorEvent;

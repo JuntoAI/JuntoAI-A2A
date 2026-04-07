@@ -174,6 +174,7 @@ export default function GlassBoxPage() {
             thoughts={state.thoughts}
             isConnected={state.isConnected}
             dealStatus={state.dealStatus}
+            isEvaluating={state.isEvaluating}
           />
         </div>
         <div className="flex-1 min-w-0">
@@ -184,6 +185,7 @@ export default function GlassBoxPage() {
             messages={state.messages}
             isConnected={state.isConnected}
             valueFormat={valueFormat}
+            isEvaluating={state.isEvaluating}
           />
         </div>
       </div>

@@ -21,6 +21,7 @@ describe("createInitialState", () => {
       turnNumber: 0,
       maxTurns: 15,
       dealStatus: "Negotiating",
+      isEvaluating: false,
       finalSummary: null,
       error: null,
       isConnected: false,
@@ -241,9 +242,9 @@ describe("AGENT_MESSAGE", () => {
 // ---------------------------------------------------------------------------
 
 describe("NEGOTIATION_COMPLETE", () => {
-  it("sets dealStatus and finalSummary, isConnected=false", () => {
+  it("sets dealStatus and finalSummary, isConnected=false, isEvaluating=false", () => {
     let state = createInitialState(10);
-    state = { ...state, isConnected: true };
+    state = { ...state, isConnected: true, isEvaluating: true };
 
     const next = glassBoxReducer(state, {
       type: "NEGOTIATION_COMPLETE",
@@ -258,6 +259,7 @@ describe("NEGOTIATION_COMPLETE", () => {
     expect(next.dealStatus).toBe("Agreed");
     expect(next.finalSummary).toEqual({ price: 450000, terms: "2-year retention" });
     expect(next.isConnected).toBe(false);
+    expect(next.isEvaluating).toBe(false);
   });
 
   it("handles Blocked status", () => {
@@ -288,6 +290,54 @@ describe("NEGOTIATION_COMPLETE", () => {
     });
 
     expect(next.dealStatus).toBe("Failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// EVALUATION_INTERVIEW
+// ---------------------------------------------------------------------------
+
+describe("EVALUATION_INTERVIEW", () => {
+  it("sets isEvaluating=true", () => {
+    const state = createInitialState(10);
+    const next = glassBoxReducer(state, {
+      type: "EVALUATION_INTERVIEW",
+      payload: {
+        event_type: "evaluation_interview",
+        agent_name: "Buyer",
+        turn_number: 1,
+        status: "interviewing",
+      },
+    });
+
+    expect(next.isEvaluating).toBe(true);
+  });
+
+  it("keeps isEvaluating=true on subsequent interview events", () => {
+    let state = createInitialState(10);
+    state = glassBoxReducer(state, {
+      type: "EVALUATION_INTERVIEW",
+      payload: {
+        event_type: "evaluation_interview",
+        agent_name: "Buyer",
+        turn_number: 1,
+        status: "interviewing",
+      },
+    });
+    state = glassBoxReducer(state, {
+      type: "EVALUATION_INTERVIEW",
+      payload: {
+        event_type: "evaluation_interview",
+        agent_name: "Buyer",
+        turn_number: 1,
+        status: "complete",
+        satisfaction_rating: 7,
+        felt_respected: true,
+        is_win_win: true,
+      },
+    });
+
+    expect(state.isEvaluating).toBe(true);
   });
 });
 
