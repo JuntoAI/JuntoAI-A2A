@@ -1,8 +1,13 @@
 FROM node:20-slim
 
-WORKDIR /workspace/frontend
+WORKDIR /opt/test-deps
 
 COPY package.json package-lock.json ./
 RUN npm ci --silent
+
+ENV NODE_PATH=/opt/test-deps/node_modules
+ENV PATH="/opt/test-deps/node_modules/.bin:$PATH"
+
+WORKDIR /workspace/frontend
 
 # No COPY of source — Cloud Build mounts /workspace automatically
