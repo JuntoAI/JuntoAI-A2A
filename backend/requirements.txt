@@ -30,5 +30,6 @@ requests
 pytest
 pytest-asyncio
 pytest-cov
+pytest-xdist
 httpx
 hypothesis

@@ -5,6 +5,17 @@ from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
+from hypothesis import settings as hypothesis_settings, Phase
+
+# Hypothesis profiles: CI runs fewer examples for speed, local runs full suite.
+hypothesis_settings.register_profile(
+    "ci",
+    max_examples=30,
+    derandomize=True,
+    phases=[Phase.explicit, Phase.generate, Phase.target],
+)
+hypothesis_settings.register_profile("default", max_examples=100)
+hypothesis_settings.load_profile("default")
 
 from app.db import get_profile_client, get_session_store
 from app.main import app
