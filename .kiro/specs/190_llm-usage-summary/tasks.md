@@ -16,8 +16,8 @@
 - [~] 3.3 Add integration test verifying `usage_summary` key is present in `NegotiationCompleteEvent.final_summary` and `ai_tokens_used` is still populated
 
 ## Task 4: Create frontend UsageSummaryCard component
-- [~] 4.1 Add TypeScript types for `PersonaUsageStats`, `ModelUsageStats`, and `UsageSummary` in `frontend/types/sse.ts`
-- [~] 4.2 Create `frontend/components/glassbox/UsageSummaryCard.tsx` — collapsible section (`data-testid="usage-summary-section"`) with toggle button (`data-testid="usage-summary-toggle"`), collapsed by default
+- [x] 4.1 Add TypeScript types for `PersonaUsageStats`, `ModelUsageStats`, and `UsageSummary` in `frontend/types/sse.ts`
+- [-] 4.2 Create `frontend/components/glassbox/UsageSummaryCard.tsx` — collapsible section (`data-testid="usage-summary-section"`) with toggle button (`data-testid="usage-summary-toggle"`), collapsed by default
 - [~] 4.3 Implement per-persona breakdown table sorted by `total_tokens` descending, showing agent_role, model_id, total_tokens, call_count, avg_latency_ms (with "ms" suffix), tokens_per_message, and input:output ratio formatted as "X.Y:1"
 - [~] 4.4 Implement per-model breakdown table showing model_id, total_tokens, call_count, avg_latency_ms, tokens_per_message
 - [~] 4.5 Implement session-wide totals display: total_tokens, total_calls, total_errors (only if > 0), avg_latency_ms, negotiation_duration_ms formatted as seconds with 1 decimal
