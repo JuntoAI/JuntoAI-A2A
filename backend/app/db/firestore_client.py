@@ -45,3 +45,18 @@ class FirestoreSessionClient:
         if not doc.exists:
             raise SessionNotFoundError(session_id)
         await doc_ref.update(updates)
+
+    async def list_sessions_by_owner(
+        self, owner_email: str, since: str
+    ) -> list[dict]:
+        """Return session dicts for *owner_email* created at or after *since* (ISO timestamp)."""
+        query = (
+            self._collection
+            .where("owner_email", "==", owner_email)
+            .where("created_at", ">=", since)
+            .order_by("created_at", direction="DESCENDING")
+        )
+        docs: list[dict] = []
+        async for doc in query.stream():
+            docs.append(doc.to_dict())
+        return docs

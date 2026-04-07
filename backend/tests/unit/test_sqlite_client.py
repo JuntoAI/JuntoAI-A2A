@@ -128,3 +128,125 @@ async def test_concurrent_session_creation(sqlite_client):
     assert retrieved_a.scenario_id == "scenario-1"
     assert retrieved_b.session_id == "concurrent-b"
     assert retrieved_b.scenario_id == "scenario-2"
+
+
+# --- list_sessions_by_owner ---
+
+import json
+from datetime import datetime, timezone, timedelta
+
+
+async def _insert_raw_session(
+    client: SQLiteSessionClient,
+    session_id: str,
+    owner_email: str,
+    created_at: str,
+    deal_status: str = "Agreed",
+    total_tokens_used: int = 1000,
+) -> None:
+    """Insert a raw session row with explicit created_at and owner_email in JSON data."""
+    data = {
+        "session_id": session_id,
+        "scenario_id": "test-scenario",
+        "owner_email": owner_email,
+        "deal_status": deal_status,
+        "total_tokens_used": total_tokens_used,
+        "created_at": created_at,
+        "turn_count": 0,
+        "max_turns": 10,
+        "current_speaker": "Buyer",
+        "current_offer": 0.0,
+        "history": [],
+        "warning_count": 0,
+        "hidden_context": {},
+        "agreement_threshold": 1000.0,
+        "active_toggles": [],
+        "turn_order": ["Buyer", "Seller"],
+        "turn_order_index": 0,
+        "agent_states": {},
+    }
+    conn = await client._get_connection()
+    try:
+        await conn.execute(
+            "INSERT INTO negotiation_sessions (session_id, data, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?)",
+            (session_id, json.dumps(data), created_at, created_at),
+        )
+        await conn.commit()
+    finally:
+        await conn.close()
+
+
+async def test_list_sessions_by_owner_filters_by_owner(sqlite_client):
+    """Only sessions belonging to the requested owner are returned."""
+    now = datetime.now(timezone.utc)
+    ts = now.isoformat()
+
+    await _insert_raw_session(sqlite_client, "s1", "alice@test.com", ts)
+    await _insert_raw_session(sqlite_client, "s2", "bob@test.com", ts)
+    await _insert_raw_session(sqlite_client, "s3", "alice@test.com", ts)
+
+    results = await sqlite_client.list_sessions_by_owner("alice@test.com", since=ts)
+    ids = [r["session_id"] for r in results]
+
+    assert len(results) == 2
+    assert "s1" in ids
+    assert "s3" in ids
+    assert "s2" not in ids
+
+
+async def test_list_sessions_by_owner_filters_by_date(sqlite_client):
+    """Only sessions at or after the 'since' cutoff are returned."""
+    old = "2024-01-01T00:00:00+00:00"
+    recent = "2025-06-01T00:00:00+00:00"
+    cutoff = "2025-01-01T00:00:00+00:00"
+
+    await _insert_raw_session(sqlite_client, "old-1", "alice@test.com", old)
+    await _insert_raw_session(sqlite_client, "new-1", "alice@test.com", recent)
+
+    results = await sqlite_client.list_sessions_by_owner("alice@test.com", since=cutoff)
+    ids = [r["session_id"] for r in results]
+
+    assert ids == ["new-1"]
+
+
+async def test_list_sessions_by_owner_returns_descending_order(sqlite_client):
+    """Sessions are returned in descending created_at order."""
+    t1 = "2025-06-01T10:00:00+00:00"
+    t2 = "2025-06-01T12:00:00+00:00"
+    t3 = "2025-06-01T14:00:00+00:00"
+
+    await _insert_raw_session(sqlite_client, "s-early", "alice@test.com", t1)
+    await _insert_raw_session(sqlite_client, "s-mid", "alice@test.com", t2)
+    await _insert_raw_session(sqlite_client, "s-late", "alice@test.com", t3)
+
+    results = await sqlite_client.list_sessions_by_owner(
+        "alice@test.com", since="2025-01-01T00:00:00+00:00"
+    )
+    ids = [r["session_id"] for r in results]
+
+    assert ids == ["s-late", "s-mid", "s-early"]
+
+
+async def test_list_sessions_by_owner_empty_results(sqlite_client):
+    """Returns empty list when no sessions match."""
+    results = await sqlite_client.list_sessions_by_owner(
+        "nobody@test.com", since="2020-01-01T00:00:00+00:00"
+    )
+    assert results == []
+
+
+async def test_list_sessions_by_owner_combined_owner_and_date_filter(sqlite_client):
+    """Both owner and date filters are applied together."""
+    old = "2024-01-01T00:00:00+00:00"
+    recent = "2025-06-01T00:00:00+00:00"
+    cutoff = "2025-01-01T00:00:00+00:00"
+
+    await _insert_raw_session(sqlite_client, "alice-old", "alice@test.com", old)
+    await _insert_raw_session(sqlite_client, "alice-new", "alice@test.com", recent)
+    await _insert_raw_session(sqlite_client, "bob-new", "bob@test.com", recent)
+
+    results = await sqlite_client.list_sessions_by_owner("alice@test.com", since=cutoff)
+    ids = [r["session_id"] for r in results]
+
+    assert ids == ["alice-new"]

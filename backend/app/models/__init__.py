@@ -31,12 +31,16 @@ from app.models.events import (
     StreamErrorEvent,
 )
 from app.models.health import HealthResponse
+from app.models.history import DayGroup, SessionHistoryItem, SessionHistoryResponse
 from app.models.negotiation import NegotiationStateModel
 from app.models.profile import ProfileDocument, ProfileResponse, ProfileUpdateRequest
 
 __all__ = [
+    "DayGroup",
     "HealthResponse",
     "NegotiationStateModel",
+    "SessionHistoryItem",
+    "SessionHistoryResponse",
     "AgentThoughtEvent",
     "AgentMessageEvent",
     "NegotiationCompleteEvent",

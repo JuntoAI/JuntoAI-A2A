@@ -3,7 +3,8 @@
 import asyncio
 import logging
 import uuid
-from datetime import datetime, timezone
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -24,6 +25,7 @@ from app.models.events import (
     NegotiationStallEvent,
     StreamErrorEvent,
 )
+from app.models.history import DayGroup, SessionHistoryItem, SessionHistoryResponse
 from app.orchestrator.evaluator import run_evaluation
 from app.models.negotiation import NegotiationStateModel
 from app.orchestrator import model_router
@@ -34,10 +36,111 @@ from app.scenarios.registry import ScenarioRegistry
 from app.scenarios.router import get_scenario_registry
 from app.services.tier_calculator import calculate_tier, get_daily_limit
 from app.utils.sse import format_sse_event
+from app.utils.token_cost import compute_token_cost
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Pure grouping logic — importable for property testing
+# ---------------------------------------------------------------------------
+
+TERMINAL_STATUSES = {"Agreed", "Blocked", "Failed"}
+
+
+def _group_sessions_by_day(
+    sessions: list[SessionHistoryItem],
+) -> list[DayGroup]:
+    """Group sessions by UTC date, sorted descending.
+
+    Each group's sessions are sorted descending by ``created_at``.
+    Groups themselves are sorted descending by ``date``.
+    ``total_token_cost`` per group is the sum of session ``token_cost`` values.
+    """
+    buckets: dict[str, list[SessionHistoryItem]] = defaultdict(list)
+    for s in sessions:
+        # Extract UTC date from ISO timestamp (e.g. "2025-06-23T14:30:00Z" → "2025-06-23")
+        utc_date = s.created_at[:10]
+        buckets[utc_date].append(s)
+
+    groups: list[DayGroup] = []
+    for date_str in sorted(buckets, reverse=True):
+        day_sessions = sorted(buckets[date_str], key=lambda s: s.created_at, reverse=True)
+        groups.append(
+            DayGroup(
+                date=date_str,
+                total_token_cost=sum(s.token_cost for s in day_sessions),
+                sessions=day_sessions,
+            )
+        )
+    return groups
+
+
+# ---------------------------------------------------------------------------
+# GET /negotiation/history — return grouped session history
+# ---------------------------------------------------------------------------
+
+
+@router.get("/negotiation/history", response_model=SessionHistoryResponse)
+async def get_negotiation_history(
+    email: str = Query(default="", description="User email"),
+    days: int = Query(default=7, ge=1, le=90, description="Number of days to look back"),
+    db: SessionStore = Depends(get_session_store),
+    registry: ScenarioRegistry = Depends(get_scenario_registry),
+):
+    """Return the user's completed negotiation sessions grouped by UTC day."""
+    # Validate email presence
+    if not email or not email.strip():
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "email query parameter is required"},
+        )
+
+    now_utc = datetime.now(timezone.utc)
+    cutoff = now_utc - timedelta(days=days)
+    cutoff_iso = cutoff.isoformat()
+
+    raw_sessions = await db.list_sessions_by_owner(email.strip(), cutoff_iso)
+
+    # Build SessionHistoryItem list from raw docs
+    items: list[SessionHistoryItem] = []
+    for doc in raw_sessions:
+        deal_status = doc.get("deal_status", "")
+        if deal_status not in TERMINAL_STATUSES:
+            continue
+
+        scenario_id = doc.get("scenario_id", "")
+        # Resolve scenario name from registry, fallback to scenario_id
+        try:
+            scenario = registry.get_scenario(scenario_id, email=email)
+            scenario_name = scenario.name
+        except Exception:
+            scenario_name = scenario_id
+
+        total_tokens_used = doc.get("total_tokens_used", 0) or 0
+        items.append(
+            SessionHistoryItem(
+                session_id=doc.get("session_id", ""),
+                scenario_id=scenario_id,
+                scenario_name=scenario_name,
+                deal_status=deal_status,
+                total_tokens_used=total_tokens_used,
+                token_cost=compute_token_cost(total_tokens_used),
+                created_at=doc.get("created_at", ""),
+                completed_at=doc.get("completed_at"),
+            )
+        )
+
+    day_groups = _group_sessions_by_day(items)
+    total_cost = sum(g.total_token_cost for g in day_groups)
+
+    return SessionHistoryResponse(
+        days=day_groups,
+        total_token_cost=total_cost,
+        period_days=days,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -877,8 +980,7 @@ async def stream_negotiation(
             # Deduct AI tokens from user's balance (cloud mode only)
             if settings.RUN_MODE == "cloud" and ai_tokens_used > 0:
                 try:
-                    # Scale: 1 user token per 1000 AI tokens (rounded up)
-                    user_tokens_cost = max(1, (ai_tokens_used + 999) // 1000)
+                    user_tokens_cost = compute_token_cost(ai_tokens_used)
                     wl_ref = profile_client._db.collection("waitlist").document(email.lower().strip())
                     wl_doc = await wl_ref.get()
                     if wl_doc.exists:

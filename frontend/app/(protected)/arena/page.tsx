@@ -17,6 +17,7 @@ import { ScenarioSelector } from "@/components/arena/ScenarioSelector";
 import { AgentCard } from "@/components/arena/AgentCard";
 import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
+import { NegotiationHistory } from "@/components/arena/NegotiationHistory";
 import { AdvancedConfigModal, type MemoryStrategy } from "@/components/arena/AdvancedConfigModal";
 import { BuilderModal } from "@/components/builder/BuilderModal";
 import { listCustomScenarios } from "@/lib/builder/api";
@@ -308,6 +309,10 @@ function ArenaPageContent() {
         isLoading={isStarting}
         insufficientTokens={insufficientTokens}
       />
+
+      {email && (
+        <NegotiationHistory email={email} dailyLimit={dailyLimit} />
+      )}
 
       {advancedConfigAgent && (
         <AdvancedConfigModal

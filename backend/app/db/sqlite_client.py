@@ -117,3 +117,29 @@ class SQLiteSessionClient:
             await conn.commit()
         finally:
             await conn.close()
+
+    async def list_sessions_by_owner(
+        self, owner_email: str, since: str
+    ) -> list[dict]:
+        """Return session dicts for *owner_email* created at or after *since*.
+
+        Uses the indexed ``created_at`` column for date filtering, then checks
+        ``owner_email`` inside the JSON ``data`` column in Python (local-mode
+        volumes make a full-table scan acceptable).
+        """
+        conn = await self._get_connection()
+        try:
+            cursor = await conn.execute(
+                "SELECT data FROM negotiation_sessions "
+                "WHERE created_at >= ? ORDER BY created_at DESC",
+                (since,),
+            )
+            rows = await cursor.fetchall()
+            results: list[dict] = []
+            for (raw,) in rows:
+                doc = json.loads(raw)
+                if doc.get("owner_email") == owner_email:
+                    results.append(doc)
+            return results
+        finally:
+            await conn.close()
