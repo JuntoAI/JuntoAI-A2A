@@ -253,4 +253,448 @@ describe("AdminUsersPage", () => {
       expect(screen.getByText(/session expired/i)).toBeInTheDocument();
     });
   });
+
+  it("shows generic error for non-401 API failure", async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/API error: 500/i)).toBeInTheDocument();
+    });
+  });
+
+  it("shows 'No users found' when API returns empty list", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ users: [], next_cursor: null, total_count: 0 }),
+    });
+
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("No users found")).toBeInTheDocument();
+    });
+  });
+
+  it("loads more users when Load More is clicked", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => mockUsersResponseNoMore,
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /load more/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("charlie@example.com")).toBeInTheDocument();
+    });
+    // Original users still present
+    expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+  });
+
+  it("adjustTokens updates balance on success", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("99");
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const tokenButtons = screen.getAllByRole("button", { name: /tokens/i });
+    await act(async () => {
+      fireEvent.click(tokenButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("99")).toBeInTheDocument();
+    });
+  });
+
+  it("adjustTokens does nothing when prompt is cancelled", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce(null);
+
+    const tokenButtons = screen.getAllByRole("button", { name: /tokens/i });
+    await act(async () => {
+      fireEvent.click(tokenButtons[0]);
+    });
+
+    // Balance unchanged
+    expect(screen.getByText("45")).toBeInTheDocument();
+  });
+
+  it("adjustTokens alerts on invalid input", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("abc");
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const tokenButtons = screen.getAllByRole("button", { name: /tokens/i });
+    await act(async () => {
+      fireEvent.click(tokenButtons[0]);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("Token balance must be a non-negative integer.");
+    alertSpy.mockRestore();
+  });
+
+  it("adjustTokens alerts on API failure", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("50");
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ detail: "Server error" }),
+    });
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const tokenButtons = screen.getAllByRole("button", { name: /tokens/i });
+    await act(async () => {
+      fireEvent.click(tokenButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Server error");
+    });
+    alertSpy.mockRestore();
+  });
+
+  it("adjustTokens alerts on network error", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("50");
+    mockFetch.mockRejectedValueOnce(new Error("Network fail"));
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const tokenButtons = screen.getAllByRole("button", { name: /tokens/i });
+    await act(async () => {
+      fireEvent.click(tokenButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Network error while updating tokens.");
+    });
+    alertSpy.mockRestore();
+  });
+
+  it("changeStatus updates status on success", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("suspended");
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const statusButtons = screen.getAllByRole("button", { name: /^status$/i });
+    await act(async () => {
+      fireEvent.click(statusButtons[0]);
+    });
+
+    await waitFor(() => {
+      const badges = screen.getAllByText("suspended", { selector: "span" });
+      expect(badges.length).toBe(2); // both alice and bob now suspended
+    });
+  });
+
+  it("changeStatus does nothing when prompt is cancelled", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce(null);
+
+    const statusButtons = screen.getAllByRole("button", { name: /^status$/i });
+    await act(async () => {
+      fireEvent.click(statusButtons[0]);
+    });
+
+    // Status unchanged
+    expect(screen.getByText("active", { selector: "span" })).toBeInTheDocument();
+  });
+
+  it("changeStatus alerts on invalid status", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("invalid");
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const statusButtons = screen.getAllByRole("button", { name: /^status$/i });
+    await act(async () => {
+      fireEvent.click(statusButtons[0]);
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith("Status must be one of: active, suspended, banned.");
+    alertSpy.mockRestore();
+  });
+
+  it("changeStatus alerts on API failure", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("banned");
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({ detail: "Forbidden" }),
+    });
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const statusButtons = screen.getAllByRole("button", { name: /^status$/i });
+    await act(async () => {
+      fireEvent.click(statusButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Forbidden");
+    });
+    alertSpy.mockRestore();
+  });
+
+  it("changeStatus alerts on network error", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("banned");
+    mockFetch.mockRejectedValueOnce(new Error("Network fail"));
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const statusButtons = screen.getAllByRole("button", { name: /^status$/i });
+    await act(async () => {
+      fireEvent.click(statusButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Network error while updating status.");
+    });
+    alertSpy.mockRestore();
+  });
+
+  it("deleteUser removes user on confirm", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200 });
+
+    const deleteButtons = screen.getAllByRole("button", { name: /delete/i });
+    await act(async () => {
+      fireEvent.click(deleteButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText("alice@example.com")).not.toBeInTheDocument();
+    });
+    expect(screen.getByText("bob@example.com")).toBeInTheDocument();
+  });
+
+  it("deleteUser does nothing when confirm is cancelled", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "confirm").mockReturnValueOnce(false);
+
+    const deleteButtons = screen.getAllByRole("button", { name: /delete/i });
+    await act(async () => {
+      fireEvent.click(deleteButtons[0]);
+    });
+
+    expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+  });
+
+  it("deleteUser alerts on API failure", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ detail: "Cannot delete" }),
+    });
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const deleteButtons = screen.getAllByRole("button", { name: /delete/i });
+    await act(async () => {
+      fireEvent.click(deleteButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Cannot delete");
+    });
+    alertSpy.mockRestore();
+  });
+
+  it("deleteUser alerts on network error", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true);
+    mockFetch.mockRejectedValueOnce(new Error("Network fail"));
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const deleteButtons = screen.getAllByRole("button", { name: /delete/i });
+    await act(async () => {
+      fireEvent.click(deleteButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Network error while deleting user.");
+    });
+    alertSpy.mockRestore();
+  });
+
+  it("shows last_login as 'Never' when null", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        users: [
+          {
+            email: "noLogin@example.com",
+            signed_up_at: null,
+            last_login: null,
+            token_balance: 10,
+            last_reset_date: null,
+            tier: 1,
+            user_status: "active",
+          },
+        ],
+        next_cursor: null,
+        total_count: 1,
+      }),
+    });
+
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("noLogin@example.com")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Never")).toBeInTheDocument();
+    // signed_up_at null shows "—"
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  it("adjustTokens alerts fallback when API returns non-JSON error", async () => {
+    await act(async () => {
+      render(<AdminUsersPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    vi.spyOn(window, "prompt").mockReturnValueOnce("50");
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: () => Promise.reject(new Error("not json")),
+    });
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const tokenButtons = screen.getAllByRole("button", { name: /tokens/i });
+    await act(async () => {
+      fireEvent.click(tokenButtons[0]);
+    });
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Failed to update tokens: 500");
+    });
+    alertSpy.mockRestore();
+  });
 });
