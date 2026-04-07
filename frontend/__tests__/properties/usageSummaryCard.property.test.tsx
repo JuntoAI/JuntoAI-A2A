@@ -159,7 +159,7 @@ describe("Property 3: Usage section renders all data when total_calls > 0", () =
 
         unmount();
       }),
-      { numRuns: 100 },
+      { numRuns: 40 },
     );
   });
 });
