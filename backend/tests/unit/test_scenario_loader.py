@@ -190,16 +190,16 @@ class TestLoadScenarioFromFileErrors:
 
     def test_os_error_during_read_raises_file_not_found(self, tmp_path):
         """Covers the except OSError branch when file exists but can't be read."""
+        from unittest.mock import patch
+
         f = tmp_path / "unreadable.json"
         f.write_text("{}", encoding="utf-8")
-        f.chmod(0o000)
 
-        with pytest.raises(ScenarioFileNotFoundError) as exc_info:
-            load_scenario_from_file(f)
+        with patch("app.scenarios.loader.Path.read_text", side_effect=OSError("Permission denied")):
+            with pytest.raises(ScenarioFileNotFoundError) as exc_info:
+                load_scenario_from_file(f)
 
         assert str(f) in str(exc_info.value)
-        # Restore permissions for cleanup
-        f.chmod(0o644)
 
 
 # ---------------------------------------------------------------------------
