@@ -11,3 +11,8 @@ __pycache__/
 htmlcov/
 .env
 !.env.example
+
+# Internal strategy docs — never commit
+docs/Sales Simulation API*
+docs/Hook Model Growth Strategy*
+docs/kinetic-identity-api.md
