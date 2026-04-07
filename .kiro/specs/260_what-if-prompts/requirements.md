@@ -1,0 +1,81 @@
+# Requirements Document
+
+## Introduction
+
+Implement T2 from the Hook Model Growth Strategy: replace the generic "Run Another Scenario" CTA on the Outcome Receipt with contextual, curiosity-driven "What If" prompts. Each prompt suggests a specific toggle change based on toggles NOT used in the current run. When a user clicks a prompt, the Arena Selector opens with the same scenario pre-selected AND the suggested toggles pre-activated, so the user can immediately launch a counterfactual simulation with one click.
+
+This closes the engagement loop by turning the Outcome Receipt from a dead end into a springboard for the next session.
+
+## Glossary
+
+- **Outcome_Receipt**: The post-negotiation summary component (`OutcomeReceipt.tsx`) that displays deal status, final terms, evaluation scores, and action CTAs.
+- **Arena_Selector**: The scenario configuration page (`/arena`) where users pick a scenario, activate toggles, and launch negotiations.
+- **Toggle**: A hidden variable (`ToggleDefinition`) that injects secret context into an agent's persona, altering negotiation behavior. Each toggle has an `id`, `label`, and `target_agent_role`.
+- **Active_Toggles**: The set of toggle IDs that were enabled for the current negotiation run.
+- **Inactive_Toggles**: Toggles defined in the scenario that were NOT in the Active_Toggles set for the current run.
+- **What_If_Prompt**: A contextual, curiosity-driven suggestion displayed on the Outcome Receipt that describes a counterfactual scenario involving one or more Inactive_Toggles.
+- **Prompt_Generator**: The frontend logic module that computes What_If_Prompts from the scenario's toggle definitions, the Active_Toggles, the deal outcome, and the final summary.
+- **Deep_Link**: A URL containing query parameters that pre-configure the Arena_Selector with a specific scenario and set of active toggles (e.g., `/arena?scenario=talent_war&toggles=competing_offer,deadline_pressure`).
+- **Scenario_Detail**: The full scenario configuration object (`ArenaScenario`) including agents, toggles, and negotiation parameters, fetched from the backend API.
+
+## Requirements
+
+### Requirement 1: Generate What-If Prompts from Inactive Toggles
+
+**User Story:** As a user who just completed a negotiation, I want to see specific "What If" suggestions based on toggles I did not use, so that I am curious to explore counterfactual outcomes.
+
+#### Acceptance Criteria
+
+1. WHEN a negotiation completes, THE Prompt_Generator SHALL identify all Inactive_Toggles by computing the set difference between the scenario's toggle definitions and the Active_Toggles.
+2. WHEN Inactive_Toggles exist, THE Prompt_Generator SHALL produce one What_If_Prompt per Inactive_Toggle.
+3. THE Prompt_Generator SHALL construct each What_If_Prompt using the toggle's `label`, the `target_agent_role`, and the negotiation outcome (deal_status, final offer value) to form a contextual sentence.
+4. WHEN all toggles were active in the current run, THE Prompt_Generator SHALL produce one What_If_Prompt suggesting the user re-run with all toggles OFF to see the baseline outcome.
+5. THE Prompt_Generator SHALL limit the displayed What_If_Prompts to a maximum of 3 prompts per Outcome Receipt.
+6. WHEN more than 3 Inactive_Toggles exist, THE Prompt_Generator SHALL select the 3 prompts to display by prioritizing toggles that target different agent roles over toggles targeting the same role.
+
+### Requirement 2: Display What-If Prompts on the Outcome Receipt
+
+**User Story:** As a user viewing the Outcome Receipt, I want to see the "What If" prompts as clickable cards replacing the generic "Run Another Scenario" button, so that I have a clear next action.
+
+#### Acceptance Criteria
+
+1. WHEN What_If_Prompts are available, THE Outcome_Receipt SHALL display each prompt as a distinct clickable card in the action area below the performance metrics.
+2. THE Outcome_Receipt SHALL display the What_If_Prompt text, the target agent name, and the toggle label on each card.
+3. THE Outcome_Receipt SHALL retain the "Reset with Different Variables" button alongside the What_If_Prompt cards.
+4. WHEN no What_If_Prompts are available (scenario has zero toggles), THE Outcome_Receipt SHALL fall back to displaying the existing "Run Another Scenario" button.
+5. THE Outcome_Receipt SHALL render What_If_Prompt cards in a responsive layout: stacked vertically on viewports below 640px, and side-by-side on viewports at or above 640px.
+
+### Requirement 3: Deep-Link Toggle Pre-Configuration in Arena Selector
+
+**User Story:** As a user who clicked a "What If" prompt, I want the Arena Selector to open with the suggested toggles already activated, so that I can launch the counterfactual run immediately without manual reconfiguration.
+
+#### Acceptance Criteria
+
+1. WHEN a user clicks a What_If_Prompt card, THE Outcome_Receipt SHALL navigate to a Deep_Link URL containing both the `scenario` parameter and a `toggles` parameter with comma-separated toggle IDs.
+2. WHEN the Arena_Selector loads with a `toggles` query parameter, THE Arena_Selector SHALL parse the comma-separated toggle IDs and activate each valid toggle after the Scenario_Detail has loaded.
+3. WHEN the `toggles` query parameter contains a toggle ID that does not exist in the loaded Scenario_Detail, THE Arena_Selector SHALL silently ignore that toggle ID and activate only the valid ones.
+4. THE Arena_Selector SHALL preserve all existing behavior for the `scenario` query parameter when the `toggles` parameter is also present.
+5. WHEN the Arena_Selector loads with a `toggles` parameter but no `scenario` parameter, THE Arena_Selector SHALL ignore the `toggles` parameter entirely.
+
+### Requirement 4: Pass Scenario Context to the Outcome Receipt
+
+**User Story:** As a developer, I want the Outcome Receipt to receive the scenario's toggle definitions and the active toggle IDs from the current run, so that the Prompt Generator has the data it needs.
+
+#### Acceptance Criteria
+
+1. THE Glass_Box session page SHALL pass the scenario's full toggle definitions array to the Outcome_Receipt component.
+2. THE Glass_Box session page SHALL pass the Active_Toggles array (toggle IDs used in the current run) to the Outcome_Receipt component.
+3. THE Outcome_Receipt component interface SHALL accept `toggles` (array of toggle definitions) and `activeToggleIds` (array of strings) as props.
+4. WHEN the toggle definitions or active toggle IDs are not available (legacy sessions), THE Outcome_Receipt SHALL fall back to displaying the existing "Run Another Scenario" button.
+
+### Requirement 5: What-If Prompt Text Generation
+
+**User Story:** As a user, I want the "What If" prompt text to be specific and curiosity-driven, referencing the actual outcome and the toggle's effect, so that I feel compelled to explore the counterfactual.
+
+#### Acceptance Criteria
+
+1. WHEN the deal_status is "Agreed", THE Prompt_Generator SHALL include the final offer value in the prompt text (e.g., "This deal closed at €125k. Toggle {label} and see what changes.").
+2. WHEN the deal_status is "Blocked", THE Prompt_Generator SHALL reference the blocking event in the prompt text (e.g., "The deal was blocked. Turn on {label} and see if the outcome shifts.").
+3. WHEN the deal_status is "Failed", THE Prompt_Generator SHALL reference the failure in the prompt text (e.g., "Negotiation failed after {turns} turns. Enable {label} and see if {agent_name} behaves differently.").
+4. THE Prompt_Generator SHALL use the toggle's `target_agent_role` to reference the affected agent by their scenario-defined `name` (e.g., "Alex" not "Candidate") in the prompt text.
+5. WHEN generating the "all toggles off" prompt (all toggles were active), THE Prompt_Generator SHALL produce text like "You ran with all variables active. Try the clean baseline — no hidden context — and see how the agents negotiate on their own."
