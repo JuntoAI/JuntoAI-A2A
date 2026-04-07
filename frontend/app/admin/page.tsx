@@ -214,7 +214,7 @@ export default async function AdminOverviewPage() {
                     <td className="px-4 py-3">{sim.scenario_id}</td>
                     <td className="px-4 py-3"><StatusBadge status={sim.deal_status} /></td>
                     <td className="px-4 py-3 text-right">{sim.turn_count}</td>
-                    <td className="px-4 py-3 text-right">{sim.total_tokens_used.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right">{(sim.total_tokens_used ?? 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-gray-600">{sim.owner_email ?? "—"}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs">
                       {sim.created_at

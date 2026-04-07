@@ -108,6 +108,7 @@ def _make_sessions_db(
     """Build a mock Firestore db for simulation endpoints.
 
     Supports:
+    - collection("negotiation_sessions").stream()  (list endpoint)
     - collection("negotiation_sessions").order_by().start_after().limit().stream()
     - collection("negotiation_sessions").document(id).get()
     """
@@ -125,7 +126,10 @@ def _make_sessions_db(
                 doc_ref.get = AsyncMock(return_value=missing)
             coll.document.return_value = doc_ref
 
-            # Support order_by().start_after().limit().stream() for list
+            # Support direct .stream() for list endpoint (in-memory sort)
+            coll.stream.return_value = _make_async_stream(session_docs)
+
+            # Support order_by().start_after().limit().stream() (legacy compat)
             query = MagicMock()
             query.start_after.return_value = query
             query.limit.return_value = query
@@ -301,36 +305,13 @@ class TestSimulationList:
         assert sims[0]["owner_email"] == "bob@test.com"
 
     async def test_order_asc(self, app_instance):
-        """Req 5.5: Explicit ascending order is accepted and returns results."""
+        """Req 5.5: Ascending order returns results sorted oldest-first."""
         sessions = [
             _make_session_doc("s1", created_at="2025-01-10T10:00:00+00:00"),
             _make_session_doc("s2", created_at="2025-01-11T10:00:00+00:00"),
         ]
         docs = [_make_firestore_doc(s) for s in sessions]
-
-        # Track the order_by call to verify direction
-        captured_direction = {}
-
-        def collection_router(name):
-            coll = MagicMock()
-            if name == "negotiation_sessions":
-                query = MagicMock()
-                query.start_after.return_value = query
-                query.limit.return_value = query
-                query.stream.return_value = _make_async_stream(docs)
-
-                def _order_by(field, direction=None):
-                    captured_direction["field"] = field
-                    captured_direction["direction"] = direction
-                    return query
-
-                coll.order_by.side_effect = _order_by
-            else:
-                coll.stream.return_value = _make_async_stream([])
-            return coll
-
-        db = MagicMock()
-        db.collection.side_effect = collection_router
+        db = _make_sessions_db(docs)
 
         with patch("app.db.get_firestore_db", return_value=db):
             async with httpx.AsyncClient(
@@ -344,8 +325,11 @@ class TestSimulationList:
                 )
 
         assert resp.status_code == 200
-        assert captured_direction["field"] == "created_at"
-        assert captured_direction["direction"] == "ASCENDING"
+        sims = resp.json()["simulations"]
+        assert len(sims) == 2
+        # Ascending: oldest first
+        assert sims[0]["created_at"] == "2025-01-10T10:00:00+00:00"
+        assert sims[1]["created_at"] == "2025-01-11T10:00:00+00:00"
 
     async def test_empty_list(self, app_instance):
         """Returns empty list when no simulations exist."""

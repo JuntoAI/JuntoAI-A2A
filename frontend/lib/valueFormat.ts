@@ -16,17 +16,18 @@ function minutesFrom22ToTime(minutes: number): string {
 }
 
 export function formatValue(
-  value: number,
+  value: number | null | undefined,
   format: ValueFormat = "currency",
 ): string {
+  const v = value ?? 0;
   switch (format) {
     case "currency":
-      return `€${value.toLocaleString("en-US")}`;
+      return `€${v.toLocaleString("en-US")}`;
     case "time_from_22":
-      return minutesFrom22ToTime(value);
+      return minutesFrom22ToTime(v);
     case "percent":
-      return `${Math.round(value)}%`;
+      return `${Math.round(v)}%`;
     case "number":
-      return value.toLocaleString("en-US");
+      return v.toLocaleString("en-US");
   }
 }

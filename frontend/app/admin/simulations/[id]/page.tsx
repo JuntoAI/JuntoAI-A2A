@@ -159,7 +159,7 @@ export default async function SimulationDetailPage({
           <MetaRow label="Owner Email">{data.owner_email ?? "—"}</MetaRow>
           <MetaRow label="Outcome"><StatusBadge status={data.deal_status} /></MetaRow>
           <MetaRow label="Turns">{data.turn_count} / {data.max_turns}</MetaRow>
-          <MetaRow label="Total AI Tokens">{data.total_tokens_used.toLocaleString()}</MetaRow>
+          <MetaRow label="Total AI Tokens">{(data.total_tokens_used ?? 0).toLocaleString()}</MetaRow>
           <MetaRow label="Created">{formatDate(data.created_at)}</MetaRow>
           <MetaRow label="Completed">{formatDate(data.completed_at)}</MetaRow>
           <MetaRow label="Duration">{formatDuration(data.duration_seconds)}</MetaRow>

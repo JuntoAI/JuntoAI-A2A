@@ -209,7 +209,7 @@ export default function AdminSimulationsPage() {
                   <td className="px-4 py-3 text-gray-600">{sim.owner_email ?? "—"}</td>
                   <td className="px-4 py-3">{outcomeBadge(sim.deal_status)}</td>
                   <td className="px-4 py-3 text-right">{sim.turn_count}</td>
-                  <td className="px-4 py-3 text-right">{sim.total_tokens_used.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right">{(sim.total_tokens_used ?? 0).toLocaleString()}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">
                     {sim.created_at
                       ? new Date(sim.created_at).toLocaleString("en-US", {

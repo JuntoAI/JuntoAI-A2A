@@ -118,7 +118,7 @@ export function glassBoxReducer(
         ...state,
         messages: [...state.messages, entry],
         turnNumber: Math.max(state.turnNumber, turn_number),
-        currentOffer: proposed_price !== undefined ? proposed_price : state.currentOffer,
+        currentOffer: proposed_price != null ? proposed_price : state.currentOffer,
         regulatorStatuses: nextRegulatorStatuses,
       };
     }
