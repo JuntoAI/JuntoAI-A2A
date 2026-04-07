@@ -14,6 +14,7 @@ export interface OutcomeReceiptProps {
   scenarioId: string | null;
   valueFormat?: ValueFormat;
   valueLabel?: string;
+  onDownloadTranscript?: () => void;
 }
 
 const STATUS_CONFIG: Record<
@@ -48,6 +49,7 @@ export default function OutcomeReceipt({
   scenarioId,
   valueFormat = "currency",
   valueLabel = "Price",
+  onDownloadTranscript,
 }: OutcomeReceiptProps) {
   const router = useRouter();
   const config = STATUS_CONFIG[dealStatus];
@@ -183,6 +185,18 @@ export default function OutcomeReceipt({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Tipping Point Analysis */}
+        {typeof finalSummary.tipping_point === "string" && finalSummary.tipping_point.length > 0 && (
+          <div className="border-t border-gray-200 pt-4 mb-6" data-testid="tipping-point-section">
+            <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-3">
+              Tipping Point
+            </h3>
+            <p className="text-sm text-gray-700 leading-relaxed">
+              {String(finalSummary.tipping_point)}
+            </p>
           </div>
         )}
 
@@ -333,6 +347,15 @@ export default function OutcomeReceipt({
           >
             Reset with Different Variables
           </button>
+          {onDownloadTranscript && (
+            <button
+              onClick={onDownloadTranscript}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              data-testid="download-transcript-btn"
+            >
+              Download Full Transcript
+            </button>
+          )}
         </div>
       </div>
     </div>

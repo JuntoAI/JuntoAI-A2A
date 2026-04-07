@@ -203,7 +203,7 @@ export default function GlassBoxPage() {
 
       {/* Outcome Receipt overlay when deal reaches terminal status */}
       {isTerminal && (
-        <div className="mt-6 space-y-4" data-testid="outcome-overlay">
+        <div className="mt-6" data-testid="outcome-overlay">
           <OutcomeReceipt
             dealStatus={state.dealStatus as "Agreed" | "Blocked" | "Failed"}
             finalSummary={state.finalSummary ?? {}}
@@ -212,16 +212,8 @@ export default function GlassBoxPage() {
             scenarioId={scenarioId}
             valueFormat={valueFormat}
             valueLabel={valueLabel}
+            onDownloadTranscript={handleDownloadTranscript}
           />
-          <div className="flex justify-center">
-            <button
-              onClick={handleDownloadTranscript}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              data-testid="download-transcript-btn"
-            >
-              Download Full Transcript
-            </button>
-          </div>
         </div>
       )}
     </div>

@@ -27,6 +27,7 @@ from app.models.events import (
 )
 from app.models.history import DayGroup, SessionHistoryItem, SessionHistoryResponse
 from app.orchestrator.evaluator import run_evaluation
+from app.orchestrator.post_analysis import run_post_analysis
 from app.models.negotiation import NegotiationStateModel
 from app.orchestrator import model_router
 from app.orchestrator.available_models import VALID_MODEL_IDS
@@ -611,13 +612,23 @@ def _reconstruct_events_from_session(session_id: str, raw_doc: dict) -> list:
     }
 
     agent_states = raw_doc.get("agent_states", {})
-    if agent_states:
+
+    # Use AI-generated participant summaries if persisted, else fall back to extraction
+    persisted_summaries = raw_doc.get("participant_summaries")
+    if persisted_summaries and isinstance(persisted_summaries, list):
+        summary["participant_summaries"] = persisted_summaries
+    elif agent_states:
         neg_params = raw_doc.get("scenario_config", {}).get("negotiation_params", {})
         summary["participant_summaries"] = _build_participant_summaries(
             history, agent_states,
             value_format=neg_params.get("value_format", "currency"),
             value_label=neg_params.get("value_label", "Price"),
         )
+
+    # Include tipping point analysis if persisted
+    tipping_point = raw_doc.get("tipping_point")
+    if tipping_point and isinstance(tipping_point, str):
+        summary["tipping_point"] = tipping_point
 
     if deal_status == "Agreed":
         offer = raw_doc.get("current_offer", 0)
@@ -1068,6 +1079,22 @@ async def stream_negotiation(
                                 final_state["evaluation"] = evaluation_report
                     except Exception:
                         logger.exception("Evaluation failed for session %s", session_id)
+
+                    # Run AI-powered post-analysis (participant summaries + tipping point)
+                    try:
+                        terminal_for_analysis = {
+                            **(last_terminal_state or {}),
+                            "history": accumulated_history,
+                        }
+                        analysis = await run_post_analysis(terminal_for_analysis, scenario_config)
+                        if analysis.get("participant_summaries"):
+                            held_complete_event.final_summary["participant_summaries"] = analysis["participant_summaries"]
+                            final_state["participant_summaries"] = analysis["participant_summaries"]
+                        if analysis.get("tipping_point"):
+                            held_complete_event.final_summary["tipping_point"] = analysis["tipping_point"]
+                            final_state["tipping_point"] = analysis["tipping_point"]
+                    except Exception:
+                        logger.exception("Post-analysis failed for session %s", session_id)
 
                     # NOW emit the held-back NegotiationCompleteEvent
                     json_data = held_complete_event.model_dump_json()

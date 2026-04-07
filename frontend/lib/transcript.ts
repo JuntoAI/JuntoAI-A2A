@@ -77,6 +77,14 @@ export function buildTranscript(
         }
       }
 
+      // Tipping Point
+      const tippingPoint = summary.tipping_point as string | undefined;
+      if (tippingPoint) {
+        lines.push("");
+        lines.push("--- Tipping Point ---");
+        lines.push(tippingPoint);
+      }
+
       // Evaluation
       const evaluation = summary.evaluation as Record<string, unknown> | undefined;
       if (evaluation && typeof evaluation === "object") {

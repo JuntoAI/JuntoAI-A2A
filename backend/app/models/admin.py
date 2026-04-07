@@ -59,6 +59,16 @@ class BroadcastEmailResponse(BaseModel):
     errors: list[str] = Field(default_factory=list)
 
 
+class BroadcastPreviewResponse(BaseModel):
+    """Response body for POST /api/v1/admin/broadcast/preview."""
+
+    recipients: list[str]
+    total_recipients: int
+    subject: str
+    body_html: str
+    sender: str
+
+
 # --- Response Models ---
 
 

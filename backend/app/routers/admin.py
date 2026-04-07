@@ -23,6 +23,7 @@ from app.models.admin import (
     AdminLoginRequest,
     BroadcastEmailRequest,
     BroadcastEmailResponse,
+    BroadcastPreviewResponse,
     ModelPerformance,
     OverviewResponse,
     RecentSimulation,
@@ -997,6 +998,45 @@ async def admin_export_simulations(
 # ---------------------------------------------------------------------------
 # Broadcast email
 # ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/broadcast/preview",
+    response_model=BroadcastPreviewResponse,
+    dependencies=[Depends(verify_admin_session)],
+)
+async def admin_broadcast_preview(body: BroadcastEmailRequest) -> BroadcastPreviewResponse:
+    """Return a preview of the broadcast: recipient list and rendered HTML.
+
+    Does NOT send any emails. Queries the same active-user list that the
+    real broadcast endpoint uses so the admin sees exactly who will receive
+    the email.
+    """
+    from app.db import get_firestore_db
+
+    db = get_firestore_db()
+
+    emails: list[str] = []
+    async for doc in db.collection("waitlist").stream():
+        data = doc.to_dict()
+        status = data.get("user_status", "active")
+        if status != "active":
+            continue
+        email = data.get("email", doc.id)
+        if email:
+            emails.append(email)
+
+    emails.sort()
+
+    body_html = body.body_text.replace("\n", "<br>")
+
+    return BroadcastPreviewResponse(
+        recipients=emails,
+        total_recipients=len(emails),
+        subject=body.subject,
+        body_html=body_html,
+        sender=settings.SES_SENDER_EMAIL,
+    )
 
 
 @router.post(
