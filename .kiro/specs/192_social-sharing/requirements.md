@@ -19,6 +19,20 @@ Currently, negotiation sessions are stored in Firestore/SQLite but are only acce
 
 ## Requirements
 
+### Requirement 0: Completed Negotiation Replay (History View)
+
+**User Story:** As a user, I want to view a completed negotiation from my history without it re-running, so that I can review past results instantly.
+
+#### Acceptance Criteria
+
+1. WHEN a user clicks "View" on a completed negotiation in the history panel, THE system SHALL navigate to the Glass Box page in replay mode (`?mode=replay`).
+2. WHEN the SSE stream endpoint receives a request for a session whose `deal_status` is already terminal (Agreed, Blocked, or Failed), THE backend SHALL reconstruct SSE events from the persisted session history and stream them as a replay — without re-running the LangGraph orchestrator.
+3. THE reconstructed replay SHALL include all agent thought events, agent message events, and a terminal `negotiation_complete` event, in the same order as the original negotiation.
+4. THE Glass Box page SHALL display "Loading negotiation…" instead of "Connecting to negotiation server…" when in replay mode.
+5. THE Glass Box page SHALL NOT display the "Stop Negotiation" button when in replay mode.
+6. THE Glass Box page SHALL NOT display the "Agents are warming up…" spinner when in replay mode.
+7. THE replay SHALL complete in under 2 seconds for sessions with up to 500 history entries.
+
 ### Requirement 1: Share Payload Persistence
 
 **User Story:** As a user, I want my completed negotiation to be saved with a shareable link, so that other people can view the full discussion after I share it.

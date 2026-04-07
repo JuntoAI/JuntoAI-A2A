@@ -6,6 +6,27 @@ Implement social sharing for the JuntoAI A2A Outcome Receipt. The plan follows a
 
 ## Tasks
 
+- [x] 0. Implement completed negotiation replay (history view)
+  - [x] 0.1 Add `_reconstruct_events_from_session` function to `backend/app/routers/negotiation.py`
+    - Iterates over persisted `history` array, emits AgentThoughtEvent + AgentMessageEvent for each entry
+    - Appends NegotiationCompleteEvent with summary (current_offer, turns_completed, warnings, participant_summaries)
+    - Handles all agent types: negotiator, regulator, observer, confirmation
+    - _Requirements: 0.2, 0.3_
+  - [x] 0.2 Add terminal-state check (step 5b) in `stream_negotiation` endpoint
+    - After reconnect-replay (5a) and before orchestrator init (6)
+    - If `state.deal_status in TERMINAL_STATUSES`, reconstruct events and stream as replay
+    - No orchestrator re-execution for terminal sessions
+    - _Requirements: 0.2, 0.7_
+  - [x] 0.3 Update history "View" link in `frontend/components/arena/NegotiationHistory.tsx`
+    - Navigate to `/arena/session/{session_id}?mode=replay` instead of bare path
+    - _Requirements: 0.1_
+  - [x] 0.4 Update Glass Box page `frontend/app/(protected)/arena/session/[sessionId]/page.tsx`
+    - Read `mode=replay` from search params
+    - Show "Loading negotiation…" spinner instead of "Connecting to negotiation server…" in replay mode
+    - Hide "Stop Negotiation" button in replay mode
+    - Hide "Agents are warming up…" spinner in replay mode
+    - _Requirements: 0.4, 0.5, 0.6_
+
 - [ ] 1. Define share data models and exceptions
   - [ ] 1.1 Create `backend/app/models/share.py` with Pydantic V2 models
     - `ParticipantSummary`: role, name, agent_type, summary

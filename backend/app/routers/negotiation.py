@@ -551,6 +551,117 @@ def _format_outcome_value(offer: float, state: dict) -> str:
         return f"All parties reached agreement at ${offer:,.0f}"
 
 
+def _reconstruct_events_from_session(session_id: str, raw_doc: dict) -> list:
+    """Reconstruct SSE events from a persisted terminal session document.
+
+    Used when viewing a completed negotiation from history — replays the
+    saved history as thought + message events followed by a terminal
+    NegotiationCompleteEvent, without re-running the orchestrator.
+    """
+    events: list = []
+    history = raw_doc.get("history", [])
+
+    for entry in history:
+        role = entry.get("role", "Unknown")
+        agent_type = entry.get("agent_type", "negotiator")
+        turn_number = entry.get("turn_number", 0)
+        content = entry.get("content", {})
+
+        # Confirmation entries — emit final_statement as public message
+        if agent_type == "confirmation":
+            final_statement = content.get("final_statement", "")
+            if final_statement:
+                events.append(AgentMessageEvent(
+                    event_type="agent_message",
+                    agent_name=role,
+                    public_message=final_statement,
+                    turn_number=turn_number,
+                ))
+            continue
+
+        # Thought event
+        thought_text = (
+            content.get("inner_thought")
+            or content.get("reasoning")
+            or content.get("observation")
+            or ""
+        )
+        if thought_text:
+            events.append(AgentThoughtEvent(
+                event_type="agent_thought",
+                agent_name=role,
+                inner_thought=thought_text,
+                turn_number=turn_number,
+            ))
+
+        # Message event
+        public_message = content.get("public_message", "")
+        if public_message:
+            msg = AgentMessageEvent(
+                event_type="agent_message",
+                agent_name=role,
+                public_message=public_message,
+                turn_number=turn_number,
+            )
+            if agent_type == "negotiator" and "proposed_price" in content:
+                msg.proposed_price = content["proposed_price"]
+            if agent_type == "regulator" and "status" in content:
+                msg.status = content["status"]
+            events.append(msg)
+
+    # Terminal event
+    deal_status = raw_doc.get("deal_status", "Failed")
+    summary: dict = {
+        "current_offer": raw_doc.get("current_offer", 0),
+        "turns_completed": raw_doc.get("turn_count", 0),
+        "total_warnings": raw_doc.get("warning_count", 0),
+        "ai_tokens_used": raw_doc.get("total_tokens_used", 0),
+    }
+
+    agent_states = raw_doc.get("agent_states", {})
+    if agent_states:
+        neg_params = raw_doc.get("scenario_config", {}).get("negotiation_params", {})
+        summary["participant_summaries"] = _build_participant_summaries(
+            history, agent_states,
+            value_format=neg_params.get("value_format", "currency"),
+            value_label=neg_params.get("value_label", "Price"),
+        )
+
+    if deal_status == "Agreed":
+        offer = raw_doc.get("current_offer", 0)
+        summary["outcome"] = _format_outcome_value(offer, raw_doc)
+    elif deal_status == "Blocked":
+        blocker = "Regulator"
+        block_reason = ""
+        for h in reversed(history):
+            if h.get("agent_type") == "regulator":
+                c = h.get("content", {})
+                if c.get("status") in ("BLOCKED", "WARNING"):
+                    blocker = h.get("role", "Regulator")
+                    block_reason = c.get("public_message", c.get("reasoning", ""))
+                    break
+        summary["blocked_by"] = blocker
+        summary["reason"] = block_reason or f"{blocker} issued 3 warnings — deal terminated"
+        summary["advice"] = _build_block_advice(history, blocker, agent_states)
+    elif deal_status == "Failed":
+        max_turns = raw_doc.get("max_turns", 0)
+        stall = raw_doc.get("stall_diagnosis")
+        if stall and isinstance(stall, dict):
+            summary["reason"] = f"Negotiation stalled: {stall.get('stall_type', 'unknown pattern')}"
+            summary["stall_diagnosis"] = stall
+        else:
+            summary["reason"] = f"Reached maximum of {max_turns} turns without agreement"
+
+    events.append(NegotiationCompleteEvent(
+        event_type="negotiation_complete",
+        session_id=session_id,
+        deal_status=deal_status,
+        final_summary=summary,
+    ))
+
+    return events
+
+
 def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: list[dict] | None = None):
     """Convert a LangGraph state snapshot into SSE events.
 
@@ -832,6 +943,24 @@ async def stream_negotiation(
 
         return StreamingResponse(
             replay_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+        )
+
+    # 5b. Check if session is already terminal (viewing from history).
+    #     Reconstruct events from persisted state instead of re-running.
+    if state.deal_status in TERMINAL_STATUSES:
+        reconstructed = _reconstruct_events_from_session(session_id, raw_doc)
+
+        async def history_replay_stream():
+            try:
+                for idx, event in enumerate(reconstructed, start=1):
+                    yield format_sse_event(event, event_id=idx)
+            finally:
+                await tracker.release(email)
+
+        return StreamingResponse(
+            history_replay_stream(),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
         )

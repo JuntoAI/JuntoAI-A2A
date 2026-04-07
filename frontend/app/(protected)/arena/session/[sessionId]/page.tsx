@@ -29,6 +29,7 @@ export default function GlassBoxPage() {
   const sessionId = params?.sessionId;
   const maxTurns = Number(searchParams.get("max_turns")) || 10;
   const scenarioId = searchParams.get("scenario");
+  const isReplay = searchParams.get("mode") === "replay";
   const validSessionId = isValidSessionId(sessionId);
 
   // Value display config from scenario
@@ -143,11 +144,11 @@ export default function GlassBoxPage() {
     <div className="w-full space-y-4 p-4">
       {/* Connecting spinner — before SSE opens */}
       {!state.isConnected && !isTerminal && !state.error && (
-        <Spinner message="Connecting to negotiation server…" size="lg" />
+        <Spinner message={isReplay ? "Loading negotiation…" : "Connecting to negotiation server…"} size="lg" />
       )}
 
       {/* Warming up spinner — SSE open but no events yet */}
-      {isWaitingForFirstEvent && (
+      {isWaitingForFirstEvent && !isReplay && (
         <Spinner message="Agents are warming up… first response incoming" size="lg" />
       )}
 
@@ -187,8 +188,8 @@ export default function GlassBoxPage() {
         </div>
       </div>
 
-      {/* Stop button — visible while negotiation is running */}
-      {!isTerminal && state.isConnected && (
+      {/* Stop button — visible while negotiation is running (not during replay) */}
+      {!isTerminal && state.isConnected && !isReplay && (
         <div className="flex justify-center">
           <button
             onClick={handleStop}

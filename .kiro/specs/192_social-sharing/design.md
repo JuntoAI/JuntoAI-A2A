@@ -15,6 +15,7 @@ A public, unauthenticated Next.js page at `/share/{slug}` renders the negotiatio
 3. **Idempotent creation** — If a share already exists for a session, the existing slug is returned. No duplicates.
 4. **Sensitive data firewall** — The SharePayload and image prompt are built exclusively from public-facing summary data. Raw history, hidden context, custom prompts, and model overrides are never included.
 5. **Image generation with fallback** — Vertex AI Imagen is attempted with a 15-second timeout. On failure or timeout, a static branded placeholder image is used. Sharing is never blocked by image generation.
+6. **History replay without re-execution** — When viewing a completed negotiation from history, the backend detects the terminal `deal_status` in the persisted session document and reconstructs SSE events from the saved `history` array. The LangGraph orchestrator is never re-invoked for terminal sessions. This is implemented as a check in the existing `stream_negotiation` endpoint (step 5b), before the orchestrator is initialized.
 
 ## Architecture
 
@@ -82,6 +83,17 @@ graph TD
 ## Components and Interfaces
 
 ### Backend Components
+
+#### 0. Session Replay (`backend/app/routers/negotiation.py` — `_reconstruct_events_from_session`)
+
+Reconstructs SSE events from a persisted terminal session document without re-running the orchestrator:
+
+- Iterates over the saved `history` array in the session document
+- For each history entry, emits `AgentThoughtEvent` and/or `AgentMessageEvent` matching the original event format
+- Appends a final `NegotiationCompleteEvent` with summary data (current_offer, turns_completed, warnings, participant_summaries, outcome text)
+- Called by `stream_negotiation` endpoint (step 5b) when `state.deal_status` is already terminal
+
+The check is inserted in the stream endpoint between the reconnect-replay logic (step 5a) and the orchestrator initialization (step 6). The frontend passes `?mode=replay` from the history "View" link to signal replay mode for UI adjustments (spinner text, hiding stop button).
 
 #### 1. Share Models (`backend/app/models/share.py`)
 
@@ -233,6 +245,12 @@ CREATE INDEX idx_shared_session ON shared_negotiations(session_id);
 ## Correctness Properties
 
 *A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+
+### Property 0: Terminal session replay does not re-run orchestrator
+
+*For any* session document with `deal_status` in {Agreed, Blocked, Failed}, calling the `stream_negotiation` endpoint SHALL return reconstructed events from the persisted history without invoking `run_negotiation`. The number of thought + message events in the replay SHALL equal the number of history entries that contain thought or message content.
+
+**Validates: Requirements 0.2, 0.3**
 
 ### Property 1: Slug format and uniqueness
 
