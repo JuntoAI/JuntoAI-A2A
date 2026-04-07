@@ -250,6 +250,87 @@ class TestBuildBlockAdvice:
         assert advice[0]["agent_role"] == "Buyer"
         assert "blocked" in advice[0]["issue"].lower()
 
+    def test_fallback_uses_agent_states_when_no_negotiator_in_history(self):
+        """Regulator at index 0 with no preceding negotiator → use agent_states."""
+        history = [
+            {
+                "role": "Regulator",
+                "agent_type": "regulator",
+                "turn_number": 1,
+                "content": {
+                    "reasoning": "Aggressive opening by Lena.",
+                    "status": "WARNING",
+                },
+            },
+        ]
+        agent_states = {
+            "Lena": {"name": "Lena", "agent_type": "negotiator"},
+            "Richard": {"name": "Richard", "agent_type": "negotiator"},
+            "Regulator": {"name": "EU Compliance", "agent_type": "regulator"},
+        }
+        advice = _build_block_advice(history, blocker="Regulator", agent_states=agent_states)
+        assert len(advice) >= 1
+        # Should match "Lena" from reasoning text, not "Unknown"
+        assert advice[0]["agent_role"] == "Lena"
+
+    def test_fallback_picks_first_negotiator_when_no_text_match(self):
+        """No negotiator in history and no name match in reasoning → first negotiator."""
+        history = [
+            {
+                "role": "Regulator",
+                "agent_type": "regulator",
+                "turn_number": 1,
+                "content": {
+                    "reasoning": "Unacceptable terms proposed.",
+                    "status": "WARNING",
+                },
+            },
+        ]
+        agent_states = {
+            "Buyer": {"name": "Alice", "agent_type": "negotiator"},
+            "Seller": {"name": "Bob", "agent_type": "negotiator"},
+            "Regulator": {"name": "Compliance Bot", "agent_type": "regulator"},
+        }
+        advice = _build_block_advice(history, blocker="Regulator", agent_states=agent_states)
+        assert len(advice) >= 1
+        # Falls back to first negotiator display name, never "Unknown"
+        assert advice[0]["agent_role"] != "Unknown"
+        assert advice[0]["agent_role"] == "Alice"
+
+    def test_no_unknown_in_fallback_path_with_agent_states(self):
+        """Empty history + agent_states → fallback never returns Unknown."""
+        history: list[dict] = []
+        agent_states = {
+            "Seller": {"name": "Bob", "agent_type": "negotiator"},
+            "Regulator": {"name": "RegBot", "agent_type": "regulator"},
+        }
+        advice = _build_block_advice(history, blocker="Regulator", agent_states=agent_states)
+        assert len(advice) == 1
+        assert advice[0]["agent_role"] == "Bob"
+
+    def test_reasoning_matches_display_name(self):
+        """Reasoning mentions display name (not role key) → correct match."""
+        history = [
+            {
+                "role": "Mediator",
+                "agent_type": "regulator",
+                "turn_number": 1,
+                "content": {
+                    "reasoning": "Alex is being unreasonable with the curfew demand.",
+                    "status": "WARNING",
+                },
+            },
+        ]
+        agent_states = {
+            "Teenager": {"name": "Alex", "agent_type": "negotiator"},
+            "Parent": {"name": "Jordan", "agent_type": "negotiator"},
+            "Mediator": {"name": "Family Mediator", "agent_type": "regulator"},
+        }
+        advice = _build_block_advice(history, blocker="Mediator", agent_states=agent_states)
+        assert len(advice) >= 1
+        # Should resolve "Alex" from reasoning → role "Teenager" → display "Alex"
+        assert advice[0]["agent_role"] == "Alex"
+
 
 # ---------------------------------------------------------------------------
 # _format_outcome_value

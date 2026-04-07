@@ -315,15 +315,48 @@ def _resolve_name(role: str, role_name_map: dict[str, str]) -> str:
     return role_name_map.get(role, role)
 
 
-def _find_warned_negotiator(history: list[dict], regulator_index: int) -> str:
+def _find_warned_negotiator(
+    history: list[dict],
+    regulator_index: int,
+    agent_states: dict[str, dict] | None = None,
+) -> str:
     """Walk backward from a regulator entry to find the most recent negotiator.
 
     Looks past other non-negotiator entries (observers, other regulators)
     that may sit between the negotiator and the regulator in history.
+
+    Fallback chain when the backward walk finds no negotiator:
+    1. Scan the regulator's reasoning text for mentions of known negotiator
+       role names or display names.
+    2. Return the first negotiator role from ``agent_states``.
+    3. Return ``"Unknown"`` only as a last resort.
     """
+    # Primary: walk backward through history
     for j in range(regulator_index - 1, -1, -1):
         if history[j].get("agent_type") == "negotiator":
             return history[j].get("role", "Unknown")
+
+    # Fallback: use agent_states to resolve from reasoning text or pick first negotiator
+    if agent_states:
+        negotiator_roles = [
+            role for role, info in agent_states.items()
+            if info.get("agent_type") == "negotiator"
+        ]
+        if negotiator_roles:
+            # Try to match a negotiator name/role in the regulator's reasoning
+            entry = history[regulator_index] if regulator_index < len(history) else {}
+            content = entry.get("content", {})
+            reasoning = (
+                content.get("reasoning", "") or content.get("public_message", "")
+            ).lower()
+            if reasoning:
+                for role in negotiator_roles:
+                    name = agent_states[role].get("name", role)
+                    if role.lower() in reasoning or name.lower() in reasoning:
+                        return role
+            # No text match — return the first negotiator role
+            return negotiator_roles[0]
+
     return "Unknown"
 
 
@@ -463,7 +496,7 @@ def _build_block_advice(history: list[dict], blocker: str, agent_states: dict[st
             continue
         reasoning = content.get("reasoning", "") or content.get("public_message", "")
         # Walk backward to find the negotiator this warning targets
-        warned_role = _find_warned_negotiator(history, i)
+        warned_role = _find_warned_negotiator(history, i, agent_states)
         flagged.append((warned_role, reasoning))
 
     if not flagged:
@@ -475,6 +508,12 @@ def _build_block_advice(history: list[dict], blocker: str, agent_states: dict[st
             if entry.get("agent_type") == "negotiator":
                 fallback_role = entry.get("role", "Unknown")
                 break
+        # If history walk failed, pick the first negotiator from agent_states
+        if fallback_role == "Unknown" and agent_states:
+            for role, info in agent_states.items():
+                if info.get("agent_type") == "negotiator":
+                    fallback_role = role
+                    break
         display_name = _resolve_name(fallback_role, role_name_map)
         return [{
             "agent_role": display_name,
