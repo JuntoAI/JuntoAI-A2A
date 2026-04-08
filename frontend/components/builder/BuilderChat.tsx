@@ -162,12 +162,22 @@ export function BuilderChat({
     abortRef.current = streamBuilderChat(email, sessionId, trimmed, callbacks);
   }, [input, isWaiting, email, sessionId, onJsonDelta, onHealthReport]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
   };
+
+  // Auto-resize textarea to fit content
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    }
+  }, [input]);
 
   return (
     <div
@@ -222,17 +232,18 @@ export function BuilderChat({
 
       {/* Input area */}
       <div className="border-t border-gray-200 p-3">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
+        <div className="flex items-end gap-2">
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isWaiting}
+            rows={1}
             placeholder={
               isWaiting ? "Waiting for response..." : "Describe your scenario..."
             }
-            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-[#1C1C1E] placeholder-gray-400 focus:border-[#007BFF] focus:outline-none focus:ring-2 focus:ring-[#007BFF]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 resize-none rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-[#1C1C1E] placeholder-gray-400 focus:border-[#007BFF] focus:outline-none focus:ring-2 focus:ring-[#007BFF]/20 disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="chat-input"
           />
           <button

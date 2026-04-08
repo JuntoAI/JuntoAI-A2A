@@ -92,7 +92,7 @@ describe("BuilderChat", () => {
 
   it("clears input after sending", () => {
     render(<BuilderChat {...defaultProps} />);
-    const input = screen.getByTestId("chat-input") as HTMLInputElement;
+    const input = screen.getByTestId("chat-input") as HTMLTextAreaElement;
 
     fireEvent.change(input, { target: { value: "Hello" } });
     fireEvent.click(screen.getByTestId("send-button"));

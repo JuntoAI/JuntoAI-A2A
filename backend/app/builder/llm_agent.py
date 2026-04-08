@@ -25,6 +25,7 @@ from app.builder.events import (
 from app.builder.linkedin import is_linkedin_url
 from app.config import settings
 from app.orchestrator.available_models import MODELS_PROMPT_BLOCK
+from app.scenarios.models import ArenaScenario
 
 logger = logging.getLogger(__name__)
 
@@ -34,17 +35,40 @@ BuilderSSEEvent = BuilderTokenEvent | BuilderJsonDeltaEvent | BuilderCompleteEve
 # Regex to detect JSON delta markers emitted by the LLM
 _JSON_DELTA_RE = re.compile(r"<<JSON_DELTA:(\w+):(.*?)>>", re.DOTALL)
 
+# Auto-generate the JSON schema from the Pydantic model so the LLM always
+# sees the exact field names, types, and constraints.
+_ARENA_SCHEMA_JSON = json.dumps(ArenaScenario.model_json_schema(), indent=2)
+
 BUILDER_SYSTEM_PROMPT = f"""\
 You are an expert AI scenario builder for JuntoAI's negotiation arena. Your job \
 is to guide the user through creating a complete ArenaScenario JSON configuration \
 step by step.
 
+## CRITICAL — Exact JSON Schema (you MUST follow this exactly)
+The final scenario JSON is validated against this Pydantic-generated JSON Schema. \
+Use ONLY the field names, types, and enum values shown here. Do NOT invent or \
+rename any fields.
+
+```json
+{_ARENA_SCHEMA_JSON}
+```
+
+## Key field rules (common mistakes to avoid)
+- **agents[].goals**: MUST be a list of strings, e.g. ["Goal 1", "Goal 2"]. Never a plain string.
+- **toggles[].label**: The display name. There is NO "name" or "description" field on toggles.
+- **toggles[].target_agent_role**: A single agent role string. There is NO "active_agents" field.
+- **toggles[].hidden_context_payload**: A dict, e.g. {{"context": "..."}}. There is NO "prompt_injection" field.
+- **negotiation_params.turn_order**: Must use agent **role** strings (not agent names).
+- **negotiation_params.price_unit**: One of "total", "hourly", "monthly", "annual". Never "%".
+- **negotiation_params.value_format**: One of "currency", "time_from_22", "percent", "number". Never "percentage".
+
 ## Collection Order (follow strictly)
-1. **Metadata**: scenario id (slug), name, description
+1. **Metadata**: scenario id (slug), name, description, difficulty, category
 2. **Agents**: collect each agent one at a time (role, name, type, persona_prompt, \
 goals, budget min/max/target, tone, output_fields, model_id). Minimum 2 agents \
 with at least 1 negotiator required before moving on.
-3. **Toggles**: information toggles that inject hidden context into agents
+3. **Toggles**: information toggles that inject hidden context into agents \
+(id, label, target_agent_role, hidden_context_payload)
 4. **Negotiation Parameters**: max_turns, agreement_threshold, turn_order, \
 price_unit, value_label, value_format
 5. **Outcome Receipt**: equivalent_human_time, process_label
@@ -62,7 +86,7 @@ reasoning roles. NEVER invent model IDs — only use the exact IDs listed above.
 using the marker format: <<JSON_DELTA:section_name:json_data>>
 - Valid section names: id, name, description, agents, toggles, negotiation_params, \
 outcome_receipt
-- The json_data must be valid JSON.
+- The json_data must be valid JSON that conforms EXACTLY to the schema above.
 - If the user pastes a LinkedIn URL (https://www.linkedin.com/in/...), generate \
 a persona based on the professional background implied by the URL.
 - Do NOT proceed past the agents section until at least 2 agents are defined \
