@@ -195,12 +195,6 @@ export default function OutcomeReceipt({
           </div>
         ) : null}
 
-        {/* LLM Usage Summary */}
-        {finalSummary.usage_summary &&
-         (finalSummary.usage_summary as UsageSummary).total_calls > 0 ? (
-          <UsageSummaryCard usageSummary={finalSummary.usage_summary as UsageSummary} />
-        ) : null}
-
         {/* Tipping Point Analysis */}
         {typeof finalSummary.tipping_point === "string" && finalSummary.tipping_point.length > 0 ? (
           <div className="border-t border-gray-200 pt-4 mb-6" data-testid="tipping-point-section">
@@ -340,6 +334,12 @@ export default function OutcomeReceipt({
               </p>
             </div>
           )}
+
+          {/* LLM Usage Summary */}
+          {finalSummary.usage_summary &&
+           (finalSummary.usage_summary as UsageSummary).total_calls > 0 ? (
+            <UsageSummaryCard usageSummary={finalSummary.usage_summary as UsageSummary} />
+          ) : null}
         </div>
 
         {/* Action buttons */}

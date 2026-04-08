@@ -584,13 +584,22 @@ def _format_outcome_value(offer: float, state: dict) -> str:
         return f"All parties reached agreement at ${offer:,.0f}"
 
 
-def _reconstruct_events_from_session(session_id: str, raw_doc: dict) -> list:
+def _reconstruct_events_from_session(session_id: str, raw_doc: dict, scenario_config: dict | None = None) -> list:
     """Reconstruct SSE events from a persisted terminal session document.
 
     Used when viewing a completed negotiation from history — replays the
     saved history as thought + message events followed by a terminal
     NegotiationCompleteEvent, without re-running the orchestrator.
+
+    Parameters
+    ----------
+    scenario_config:
+        Full scenario config dict. Used as a fallback when the session
+        document does not contain scenario_config (pre-persistence sessions).
     """
+    # Ensure scenario_config is available on the doc for formatting
+    if "scenario_config" not in raw_doc and scenario_config:
+        raw_doc = {**raw_doc, "scenario_config": scenario_config}
     events: list = []
     history = raw_doc.get("history", [])
 
@@ -722,6 +731,7 @@ def _snapshot_to_events(
     session_id: str,
     accumulated_history: list[dict] | None = None,
     accumulated_agent_calls: list[dict] | None = None,
+    scenario_config: dict | None = None,
 ):
     """Convert a LangGraph state snapshot into SSE events.
 
@@ -742,15 +752,26 @@ def _snapshot_to_events(
         Full agent_calls list accumulated across all prior snapshots.
         Used for usage summary computation since individual snapshot
         deltas (especially the dispatcher) may not contain agent_calls.
+    scenario_config:
+        Full scenario config dict. Used as a fallback when the snapshot
+        delta does not include scenario_config (e.g. dispatcher node).
     """
     if accumulated_history is None:
         accumulated_history = []
     if accumulated_agent_calls is None:
         accumulated_agent_calls = []
+    if scenario_config is None:
+        scenario_config = {}
     events = []
     for _node_name, state in snapshot.items():
         if not isinstance(state, dict):
             continue
+
+        # Ensure scenario_config is available on the snapshot delta.
+        # Dispatcher nodes don't include it, so fall back to the
+        # caller-provided scenario_config.
+        if "scenario_config" not in state and scenario_config:
+            state = {**state, "scenario_config": scenario_config}
 
         # Handle dispatcher snapshots that set a terminal deal_status
         # but contain no history entries (e.g. max_turns reached,
@@ -1022,7 +1043,16 @@ async def stream_negotiation(
     # 5b. Check if session is already terminal (viewing from history).
     #     Reconstruct events from persisted state instead of re-running.
     if state.deal_status in TERMINAL_STATUSES:
-        reconstructed = _reconstruct_events_from_session(session_id, raw_doc)
+        # Load scenario config for value formatting (old sessions may not
+        # have scenario_config persisted on the document).
+        replay_scenario_config = raw_doc.get("scenario_config")
+        if not replay_scenario_config:
+            try:
+                sc = registry.get_scenario(state.scenario_id, email=email)
+                replay_scenario_config = sc.model_dump()
+            except Exception:
+                replay_scenario_config = None
+        reconstructed = _reconstruct_events_from_session(session_id, raw_doc, replay_scenario_config)
 
         async def history_replay_stream():
             try:
@@ -1068,6 +1098,7 @@ async def stream_negotiation(
             "agent_calls": [],
             "history": [],
             "agent_states": {},
+            "scenario_config": scenario_config,
         }
 
         # If reconnecting, replay missed events first
@@ -1103,7 +1134,7 @@ async def stream_negotiation(
                             if "agent_states" in s and s["agent_states"]:
                                 final_state["agent_states"] = s["agent_states"]
                     final_state["history"] = accumulated_history
-                    events = _snapshot_to_events(snapshot, session_id, accumulated_history, final_state["agent_calls"])
+                    events = _snapshot_to_events(snapshot, session_id, accumulated_history, final_state["agent_calls"], scenario_config)
                     # Track tokens and terminal state from snapshot
                     for _node, s in snapshot.items():
                         if isinstance(s, dict):
