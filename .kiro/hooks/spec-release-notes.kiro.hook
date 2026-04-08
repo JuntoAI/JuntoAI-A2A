@@ -1,7 +1,7 @@
 {
   "enabled": true,
   "name": "Update Release Notes on Spec Completion",
-  "description": "When triggered after a spec is moved to DONE, reads the spec's requirements.md, derives the ship date from the tasks.md last-edit timestamp, and prepends a new feature entry to both CHANGELOG.md and the frontend release notes page. No versions — just a flat stream of shipped features ordered newest-first.",
+  "description": "When triggered after a spec is moved to .kiro/specs/DONE, reads the spec's requirements.md, derives the ship date from the tasks.md last-edit timestamp, and prepends a new feature entry to both CHANGELOG.md and the frontend release notes page. No versions — just a flat stream of shipped features ordered newest-first.",
   "version": "3",
   "when": {
     "type": "userTriggered"

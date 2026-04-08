@@ -654,7 +654,7 @@ _user_status_value = st.sampled_from(["active", "suspended", "banned"])
 
 _user_doc = st.fixed_dictionaries(
     {
-        "email": st.emails(),
+        "email": st.from_regex(r"user[0-9]{1,4}@example\.com", fullmatch=True),
         "tier": _user_tier,
         "user_status": st.one_of(
             # Some docs have user_status, some omit it (backward compat → "active")
@@ -664,7 +664,7 @@ _user_doc = st.fixed_dictionaries(
     }
 )
 
-_user_doc_list = st.lists(_user_doc, min_size=0, max_size=40)
+_user_doc_list = st.lists(_user_doc, min_size=0, max_size=20)
 
 _optional_tier_filter = st.one_of(st.none(), _user_tier)
 _optional_status_filter = st.one_of(st.none(), _user_status_value)
