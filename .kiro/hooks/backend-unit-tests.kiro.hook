@@ -11,7 +11,7 @@
   },
   "then": {
     "type": "runCommand",
-    "command": "cd backend && ../.venv/bin/python -m pytest -m unit -x -q --tb=short 2>&1 | tail -20",
+    "command": "bash -c 'cd backend && ../.venv/bin/python -m pytest -m unit -x -q --tb=short 2>&1 | tail -20'",
     "timeout": 120
   }
 }
