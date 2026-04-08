@@ -9,6 +9,25 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Negotiation Completion Notification",
+    specId: "290",
+    date: "2026-04-08",
+    items: [
+      "Browser notification via Web Notification API when a negotiation reaches a terminal state (Agreed, Blocked, Failed) while the tab is hidden",
+      "buildNotificationContent pure function: status-to-title mapping (Deal Agreed, Deal Blocked, Negotiation Failed) with body from finalSummary fields and fallback strings",
+      "useNotification React hook: permission request on mount when default, visibility gate (document.hidden), deduplication via useRef keyed by session ID",
+      "Click handler: window.focus() then notification.close() to bring user back to the Glass Box page",
+      "Notification tag set to session ID to prevent duplicate OS-level notifications for the same session",
+      "JuntoAI application icon (icon-192.png) included in notification payload",
+      "Graceful degradation: Notification API unavailable or permission denied — all notification logic skipped, zero errors or visual changes",
+      "Error handling: try/catch around requestPermission() and new Notification() — failures logged to console, never break app",
+      "Dedup tracking reset on component unmount to allow re-notification on page revisit",
+      "Frontend-only feature — hooks into existing NegotiationCompleteEvent SSE dispatch, no backend changes",
+      "Property tests (fast-check): status-specific content mapping, visibility gate, deduplication invariant",
+      "Unit tests: permission request, skip when granted/denied, rejection handling, API unavailable, click handler, constructor throws, unmount reset",
+    ],
+  },
+  {
     title: "Social Sharing",
     specId: "192",
     date: "2026-04-08",

@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { glassBoxReducer, createInitialState } from "@/lib/glassBoxReducer";
 import { useSSE } from "@/hooks/useSSE";
+import { useNotification } from "@/hooks/useNotification";
 import { useSession } from "@/context/SessionContext";
 import { downloadTranscript } from "@/lib/transcript";
 import { fetchScenarioDetail } from "@/lib/api";
@@ -62,6 +63,12 @@ export default function GlassBoxPage() {
     maxTurns,
     dispatch,
   );
+
+  useNotification({
+    sessionId: sessionId as string,
+    dealStatus: state.dealStatus,
+    finalSummary: state.finalSummary,
+  });
 
   const isTerminal = TERMINAL_STATUSES.has(state.dealStatus);
   const isWaitingForFirstEvent =

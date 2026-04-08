@@ -6,6 +6,20 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Negotiation Completion Notification (Spec 290) — 2026-04-08
+
+- Browser notification via Web Notification API when a negotiation reaches a terminal state (Agreed, Blocked, Failed) while the user's tab is hidden
+- `buildNotificationContent` pure function: status-to-title mapping ("Deal Agreed", "Deal Blocked", "Negotiation Failed") with body extracted from `finalSummary` fields (`current_offer`, `blocked_by`, `reason`) and fallback strings
+- `useNotification` React hook: permission request on mount when "default", visibility gate (`document.hidden`), deduplication via `useRef<Set<string>>` keyed by session ID, click handler (`window.focus()` + `notification.close()`)
+- Notification tag set to session ID to prevent duplicate OS-level notifications for the same session
+- JuntoAI application icon (`icon-192.png`) included in notification payload
+- Graceful degradation: Notification API unavailable or permission denied → all notification logic skipped, zero errors or visual changes
+- Error handling: try/catch around `requestPermission()` and `new Notification()` constructor — failures logged to console, never break app
+- Dedup tracking reset on component unmount to allow re-notification on page revisit
+- Frontend-only feature — hooks into existing `NegotiationCompleteEvent` SSE dispatch flow, no backend changes
+- Property tests (fast-check): status-specific content mapping, visibility gate, deduplication invariant
+- Unit tests: permission request on mount, skip when granted/denied, requestPermission rejection, API unavailable, click handler, constructor throws, unmount resets tracking
+
 ## Social Sharing (Spec 192) — 2026-04-08
 
 - Completed negotiation replay: terminal sessions stream reconstructed SSE events from persisted history without re-running the LangGraph orchestrator
