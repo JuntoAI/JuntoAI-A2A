@@ -22,7 +22,7 @@ const FULL_SCENARIO: ArenaScenario = {
     { name: "Agent A", role: "buyer", goals: ["buy cheap"], model_id: "m1", type: "negotiator" },
     { name: "Agent B", role: "seller", goals: ["sell high"], model_id: "m2", type: "negotiator" },
   ],
-  toggles: [{ id: "t1", label: "Toggle 1" }],
+  toggles: [{ id: "t1", label: "Toggle 1", target_agent_role: "seller" }],
   negotiation_params: { max_turns: 10 },
   outcome_receipt: { equivalent_human_time: "2 hours", process_label: "Negotiation" },
 };

@@ -29,7 +29,7 @@ describe("computeProgress", () => {
       name: "Test",
       description: "Desc",
       agents: [{ name: "A", role: "buyer", goals: ["g"], model_id: "m", type: "negotiator" }],
-      toggles: [{ id: "t1", label: "T1" }],
+      toggles: [{ id: "t1", label: "T1", target_agent_role: "buyer" }],
       negotiation_params: { max_turns: 10 },
       outcome_receipt: { equivalent_human_time: "1h", process_label: "P" },
     };
@@ -83,7 +83,7 @@ describe("ProgressIndicator component", () => {
     const full: Partial<ArenaScenario> = {
       id: "t", name: "T", description: "D",
       agents: [{ name: "A", role: "r", goals: ["g"], model_id: "m", type: "negotiator" }],
-      toggles: [{ id: "t1", label: "T1" }],
+      toggles: [{ id: "t1", label: "T1", target_agent_role: "r" }],
       negotiation_params: { max_turns: 10 },
       outcome_receipt: { equivalent_human_time: "1h", process_label: "P" },
     };
@@ -97,7 +97,7 @@ describe("ProgressIndicator component", () => {
     const full: Partial<ArenaScenario> = {
       id: "t", name: "T", description: "D",
       agents: [{ name: "A", role: "r", goals: ["g"], model_id: "m", type: "negotiator" }],
-      toggles: [{ id: "t1", label: "T1" }],
+      toggles: [{ id: "t1", label: "T1", target_agent_role: "r" }],
       negotiation_params: { max_turns: 10 },
       outcome_receipt: { equivalent_human_time: "1h", process_label: "P" },
     };
@@ -112,7 +112,7 @@ describe("ProgressIndicator component", () => {
     const full: Partial<ArenaScenario> = {
       id: "t", name: "T", description: "D",
       agents: [{ name: "A", role: "r", goals: ["g"], model_id: "m", type: "negotiator" }],
-      toggles: [{ id: "t1", label: "T1" }],
+      toggles: [{ id: "t1", label: "T1", target_agent_role: "r" }],
       negotiation_params: { max_turns: 10 },
       outcome_receipt: { equivalent_human_time: "1h", process_label: "P" },
     };

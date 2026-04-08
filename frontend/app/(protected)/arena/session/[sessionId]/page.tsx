@@ -9,6 +9,7 @@ import { useNotification } from "@/hooks/useNotification";
 import { useSession } from "@/context/SessionContext";
 import { downloadTranscript } from "@/lib/transcript";
 import { fetchScenarioDetail } from "@/lib/api";
+import type { ToggleDefinition, AgentDefinition } from "@/lib/api";
 import type { ValueFormat } from "@/lib/valueFormat";
 import MetricsDashboard from "@/components/glassbox/MetricsDashboard";
 import TerminalPanel from "@/components/glassbox/TerminalPanel";
@@ -36,6 +37,15 @@ export default function GlassBoxPage() {
   // Value display config from scenario
   const [valueLabel, setValueLabel] = useState("Current Offer");
   const [valueFormat, setValueFormat] = useState<ValueFormat>("currency");
+  const [scenarioToggles, setScenarioToggles] = useState<ToggleDefinition[]>([]);
+  const [scenarioAgents, setScenarioAgents] = useState<AgentDefinition[]>([]);
+
+  // Parse active toggle IDs from URL query param
+  const activeToggleIds = useMemo(() => {
+    const togglesParam = searchParams.get("toggles");
+    if (!togglesParam) return [];
+    return togglesParam.split(",").filter(Boolean);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!scenarioId) return;
@@ -46,6 +56,8 @@ export default function GlassBoxPage() {
         const params = detail.negotiation_params;
         if (params.value_label) setValueLabel(params.value_label);
         if (params.value_format) setValueFormat(params.value_format);
+        setScenarioToggles(detail.toggles);
+        setScenarioAgents(detail.agents);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -235,6 +247,9 @@ export default function GlassBoxPage() {
             onDownloadTranscript={handleDownloadTranscript}
             sessionId={sessionId as string}
             email={email ?? undefined}
+            toggles={scenarioToggles}
+            activeToggleIds={activeToggleIds}
+            agents={scenarioAgents}
           />
         </div>
       )}

@@ -1,10 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { formatValue, type ValueFormat } from "@/lib/valueFormat";
 import UsageSummaryCard from "./UsageSummaryCard";
 import SharePanel from "./SharePanel";
 import type { UsageSummary } from "@/types/sse";
+import type { ToggleDefinition, AgentDefinition } from "@/lib/api";
+import { generateWhatIfPrompts, buildDeepLinkUrl, buildAdviceDeepLinkUrl } from "@/lib/whatIfPrompts";
 
 export interface OutcomeReceiptProps {
   dealStatus: "Agreed" | "Blocked" | "Failed";
@@ -20,6 +23,9 @@ export interface OutcomeReceiptProps {
   onDownloadTranscript?: () => void;
   sessionId?: string;
   email?: string;
+  toggles?: ToggleDefinition[];
+  activeToggleIds?: string[];
+  agents?: AgentDefinition[];
 }
 
 const STATUS_CONFIG: Record<
@@ -57,10 +63,26 @@ export default function OutcomeReceipt({
   onDownloadTranscript,
   sessionId,
   email,
+  toggles,
+  activeToggleIds,
+  agents,
 }: OutcomeReceiptProps) {
   const router = useRouter();
   const config = STATUS_CONFIG[dealStatus];
   const elapsedSeconds = Math.round(elapsedTimeMs / 1000);
+
+  const whatIfPrompts = useMemo(() => {
+    if (!toggles || !activeToggleIds || !agents || !scenarioId) return [];
+    if (toggles.length === 0) return [];
+    return generateWhatIfPrompts({
+      toggles,
+      activeToggleIds,
+      agents,
+      dealStatus,
+      finalSummary,
+      scenarioId,
+    });
+  }, [toggles, activeToggleIds, agents, scenarioId, dealStatus, finalSummary]);
 
   return (
     <div
@@ -139,9 +161,23 @@ export default function OutcomeReceipt({
                           <pre className="text-xs bg-white border border-blue-100 rounded p-2 whitespace-pre-wrap text-gray-700 leading-relaxed">
                             {String(item.suggested_prompt)}
                           </pre>
-                          <p className="text-xs text-blue-600 mt-1 italic">
-                            Paste this into Advanced Options → {String(item.agent_role)} prompt, then re-run.
-                          </p>
+                          {scenarioId && String(item.suggested_prompt).trim() !== "" && (
+                            <button
+                              onClick={() =>
+                                router.push(
+                                  buildAdviceDeepLinkUrl(
+                                    scenarioId,
+                                    String(item.agent_role),
+                                    String(item.suggested_prompt),
+                                  ),
+                                )
+                              }
+                              className="mt-2 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
+                              data-testid={`try-this-btn-${i}`}
+                            >
+                              Try This
+                            </button>
+                          )}
                         </div>
                       ) : null}
                     </div>
@@ -343,34 +379,63 @@ export default function OutcomeReceipt({
         </div>
 
         {/* Action buttons */}
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => router.push("/arena")}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-            data-testid="run-another-btn"
-          >
-            Run Another Scenario
-          </button>
-          <button
-            onClick={() =>
-              router.push(
-                scenarioId ? `/arena?scenario=${scenarioId}` : "/arena",
-              )
-            }
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            data-testid="reset-variables-btn"
-          >
-            Reset with Different Variables
-          </button>
-          {onDownloadTranscript && (
+        <div className="flex flex-col gap-3">
+          {whatIfPrompts.length > 0 ? (
+            <div className="flex flex-col sm:flex-row gap-3" data-testid="what-if-prompts">
+              {whatIfPrompts.map((prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() =>
+                    router.push(buildDeepLinkUrl(scenarioId!, prompt.toggleIds))
+                  }
+                  className="flex-1 rounded-lg border border-blue-200 bg-blue-50 p-3 text-left hover:bg-blue-100 transition-colors cursor-pointer"
+                  data-testid={`what-if-card-${i}`}
+                >
+                  <p className="text-sm text-gray-800 mb-1">{prompt.text}</p>
+                  {prompt.targetAgentName && (
+                    <p className="text-xs text-blue-600">
+                      Agent: {prompt.targetAgentName}
+                    </p>
+                  )}
+                  {prompt.toggleLabel && (
+                    <p className="text-xs text-gray-500">
+                      Toggle: {prompt.toggleLabel}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : (
             <button
-              onClick={onDownloadTranscript}
-              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              data-testid="download-transcript-btn"
+              onClick={() => router.push("/arena")}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors self-start"
+              data-testid="run-another-btn"
             >
-              Download Full Transcript
+              Run Another Scenario
             </button>
           )}
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() =>
+                router.push(
+                  scenarioId ? `/arena?scenario=${scenarioId}` : "/arena",
+                )
+              }
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              data-testid="reset-variables-btn"
+            >
+              Reset with Different Variables
+            </button>
+            {onDownloadTranscript && (
+              <button
+                onClick={onDownloadTranscript}
+                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                data-testid="download-transcript-btn"
+              >
+                Download Full Transcript
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Share Panel — only when session_id and email are available */}

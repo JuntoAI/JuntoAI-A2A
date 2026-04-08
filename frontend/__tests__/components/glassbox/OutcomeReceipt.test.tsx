@@ -501,4 +501,216 @@ describe("OutcomeReceipt", () => {
       expect(participants).toHaveTextContent(longCriticism);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // What-If Prompt Cards (spec 260_what-if-prompts)
+  // -------------------------------------------------------------------------
+
+  describe("What-If Prompt Cards", () => {
+    const toggles = [
+      { id: "competing_offer", label: "Competing Offer", target_agent_role: "candidate" },
+      { id: "deadline_pressure", label: "Deadline Pressure", target_agent_role: "recruiter" },
+    ];
+
+    const agents = [
+      { name: "Alex", role: "candidate", goals: [], model_id: "gemini-2.5-flash", type: "negotiator" as const },
+      { name: "Jordan", role: "recruiter", goals: [], model_id: "gemini-2.5-flash", type: "negotiator" as const },
+    ];
+
+    it("renders prompt cards when toggles + activeToggleIds + agents provided", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          toggles={toggles}
+          activeToggleIds={[]}
+          agents={agents}
+        />,
+      );
+
+      expect(screen.getByTestId("what-if-prompts")).toBeInTheDocument();
+      expect(screen.getByTestId("what-if-card-0")).toBeInTheDocument();
+      expect(screen.getByTestId("what-if-card-1")).toBeInTheDocument();
+      // "Run Another Scenario" should NOT be present when prompts are shown
+      expect(screen.queryByTestId("run-another-btn")).not.toBeInTheDocument();
+    });
+
+    it('retains "Reset with Different Variables" button alongside cards', () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          toggles={toggles}
+          activeToggleIds={[]}
+          agents={agents}
+        />,
+      );
+
+      expect(screen.getByTestId("what-if-prompts")).toBeInTheDocument();
+      expect(screen.getByTestId("reset-variables-btn")).toBeInTheDocument();
+    });
+
+    it('falls back to "Run Another Scenario" when toggles prop not provided', () => {
+      render(<OutcomeReceipt {...defaultProps} />);
+
+      expect(screen.getByTestId("run-another-btn")).toBeInTheDocument();
+      expect(screen.queryByTestId("what-if-prompts")).not.toBeInTheDocument();
+    });
+
+    it('falls back when toggles array is empty', () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          toggles={[]}
+          activeToggleIds={[]}
+          agents={agents}
+        />,
+      );
+
+      expect(screen.getByTestId("run-another-btn")).toBeInTheDocument();
+      expect(screen.queryByTestId("what-if-prompts")).not.toBeInTheDocument();
+    });
+
+    it("card click navigates to correct deep-link URL", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          toggles={toggles}
+          activeToggleIds={[]}
+          agents={agents}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("what-if-card-0"));
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining("/arena?scenario=talent_war&toggles="),
+      );
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Advice "Try This" Button (spec 260_what-if-prompts, Requirement 6)
+  // -------------------------------------------------------------------------
+
+  describe("Advice Try This Button", () => {
+    const blockedWithAdvice = {
+      blocked_by: "EU Regulator",
+      reason: "Compliance issue",
+      advice: [
+        {
+          agent_role: "recruiter",
+          issue: "Too aggressive on salary",
+          suggested_prompt: "Be more flexible on compensation",
+        },
+        {
+          agent_role: "candidate",
+          issue: "Unrealistic expectations",
+          suggested_prompt: "Lower your initial ask by 10%",
+        },
+      ],
+    };
+
+    it('renders "Try This" button for each advice item with non-empty suggested_prompt', () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          dealStatus="Blocked"
+          finalSummary={blockedWithAdvice}
+        />,
+      );
+
+      expect(screen.getByTestId("try-this-btn-0")).toBeInTheDocument();
+      expect(screen.getByTestId("try-this-btn-1")).toBeInTheDocument();
+      expect(screen.getByTestId("try-this-btn-0")).toHaveTextContent("Try This");
+      expect(screen.getByTestId("try-this-btn-1")).toHaveTextContent("Try This");
+    });
+
+    it('does not render "Try This" button when suggested_prompt is empty', () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          dealStatus="Blocked"
+          finalSummary={{
+            blocked_by: "Regulator",
+            advice: [
+              { agent_role: "recruiter", issue: "Problem", suggested_prompt: "" },
+              { agent_role: "candidate", issue: "Other", suggested_prompt: "   " },
+            ],
+          }}
+        />,
+      );
+
+      expect(screen.queryByTestId("try-this-btn-0")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("try-this-btn-1")).not.toBeInTheDocument();
+    });
+
+    it('does not render "Try This" button when suggested_prompt is missing', () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          dealStatus="Blocked"
+          finalSummary={{
+            blocked_by: "Regulator",
+            advice: [
+              { agent_role: "recruiter", issue: "Problem" },
+            ],
+          }}
+        />,
+      );
+
+      expect(screen.queryByTestId("try-this-btn-0")).not.toBeInTheDocument();
+    });
+
+    it('does not render "Try This" button when scenarioId is null', () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          dealStatus="Blocked"
+          finalSummary={blockedWithAdvice}
+          scenarioId={null}
+        />,
+      );
+
+      expect(screen.getByTestId("block-advice")).toBeInTheDocument();
+      expect(screen.queryByTestId("try-this-btn-0")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("try-this-btn-1")).not.toBeInTheDocument();
+    });
+
+    it("click navigates to URL containing scenario param and Base64-encoded customPrompts param", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          dealStatus="Blocked"
+          finalSummary={blockedWithAdvice}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("try-this-btn-0"));
+
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      const url = mockPush.mock.calls[0][0] as string;
+
+      // Must contain scenario param
+      expect(url).toContain("/arena?scenario=talent_war");
+      // Must contain customPrompts param
+      expect(url).toContain("customPrompts=");
+    });
+
+    it("decoded customPrompts param contains correct agent_role → suggested_prompt mapping", () => {
+      render(
+        <OutcomeReceipt
+          {...defaultProps}
+          dealStatus="Blocked"
+          finalSummary={blockedWithAdvice}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId("try-this-btn-0"));
+
+      const url = mockPush.mock.calls[0][0] as string;
+      const urlObj = new URL(url, "http://localhost");
+      const encoded = urlObj.searchParams.get("customPrompts")!;
+      const decoded: Record<string, string> = JSON.parse(atob(decodeURIComponent(encoded)));
+
+      expect(decoded).toEqual({ recruiter: "Be more flexible on compensation" });
+    });
+  });
 });

@@ -76,7 +76,7 @@ const mockDetail: api.ArenaScenario = {
       type: "negotiator",
     },
   ],
-  toggles: [{ id: "competing_offer", label: "Competing Offer" }],
+  toggles: [{ id: "competing_offer", label: "Competing Offer", target_agent_role: "candidate" }],
   negotiation_params: { max_turns: 15 },
   outcome_receipt: {
     equivalent_human_time: "2 weeks",
@@ -106,9 +106,9 @@ const mockDetailMA: api.ArenaScenario = {
 };
 
 const mockModels: api.ModelInfo[] = [
-  { model_id: "gemini-3-flash-preview", family: "gemini" },
-  { model_id: "claude-3-5-sonnet", family: "claude" },
-  { model_id: "gemini-2.5-pro", family: "gemini" },
+  { model_id: "gemini-3-flash-preview", family: "gemini", label: "Gemini 3 Flash" },
+  { model_id: "claude-3-5-sonnet", family: "claude", label: "Claude 3.5 Sonnet" },
+  { model_id: "gemini-2.5-pro", family: "gemini", label: "Gemini 2.5 Pro" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -148,6 +148,8 @@ describe("Arena Page — Advanced Config State Management", () => {
       updateTokenBalance: mockUpdateTokenBalance,
     };
     mockSearchParams.delete("scenario");
+    mockSearchParams.delete("toggles");
+    mockSearchParams.delete("customPrompts");
     vi.mocked(api.fetchScenarios).mockResolvedValue(mockScenarios);
     vi.mocked(api.fetchScenarioDetail).mockResolvedValue(mockDetail);
     vi.mocked(api.fetchAvailableModels).mockResolvedValue(mockModels);
@@ -313,6 +315,114 @@ describe("Arena Page — Advanced Config State Management", () => {
 
       // No custom prompt indicators should be visible
       expect(screen.queryByTestId("custom-prompt-indicator")).not.toBeInTheDocument();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Req 6: customPrompts query param parsing (Apply Advice Recommendation)
+  // ---------------------------------------------------------------------------
+  describe("customPrompts query param parsing", () => {
+    it("parses and prefills valid custom prompts from URL after scenario loads", async () => {
+      const promptMap = { recruiter: "Be more flexible on compensation" };
+      const encoded = btoa(JSON.stringify(promptMap));
+
+      mockSearchParams.set("scenario", "talent_war");
+      mockSearchParams.set("customPrompts", encodeURIComponent(encoded));
+
+      renderPage();
+
+      // Wait for scenario detail to load (auto-selected via ?scenario=talent_war)
+      await waitFor(() => {
+        expect(screen.getByText("Recruiter")).toBeInTheDocument();
+      });
+
+      // The recruiter agent card should show the custom prompt indicator
+      await waitFor(() => {
+        expect(screen.getByTestId("custom-prompt-indicator")).toBeInTheDocument();
+      });
+    });
+
+    it("ignores roles not in the scenario's agent list", async () => {
+      // "unknown_role" doesn't exist in mockDetail.agents
+      const promptMap = { unknown_role: "Some prompt text" };
+      const encoded = btoa(JSON.stringify(promptMap));
+
+      mockSearchParams.set("scenario", "talent_war");
+      mockSearchParams.set("customPrompts", encodeURIComponent(encoded));
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Recruiter")).toBeInTheDocument();
+      });
+
+      // No custom prompt indicator should appear — the role was invalid
+      expect(screen.queryByTestId("custom-prompt-indicator")).not.toBeInTheDocument();
+    });
+
+    it("ignores malformed Base64 / invalid JSON gracefully (no crash)", async () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      mockSearchParams.set("scenario", "talent_war");
+      mockSearchParams.set("customPrompts", "not-valid-base64!!!");
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Recruiter")).toBeInTheDocument();
+      });
+
+      // Page renders fine — no crash
+      expect(screen.getByText("Candidate")).toBeInTheDocument();
+      // No custom prompt indicator
+      expect(screen.queryByTestId("custom-prompt-indicator")).not.toBeInTheDocument();
+
+      consoleSpy.mockRestore();
+    });
+
+    it("ignores customPrompts param when no scenario param is present", async () => {
+      const promptMap = { recruiter: "Be more flexible" };
+      const encoded = btoa(JSON.stringify(promptMap));
+
+      // Only set customPrompts, NOT scenario
+      mockSearchParams.delete("scenario");
+      mockSearchParams.set("customPrompts", encodeURIComponent(encoded));
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
+      });
+
+      // Manually select the scenario — but customPrompts from URL should NOT be applied
+      // because there was no ?scenario= param at page load
+      await selectScenario("talent_war", "Recruiter");
+
+      // No custom prompt indicator — the URL param was ignored
+      expect(screen.queryByTestId("custom-prompt-indicator")).not.toBeInTheDocument();
+    });
+
+    it("agent card shows hasCustomPrompt indicator for prefilled agents", async () => {
+      const promptMap = { candidate: "Lower your initial ask by 10%" };
+      const encoded = btoa(JSON.stringify(promptMap));
+
+      mockSearchParams.set("scenario", "talent_war");
+      mockSearchParams.set("customPrompts", encodeURIComponent(encoded));
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText("Candidate")).toBeInTheDocument();
+      });
+
+      // The candidate agent should have the indicator
+      await waitFor(() => {
+        expect(screen.getByTestId("custom-prompt-indicator")).toBeInTheDocument();
+      });
+
+      // Verify it's specifically on the Candidate card (the indicator's aria-label)
+      const indicator = screen.getByTestId("custom-prompt-indicator");
+      expect(indicator).toHaveAttribute("aria-label", "Custom prompt configured");
     });
   });
 });

@@ -77,8 +77,8 @@ const mockDetail: api.ArenaScenario = {
     },
   ],
   toggles: [
-    { id: "competing_offer", label: "Competing Offer" },
-    { id: "remote_pref", label: "Remote Preference" },
+    { id: "competing_offer", label: "Competing Offer", target_agent_role: "candidate" },
+    { id: "remote_pref", label: "Remote Preference", target_agent_role: "candidate" },
   ],
   negotiation_params: { max_turns: 15 },
   outcome_receipt: {
@@ -184,7 +184,7 @@ describe("Arena Control Panel Page", () => {
     const detail2: api.ArenaScenario = {
       ...mockDetail,
       id: "ma_buyout",
-      toggles: [{ id: "due_diligence", label: "Due Diligence" }],
+      toggles: [{ id: "due_diligence", label: "Due Diligence", target_agent_role: "founder" }],
     };
     vi.mocked(api.fetchScenarioDetail).mockResolvedValue(detail2);
 

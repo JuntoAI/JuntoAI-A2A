@@ -34,6 +34,7 @@ export interface AgentDefinition {
 export interface ToggleDefinition {
   id: string;
   label: string;
+  target_agent_role: string;
 }
 
 export interface ArenaScenario {

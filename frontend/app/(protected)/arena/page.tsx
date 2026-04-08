@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, Suspense } from "react";
+import { useEffect, useState, useCallback, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   fetchScenarios,
@@ -127,6 +127,10 @@ function ArenaPageContent() {
     return () => { cancelled = true; };
   }, []);
 
+  // Track whether deep-link toggles/customPrompts have been applied (once per page load)
+  const togglesAppliedRef = useRef(false);
+  const customPromptsAppliedRef = useRef(false);
+
   // Reset on scenario change
   useEffect(() => {
     setCustomPrompts({});
@@ -134,6 +138,59 @@ function ArenaPageContent() {
     setMemoryStrategies({});
     setMilestoneSummariesEnabled(false);
   }, [selectedScenarioId]);
+
+  // Deep-link: parse `toggles` query param and activate valid toggles
+  useEffect(() => {
+    if (togglesAppliedRef.current) return;
+    if (!scenarioDetail || !selectedScenarioId) return;
+
+    const scenarioParam = searchParams.get("scenario");
+    if (!scenarioParam) return; // Ignore toggles param when no scenario param
+
+    const togglesParam = searchParams.get("toggles");
+    if (!togglesParam) return;
+
+    const requestedIds = togglesParam.split(",").filter(Boolean);
+    const validIds = requestedIds.filter((id) =>
+      scenarioDetail.toggles.some((t) => t.id === id),
+    );
+
+    if (validIds.length > 0) {
+      setActiveToggles(validIds);
+    }
+
+    togglesAppliedRef.current = true;
+  }, [scenarioDetail, selectedScenarioId, searchParams]);
+
+  // Deep-link: parse `customPrompts` query param and prefill valid custom prompts
+  useEffect(() => {
+    if (customPromptsAppliedRef.current) return;
+    if (!scenarioDetail || !selectedScenarioId) return;
+
+    const scenarioParam = searchParams.get("scenario");
+    if (!scenarioParam) return; // Ignore customPrompts param when no scenario param
+
+    const customPromptsParam = searchParams.get("customPrompts");
+    if (!customPromptsParam) return;
+
+    try {
+      const decoded: Record<string, string> = JSON.parse(atob(decodeURIComponent(customPromptsParam)));
+      const validRoles = new Set(scenarioDetail.agents.map((a) => a.role));
+      const filtered: Record<string, string> = {};
+      for (const [role, prompt] of Object.entries(decoded)) {
+        if (validRoles.has(role) && typeof prompt === "string" && prompt.trim()) {
+          filtered[role] = prompt;
+        }
+      }
+      if (Object.keys(filtered).length > 0) {
+        setCustomPrompts(filtered);
+      }
+    } catch {
+      console.warn("Invalid customPrompts query parameter — ignoring");
+    }
+
+    customPromptsAppliedRef.current = true;
+  }, [scenarioDetail, selectedScenarioId, searchParams]);
 
   const handleScenarioSelect = useCallback(async (scenarioId: string) => {
     setSelectedScenarioId(scenarioId);
@@ -199,9 +256,8 @@ function ArenaPageContent() {
         noMemoryRoles.length > 0 ? noMemoryRoles : undefined,
       );
       updateTokenBalance(result.tokens_remaining);
-      router.push(
-        `/arena/session/${result.session_id}?max_turns=${result.max_turns}&scenario=${selectedScenarioId}`,
-      );
+      const sessionUrl = `/arena/session/${result.session_id}?max_turns=${result.max_turns}&scenario=${selectedScenarioId}${activeToggles.length > 0 ? `&toggles=${activeToggles.join(",")}` : ""}`;
+      router.push(sessionUrl);
     } catch (err) {
       if (err instanceof TokenLimitError) {
         updateTokenBalance(0);

@@ -76,7 +76,7 @@ const mockDetail: api.ArenaScenario = {
       type: "negotiator",
     },
   ],
-  toggles: [{ id: "competing_offer", label: "Competing Offer" }],
+  toggles: [{ id: "competing_offer", label: "Competing Offer", target_agent_role: "candidate" }],
   negotiation_params: { max_turns: 15 },
   outcome_receipt: {
     equivalent_human_time: "2 weeks",
@@ -228,7 +228,7 @@ describe("Per-Agent Memory Strategy Radio Group", () => {
     const detail2: api.ArenaScenario = {
       ...mockDetail,
       id: "ma_buyout",
-      toggles: [{ id: "due_diligence", label: "Due Diligence" }],
+      toggles: [{ id: "due_diligence", label: "Due Diligence", target_agent_role: "founder" }],
     };
     vi.mocked(api.fetchScenarioDetail).mockResolvedValue(detail2);
 
