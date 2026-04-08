@@ -20,7 +20,7 @@ import { InitializeButton } from "@/components/arena/InitializeButton";
 import { NegotiationHistory } from "@/components/arena/NegotiationHistory";
 import { AdvancedConfigModal, type MemoryStrategy } from "@/components/arena/AdvancedConfigModal";
 import { BuilderModal } from "@/components/builder/BuilderModal";
-import { listCustomScenarios } from "@/lib/builder/api";
+import { listCustomScenarios, deleteCustomScenario } from "@/lib/builder/api";
 import { Spinner } from "@/components/ui/Spinner";
 
 function ArenaPageContent() {
@@ -40,6 +40,7 @@ function ArenaPageContent() {
   // Builder state
   const [customScenarios, setCustomScenarios] = useState<ScenarioSummary[]>([]);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [isDeletingScenario, setIsDeletingScenario] = useState(false);
 
   // Advanced config state
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
@@ -86,6 +87,36 @@ function ArenaPageContent() {
       refreshCustomScenarios();
     }
   }, [email, updateTier, refreshCustomScenarios]);
+
+  // Delete a custom scenario
+  const handleDeleteCustomScenario = useCallback(
+    async (scenarioId: string, scenarioName: string) => {
+      if (!email) return;
+      const confirmed = confirm(
+        `Delete "${scenarioName}"?\n\nThis cannot be undone.`,
+      );
+      if (!confirmed) return;
+
+      setIsDeletingScenario(true);
+      setError(null);
+      try {
+        await deleteCustomScenario(email, scenarioId);
+        if (selectedScenarioId === scenarioId) {
+          setSelectedScenarioId(null);
+          setScenarioDetail(null);
+          setActiveToggles([]);
+        }
+        await refreshCustomScenarios();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to delete scenario.",
+        );
+      } finally {
+        setIsDeletingScenario(false);
+      }
+    },
+    [email, selectedScenarioId, refreshCustomScenarios],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -298,6 +329,8 @@ function ArenaPageContent() {
           error={error && !selectedScenarioId && !isStarting ? error : null}
           customScenarios={customScenarios}
           onBuildOwn={() => setShowBuilder(true)}
+          onDeleteCustom={handleDeleteCustomScenario}
+          isDeleting={isDeletingScenario}
         />
       )}
 

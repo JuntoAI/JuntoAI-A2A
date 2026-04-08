@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Trash2 } from "lucide-react";
 import type { ScenarioSummary } from "@/lib/api";
 
 const DIFFICULTY_LABEL: Record<string, string> = {
@@ -20,6 +21,10 @@ export interface ScenarioSelectorProps {
   customScenarios?: ScenarioSummary[];
   /** Callback invoked when the user selects "Build Your Own Scenario". */
   onBuildOwn?: () => void;
+  /** Callback invoked when the user wants to delete a custom scenario. */
+  onDeleteCustom?: (scenarioId: string, scenarioName: string) => void;
+  /** Whether a delete operation is in progress. */
+  isDeleting?: boolean;
 }
 
 const BUILD_YOUR_OWN_VALUE = "__build_your_own__";
@@ -57,28 +62,34 @@ export function ScenarioSelector({
   error,
   customScenarios = [],
   onBuildOwn,
+  onDeleteCustom,
+  isDeleting = false,
 }: ScenarioSelectorProps) {
   const categoryGroups = useMemo(() => groupByCategory(scenarios), [scenarios]);
 
+  const isCustomSelected = customScenarios.some((s) => s.id === selectedId);
+  const selectedCustomName =
+    customScenarios.find((s) => s.id === selectedId)?.name ?? "this scenario";
+
   return (
     <div className="w-full">
-      <select
-        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition-colors focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20 disabled:cursor-not-allowed disabled:opacity-50"
-        value={selectedId ?? ""}
-        disabled={isLoading}
-        onChange={(e) => {
-          const value = e.target.value;
-          if (value === BUILD_YOUR_OWN_VALUE) {
-            onBuildOwn?.();
-            // Reset select back so it doesn't stay on the "Build Your Own" option
-            e.target.value = selectedId ?? "";
-            return;
-          }
-          if (value) {
-            onSelect(value);
-          }
-        }}
-      >
+      <div className="flex gap-2">
+        <select
+          className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition-colors focus:border-brand-blue focus:outline-none focus:ring-2 focus:ring-brand-blue/20 disabled:cursor-not-allowed disabled:opacity-50"
+          value={selectedId ?? ""}
+          disabled={isLoading || isDeleting}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === BUILD_YOUR_OWN_VALUE) {
+              onBuildOwn?.();
+              e.target.value = selectedId ?? "";
+              return;
+            }
+            if (value) {
+              onSelect(value);
+            }
+          }}
+        >
         <option value="">Select Simulation Environment</option>
 
         {/* Pre-built scenarios grouped by category */}
@@ -108,7 +119,21 @@ export function ScenarioSelector({
           ────────────────
         </option>
         <option value={BUILD_YOUR_OWN_VALUE}>🛠 Build Your Own Scenario</option>
-      </select>
+        </select>
+
+        {isCustomSelected && onDeleteCustom && (
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={() => onDeleteCustom(selectedId!, selectedCustomName)}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-red-600 shadow-sm transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={`Delete custom scenario: ${selectedCustomName}`}
+          >
+            <Trash2 size={16} />
+            <span className="hidden sm:inline">Delete</span>
+          </button>
+        )}
+      </div>
       {error && (
         <p className="mt-2 text-sm text-red-600" role="alert">
           {error}
