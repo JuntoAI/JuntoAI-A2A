@@ -6,17 +6,17 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
 
 ## Tasks
 
-- [ ] 1. Add `category` field to ArenaScenario backend model
-  - [ ] 1.1 Add optional `category` field to `ArenaScenario` in `backend/app/scenarios/models.py`
+- [x] 1. Add `category` field to ArenaScenario backend model
+  - [x] 1.1 Add optional `category` field to `ArenaScenario` in `backend/app/scenarios/models.py`
     - Type: `str`, default `"General"`, `min_length=1`
     - Description: `"Scenario category for Arena dropdown grouping (e.g., 'Sales', 'Corporate', 'Everyday')"`
     - Must be backward compatible — existing scenarios without the field still validate
     - _Requirements: 6.1, 6.2_
-  - [ ] 1.2 Add `category` to `list_scenarios` response in `backend/app/scenarios/registry.py`
+  - [x] 1.2 Add `category` to `list_scenarios` response in `backend/app/scenarios/registry.py`
     - Include `"category": s.category` in the dict returned by `list_scenarios`
     - Update sorting: primary by category (alphabetical, "General" last), secondary by difficulty order, tertiary by name
     - _Requirements: 6.3, 6.9_
-  - [ ] 1.3 Add `"category"` field to all existing scenario JSON files
+  - [x] 1.3 Add `"category"` field to all existing scenario JSON files
     - `talent-war.scenario.json` → `"Corporate"`
     - `ma-buyout.scenario.json` → `"Corporate"`
     - `b2b-sales.scenario.json` → `"Corporate"`
@@ -28,11 +28,11 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
     - `easter-bunny-debate.scenario.json` → `"Fun"`
     - _Requirements: 6.5_
 
-- [ ] 2. Update frontend for category grouping
-  - [ ] 2.1 Add `category` field to `ScenarioSummary` interface in `frontend/lib/api.ts`
+- [x] 2. Update frontend for category grouping
+  - [x] 2.1 Add `category` field to `ScenarioSummary` interface in `frontend/lib/api.ts`
     - Add `category: string` to the `ScenarioSummary` interface
     - _Requirements: 6.6_
-  - [ ] 2.2 Refactor `ScenarioSelector` to group by category using `<optgroup>`
+  - [x] 2.2 Refactor `ScenarioSelector` to group by category using `<optgroup>`
     - Group `scenarios` array by `category` field
     - Render each group as `<optgroup label="Sales">`, `<optgroup label="Corporate">`, etc.
     - Within each group, keep existing `[Difficulty] Name` format
@@ -40,13 +40,13 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
     - Keep "My Scenarios" `<optgroup>` and "Build Your Own Scenario" at the bottom
     - _Requirements: 6.7, 6.8, 6.9, 6.10_
 
-- [ ] 3. Checkpoint — Validate category grouping
+- [x] 3. Checkpoint — Validate category grouping
   - Ensure backend model validates with and without `category` field
   - Ensure `list_scenarios` returns `category` in response
   - Ensure existing tests still pass after schema change
   - Ask the user if questions arise.
 
-- [ ] 4. Create SaaS Contract Negotiation scenario
+- [x] 4. Create SaaS Contract Negotiation scenario
   - Create `backend/app/scenarios/data/saas-negotiation.scenario.json`
   - `category: "Sales"`
   - 3 agents: Seller (negotiator), Buyer (negotiator), Procurement (regulator)
@@ -59,7 +59,7 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
   - Must pass `ArenaScenario.model_validate()` — validate by running `cd backend && python -c "from app.scenarios.models import ArenaScenario; import json; ArenaScenario.model_validate(json.loads(open('app/scenarios/data/saas-negotiation.scenario.json').read()))"`
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 6.4_
 
-- [ ] 5. Create Renewal / Churn Save scenario
+- [x] 5. Create Renewal / Churn Save scenario
   - Create `backend/app/scenarios/data/renewal-churn-save.scenario.json`
   - `category: "Sales"`
   - 3 agents: Customer Success Manager (negotiator), Customer (negotiator), Finance Compliance (regulator)
@@ -71,7 +71,7 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
   - Must pass `ArenaScenario.model_validate()`
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 6.4_
 
-- [ ] 6. Create Enterprise Multi-Stakeholder scenario
+- [x] 6. Create Enterprise Multi-Stakeholder scenario
   - Create `backend/app/scenarios/data/enterprise-multi-stakeholder.scenario.json`
   - `category: "Sales"`
   - 4 agents: Sales Director (negotiator), CTO/Champion (negotiator), Procurement Director (negotiator), Legal/Compliance (regulator)
@@ -84,7 +84,7 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
   - Must pass `ArenaScenario.model_validate()`
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 6.4_
 
-- [ ] 7. Create Discovery / Qualification Call scenario
+- [x] 7. Create Discovery / Qualification Call scenario
   - Create `backend/app/scenarios/data/discovery-qualification.scenario.json`
   - `category: "Sales"`
   - 3 agents: Sales Development Rep (negotiator), Prospect (negotiator), Sales Manager/Coach (regulator)
@@ -97,32 +97,32 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
   - Must pass `ArenaScenario.model_validate()`
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 6.4_
 
-- [ ] 8. Checkpoint — Validate all 4 scenarios
+- [x] 8. Checkpoint — Validate all 4 scenarios
   - Ensure all 4 scenario JSON files pass Pydantic validation
   - Ensure all 4 have `category: "Sales"`
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 9. Backend tests for sales scenarios and category grouping
-  - [ ] 9.1 Create parametrized validation test
+- [x] 9. Backend tests for sales scenarios and category grouping
+  - [x] 9.1 Create parametrized validation test
     - Create `backend/tests/unit/test_sales_scenario_files.py`
     - Parametrized pytest over all 4 filenames: `saas-negotiation.scenario.json`, `renewal-churn-save.scenario.json`, `enterprise-multi-stakeholder.scenario.json`, `discovery-qualification.scenario.json`
     - Each must pass `ArenaScenario.model_validate_json()`, assert `len(agents) >= 2`, `len(toggles) >= 2`, `category == "Sales"`, at least one negotiator, at least one regulator
     - _Requirements: 1.1, 1.3, 2.1, 3.1, 4.1, 6.4_
-  - [ ] 9.2 Add structural assertions per scenario
+  - [x] 9.2 Add structural assertions per scenario
     - In the same test file, add test classes per scenario (following `test_scenario_files.py` pattern)
     - SaaS: assert 3 agents, correct roles/types, max_turns 10–14, 2+ toggles with correct targets
     - Renewal: assert 3 agents, correct roles/types, max_turns 10–14, 2+ toggles
     - Enterprise: assert 4 agents, correct roles/types, max_turns 12–16, 4-agent turn_order
     - Discovery: assert 3 agents, correct roles/types, max_turns 10–14, `value_format == "number"`, `value_label == "Qualification Score"`
     - _Requirements: 1.2, 1.7, 1.9, 2.2, 2.6, 2.7, 3.2, 3.7, 3.8, 4.2, 4.6, 4.7_
-  - [ ] 9.3 Add category grouping tests
+  - [x] 9.3 Add category grouping tests
     - Test that `ArenaScenario` validates with `category` field present
     - Test that `ArenaScenario` validates without `category` field (defaults to `"General"`)
     - Test that `list_scenarios` response includes `category` for each scenario
     - Test that existing scenarios have correct category values after migration
     - _Requirements: 6.1, 6.2, 6.3, 6.5_
 
-- [ ] 10. Create `/sales` landing page
+- [x] 10. Create `/sales` landing page
   - Create `frontend/app/sales/page.tsx` as a server component (no `"use client"`)
   - Export `metadata` with sales-specific `title`, `description`, and `openGraph` fields
   - Hero section: headline ("Rehearse Your Next Deal" or similar), subheadline, `WaitlistForm` component
@@ -135,16 +135,16 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
   - Import `WaitlistForm` from `@/components/WaitlistForm`
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 5.10_
 
-- [ ] 11. Frontend tests for `/sales` page and ScenarioSelector grouping
-  - [ ] 11.1 Create sales page render tests
+- [x] 11. Frontend tests for `/sales` page and ScenarioSelector grouping
+  - [x] 11.1 Create sales page render tests
     - Create `frontend/__tests__/pages/sales.test.tsx`
     - Mock `WaitlistForm` (same pattern as `page.test.tsx`)
     - Assert: hero heading rendered, WaitlistForm rendered, 3+ value prop cards, 4 scenario showcase cards, CTA link with `href="/arena"`, no redirect behavior
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.9, 5.10_
-  - [ ] 11.2 Test metadata export
+  - [x] 11.2 Test metadata export
     - Import `metadata` from `@/app/sales/page`, assert `title` contains sales-specific text, `openGraph.title` and `openGraph.description` are present and sales-specific
     - _Requirements: 5.8_
-  - [ ] 11.3 Create ScenarioSelector grouping tests
+  - [x] 11.3 Create ScenarioSelector grouping tests
     - Create or update `frontend/__tests__/components/arena/ScenarioSelector.test.tsx`
     - Render `ScenarioSelector` with scenarios having different `category` values
     - Assert `<optgroup>` elements are rendered with correct labels
@@ -153,13 +153,13 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
     - Assert groups are sorted alphabetically with "General" last
     - _Requirements: 6.7, 6.8, 6.9, 6.10_
 
-- [ ] 12. Checkpoint — Ensure all tests pass
+- [x] 12. Checkpoint — Ensure all tests pass
   - Run `cd backend && pytest tests/unit/test_sales_scenario_files.py -v`
   - Run `cd frontend && npx vitest run __tests__/pages/sales.test.tsx`
   - Run `cd frontend && npx vitest run __tests__/components/arena/ScenarioSelector.test.tsx`
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 13. Create demo video storyline
+- [x] 13. Create demo video storyline
   - Create `docs/sales-demo-storyline.md`
   - 60-second script with timestamps for each shot/scene
   - 5+ distinct shots: hook/opening, scenario setup, live negotiation with visible agent reasoning in Glass Box view, toggle flip showing outcome change, closing CTA
@@ -170,7 +170,7 @@ Content-heavy delivery: 4 scenario JSON files, scenario category grouping (backe
   - Written for a video editor with no product knowledge — explicit visual direction
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8_
 
-- [ ] 14. Final checkpoint — Ensure all tests pass
+- [x] 14. Final checkpoint — Ensure all tests pass
   - Run full backend test suite: `cd backend && pytest tests/unit/test_sales_scenario_files.py -v`
   - Run full frontend test suite: `cd frontend && npx vitest run __tests__/pages/sales.test.tsx`
   - Run ScenarioSelector tests: `cd frontend && npx vitest run __tests__/components/arena/ScenarioSelector.test.tsx`

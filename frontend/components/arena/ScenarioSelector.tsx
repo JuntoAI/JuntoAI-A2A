@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { ScenarioSummary } from "@/lib/api";
 
 const DIFFICULTY_LABEL: Record<string, string> = {
@@ -23,6 +24,31 @@ export interface ScenarioSelectorProps {
 
 const BUILD_YOUR_OWN_VALUE = "__build_your_own__";
 
+/**
+ * Group scenarios by category and return sorted category entries.
+ * Categories are sorted alphabetically, with "General" always last.
+ */
+function groupByCategory(
+  scenarios: ScenarioSummary[],
+): [string, ScenarioSummary[]][] {
+  const groups = new Map<string, ScenarioSummary[]>();
+  for (const s of scenarios) {
+    const cat = s.category || "General";
+    const list = groups.get(cat);
+    if (list) {
+      list.push(s);
+    } else {
+      groups.set(cat, [s]);
+    }
+  }
+
+  return Array.from(groups.entries()).sort(([a], [b]) => {
+    if (a === "General") return 1;
+    if (b === "General") return -1;
+    return a.localeCompare(b);
+  });
+}
+
 export function ScenarioSelector({
   scenarios,
   selectedId,
@@ -32,6 +58,8 @@ export function ScenarioSelector({
   customScenarios = [],
   onBuildOwn,
 }: ScenarioSelectorProps) {
+  const categoryGroups = useMemo(() => groupByCategory(scenarios), [scenarios]);
+
   return (
     <div className="w-full">
       <select
@@ -53,11 +81,15 @@ export function ScenarioSelector({
       >
         <option value="">Select Simulation Environment</option>
 
-        {/* Pre-built scenarios */}
-        {scenarios.map((s) => (
-          <option key={s.id} value={s.id}>
-            [{DIFFICULTY_LABEL[s.difficulty] ?? s.difficulty}] {s.name}
-          </option>
+        {/* Pre-built scenarios grouped by category */}
+        {categoryGroups.map(([category, items]) => (
+          <optgroup key={category} label={category}>
+            {items.map((s) => (
+              <option key={s.id} value={s.id}>
+                [{DIFFICULTY_LABEL[s.difficulty] ?? s.difficulty}] {s.name}
+              </option>
+            ))}
+          </optgroup>
         ))}
 
         {/* My Scenarios group — only shown when custom scenarios exist */}

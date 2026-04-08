@@ -32,7 +32,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from app.models.share import ParticipantSummary, SharePayload
+from app.models.share import EvaluationScores, ParticipantSummary, PublicMessage, SharePayload
 
 # ---------------------------------------------------------------------------
 # Strategies
@@ -69,6 +69,28 @@ _non_negative_float = st.floats(
 
 _non_negative_int = st.integers(min_value=0, max_value=1_000_000)
 
+_score_1_10 = st.integers(min_value=1, max_value=10)
+
+_evaluation_scores = st.builds(
+    EvaluationScores,
+    fairness=_score_1_10,
+    mutual_respect=_score_1_10,
+    value_creation=_score_1_10,
+    satisfaction=_score_1_10,
+    overall_score=_score_1_10,
+)
+
+_optional_evaluation_scores = st.one_of(st.none(), _evaluation_scores)
+
+_public_message = st.builds(
+    PublicMessage,
+    agent_name=_safe_text,
+    role=_safe_text,
+    agent_type=st.sampled_from(["negotiator", "regulator", "observer"]),
+    message=_safe_text,
+    turn_number=st.integers(min_value=0, max_value=100),
+)
+
 _datetime = st.datetimes(
     min_value=datetime(2020, 1, 1),
     max_value=datetime(2030, 12, 31),
@@ -82,6 +104,7 @@ def share_payload_strategy(draw):
     return SharePayload(
         share_slug=draw(_share_slug),
         session_id=draw(st.uuids().map(lambda u: u.hex)),
+        scenario_id=draw(_safe_text),
         scenario_name=draw(_safe_text),
         scenario_description=draw(_safe_text),
         deal_status=draw(_deal_status),
@@ -91,6 +114,10 @@ def share_payload_strategy(draw):
         warning_count=draw(_non_negative_int),
         participant_summaries=draw(
             st.lists(_participant_summary, min_size=0, max_size=5)
+        ),
+        evaluation_scores=draw(_optional_evaluation_scores),
+        public_conversation=draw(
+            st.lists(_public_message, min_size=0, max_size=10)
         ),
         elapsed_time_ms=draw(_non_negative_int),
         share_image_url=draw(_safe_text),
@@ -294,6 +321,7 @@ async def test_idempotent_share_creation(session_id: str):
 
 # Use min_size=5 to avoid false positives from very short strings matching
 # common words in the output (e.g. "a", "AI", "the").
+# Use a prefix to avoid matching JSON field names like "warning_count".
 _sensitive_text = st.text(
     alphabet=st.characters(
         whitelist_categories=("L", "N"),
@@ -301,7 +329,7 @@ _sensitive_text = st.text(
     ),
     min_size=5,
     max_size=80,
-)
+).map(lambda s: f"SENS_{s}")
 
 _history_entry = st.fixed_dictionaries({"content": _sensitive_text})
 
@@ -471,6 +499,7 @@ def share_payload_long_text_strategy(draw):
     return SharePayload(
         share_slug=draw(_share_slug),
         session_id=draw(st.uuids().map(lambda u: u.hex)),
+        scenario_id=draw(_safe_text),
         scenario_name=draw(_long_text),
         scenario_description=draw(_long_text),
         deal_status=draw(_deal_status),
@@ -480,6 +509,10 @@ def share_payload_long_text_strategy(draw):
         warning_count=draw(_non_negative_int),
         participant_summaries=draw(
             st.lists(_participant_summary, min_size=0, max_size=5)
+        ),
+        evaluation_scores=draw(_optional_evaluation_scores),
+        public_conversation=draw(
+            st.lists(_public_message, min_size=0, max_size=10)
         ),
         elapsed_time_ms=draw(_non_negative_int),
         share_image_url=draw(_safe_text),

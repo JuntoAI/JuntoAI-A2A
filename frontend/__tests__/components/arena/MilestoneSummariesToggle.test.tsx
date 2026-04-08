@@ -55,8 +55,8 @@ import ArenaPage from "@/app/(protected)/arena/page";
 // ---------------------------------------------------------------------------
 
 const mockScenarios: api.ScenarioSummary[] = [
-  { id: "talent_war", name: "The Talent War", description: "HR negotiation", difficulty: "beginner" },
-  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition", difficulty: "intermediate" },
+  { id: "talent_war", name: "The Talent War", description: "HR negotiation", difficulty: "beginner", category: "Corporate" },
+  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition", difficulty: "intermediate", category: "Corporate" },
 ];
 
 const mockDetail: api.ArenaScenario = {

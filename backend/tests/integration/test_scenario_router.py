@@ -95,7 +95,7 @@ class TestListScenarios:
         assert entry["name"] == "Test Scenario"
         assert entry["description"] == "A test scenario for integration tests."
         # list endpoint should only return summary fields
-        assert set(entry.keys()) == {"id", "name", "description", "difficulty"}
+        assert set(entry.keys()) == {"id", "name", "description", "difficulty", "category"}
 
 
 class TestGetScenario:

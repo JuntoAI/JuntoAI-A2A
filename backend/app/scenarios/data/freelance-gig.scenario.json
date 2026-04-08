@@ -3,6 +3,7 @@
   "name": "The Freelance Gig",
   "description": "A straightforward rate negotiation between a freelance developer and a startup founder. No middlemen, no compliance, just two people trying to agree on price, scope, and timeline for a 3-month project.",
   "difficulty": "beginner",
+  "category": "Everyday",
   "agents": [
     {
       "role": "Freelancer",

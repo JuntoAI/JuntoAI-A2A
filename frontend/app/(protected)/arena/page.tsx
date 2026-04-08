@@ -66,6 +66,7 @@ function ArenaPageContent() {
             name: json.name ?? "Custom Scenario",
             description: json.description ?? "",
             difficulty: "intermediate" as const,
+            category: (json.category as string) ?? "General",
           };
         }),
       );

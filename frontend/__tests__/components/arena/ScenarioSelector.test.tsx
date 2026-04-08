@@ -3,14 +3,14 @@ import { ScenarioSelector } from "@/components/arena/ScenarioSelector";
 import type { ScenarioSummary } from "@/lib/api";
 
 const mockScenarios: ScenarioSummary[] = [
-  { id: "talent_war", name: "The Talent War", description: "HR negotiation", difficulty: "beginner" },
-  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition", difficulty: "intermediate" },
-  { id: "b2b_sales", name: "B2B Sales", description: "SaaS contract", difficulty: "advanced" },
+  { id: "talent_war", name: "The Talent War", description: "HR negotiation", difficulty: "beginner", category: "Corporate" },
+  { id: "ma_buyout", name: "M&A Buyout", description: "Corporate acquisition", difficulty: "intermediate", category: "Corporate" },
+  { id: "b2b_sales", name: "B2B Sales", description: "SaaS contract", difficulty: "advanced", category: "Corporate" },
 ];
 
 const mockCustomScenarios: ScenarioSummary[] = [
-  { id: "custom_1", name: "My Custom Scenario", description: "Custom desc", difficulty: "intermediate" },
-  { id: "custom_2", name: "Another Custom", description: "Another desc", difficulty: "beginner" },
+  { id: "custom_1", name: "My Custom Scenario", description: "Custom desc", difficulty: "intermediate", category: "General" },
+  { id: "custom_2", name: "Another Custom", description: "Another desc", difficulty: "beginner", category: "General" },
 ];
 
 describe("ScenarioSelector", () => {
@@ -174,5 +174,91 @@ describe("ScenarioSelector", () => {
     fireEvent.change(screen.getByRole("combobox"), {
       target: { value: "__build_your_own__" },
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Category Grouping Tests (Req 6.7, 6.8, 6.9, 6.10)
+// ---------------------------------------------------------------------------
+
+const multiCategoryScenarios: ScenarioSummary[] = [
+  { id: "saas_negotiation", name: "SaaS Negotiation", description: "SaaS deal", difficulty: "intermediate", category: "Sales" },
+  { id: "renewal_churn", name: "Renewal Churn Save", description: "Churn save", difficulty: "intermediate", category: "Sales" },
+  { id: "talent_war", name: "The Talent War", description: "HR negotiation", difficulty: "beginner", category: "Corporate" },
+  { id: "ma_buyout", name: "M&A Buyout", description: "Acquisition", difficulty: "advanced", category: "Corporate" },
+  { id: "family_curfew", name: "Family Curfew", description: "Curfew negotiation", difficulty: "beginner", category: "Everyday" },
+  { id: "misc_scenario", name: "Misc Scenario", description: "General scenario", difficulty: "fun", category: "General" },
+];
+
+describe("ScenarioSelector — Category Grouping", () => {
+  const baseProps = {
+    scenarios: multiCategoryScenarios,
+    selectedId: null,
+    onSelect: vi.fn(),
+    isLoading: false,
+    error: null,
+  };
+
+  // Req 6.7: optgroup elements rendered with correct labels
+  it("renders <optgroup> elements for each category", () => {
+    render(<ScenarioSelector {...baseProps} />);
+    expect(screen.getByRole("group", { name: "Sales" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Corporate" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Everyday" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "General" })).toBeInTheDocument();
+  });
+
+  // Req 6.8: scenarios within each group retain [Difficulty] prefix
+  it("scenarios within groups retain [Difficulty] prefix", () => {
+    render(<ScenarioSelector {...baseProps} />);
+    expect(screen.getByText("[Intermediate] SaaS Negotiation")).toBeInTheDocument();
+    expect(screen.getByText("[Intermediate] Renewal Churn Save")).toBeInTheDocument();
+    expect(screen.getByText("[Beginner] The Talent War")).toBeInTheDocument();
+    expect(screen.getByText("[Advanced] M&A Buyout")).toBeInTheDocument();
+    expect(screen.getByText("[Beginner] Family Curfew")).toBeInTheDocument();
+    expect(screen.getByText("[Fun] Misc Scenario")).toBeInTheDocument();
+  });
+
+  // Req 6.9: groups sorted alphabetically with "General" last
+  it("sorts category groups alphabetically with 'General' last", () => {
+    const { container } = render(<ScenarioSelector {...baseProps} />);
+    const optgroups = container.querySelectorAll("optgroup");
+    const labels = Array.from(optgroups).map((og) => og.getAttribute("label"));
+
+    // "Corporate", "Everyday", "Sales" alphabetically, then "General" last
+    const categoryLabels = labels.filter(
+      (l) => l !== "My Scenarios",
+    );
+    expect(categoryLabels[0]).toBe("Corporate");
+    expect(categoryLabels[1]).toBe("Everyday");
+    expect(categoryLabels[2]).toBe("Sales");
+    expect(categoryLabels[categoryLabels.length - 1]).toBe("General");
+  });
+
+  // Req 6.10: "My Scenarios" and "Build Your Own" remain at the bottom
+  it("'My Scenarios' and 'Build Your Own' remain at the bottom after category groups", () => {
+    const customScenarios: ScenarioSummary[] = [
+      { id: "custom_1", name: "My Custom", description: "Custom", difficulty: "beginner", category: "General" },
+    ];
+    const { container } = render(
+      <ScenarioSelector {...baseProps} customScenarios={customScenarios} />,
+    );
+    const optgroups = container.querySelectorAll("optgroup");
+    const labels = Array.from(optgroups).map((og) => og.getAttribute("label"));
+
+    // "My Scenarios" should be the last optgroup
+    expect(labels[labels.length - 1]).toBe("My Scenarios");
+
+    // "Build Your Own Scenario" should appear after all optgroups
+    const select = container.querySelector("select")!;
+    const allOptions = Array.from(select.querySelectorAll("option"));
+    const buildOwnOption = allOptions.find((o) =>
+      o.textContent?.includes("Build Your Own Scenario"),
+    );
+    expect(buildOwnOption).toBeDefined();
+
+    // Verify Build Your Own is the last non-disabled option
+    const lastOption = allOptions[allOptions.length - 1];
+    expect(lastOption.textContent).toContain("Build Your Own Scenario");
   });
 });

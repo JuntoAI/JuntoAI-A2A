@@ -3,6 +3,7 @@
   "name": "The Hiring Negotiation",
   "description": "A high-stakes hiring negotiation between a corporate recruiter racing to fill a critical role and a senior engineer who knows their market value. An HR compliance advisor enforces compensation frameworks and flags unauthorized promises.",
   "difficulty": "intermediate",
+  "category": "Corporate",
   "agents": [
     {
       "role": "Recruiter",

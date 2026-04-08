@@ -59,6 +59,7 @@ describe("Property 3: Scenario selection renders correct component counts", () =
         name: safeStringArb,
         description: safeStringArb,
         difficulty: difficultyArb,
+        category: safeStringArb,
       }),
       { minLength: 1, maxLength: 6 },
     );

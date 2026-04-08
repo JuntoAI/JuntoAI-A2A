@@ -237,6 +237,7 @@ class TestGetShare:
         payload = SharePayload(
             share_slug=_TEST_SLUG,
             session_id=_TEST_SESSION_ID,
+            scenario_id="test-scenario",
             scenario_name="Test Scenario",
             scenario_description="A test scenario",
             deal_status="Agreed",
@@ -245,6 +246,8 @@ class TestGetShare:
             turns_completed=5,
             warning_count=1,
             participant_summaries=[],
+            evaluation_scores=None,
+            public_conversation=[],
             elapsed_time_ms=42_000,
             share_image_url=_TEST_IMAGE_URL,
             created_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
@@ -308,6 +311,7 @@ class TestIdempotency:
         existing_payload = SharePayload(
             share_slug=_TEST_SLUG,
             session_id=_TEST_SESSION_ID,
+            scenario_id="test-scenario",
             scenario_name="Test Scenario",
             scenario_description="A test scenario",
             deal_status="Agreed",
@@ -316,6 +320,8 @@ class TestIdempotency:
             turns_completed=5,
             warning_count=1,
             participant_summaries=[],
+            evaluation_scores=None,
+            public_conversation=[],
             elapsed_time_ms=42_000,
             share_image_url=_TEST_IMAGE_URL,
             created_at=datetime(2025, 1, 1, tzinfo=timezone.utc),

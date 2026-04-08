@@ -3,6 +3,7 @@
   "name": "The Curfew Debate",
   "description": "A 16-year-old wants to stay out until 1 AM for a friend's birthday party. Two parents negotiate boundaries, safety conditions, and trust-building compromises. A family mediator ensures the conversation stays constructive and age-appropriate.",
   "difficulty": "beginner",
+  "category": "Everyday",
   "agents": [
     {
       "role": "Teenager",

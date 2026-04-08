@@ -171,6 +171,11 @@ class ArenaScenario(BaseModel):
         default="intermediate",
         description="Scenario complexity level — controls dropdown ordering",
     )
+    category: str = Field(
+        default="General",
+        min_length=1,
+        description="Scenario category for Arena dropdown grouping (e.g., 'Sales', 'Corporate', 'Everyday')",
+    )
     agents: list[AgentDefinition] = Field(..., min_length=2)
     toggles: list[ToggleDefinition] = Field(..., min_length=1)
     negotiation_params: NegotiationParams

@@ -3,6 +3,7 @@
   "name": "Does the Easter Bunny Exist?",
   "description": "A skeptical human and a very confident Easter Bunny debate whether the Bunny is real. A Logic Judge referees the argument, flagging logical fallacies and emotional manipulation from both sides. Will reason prevail, or will the Bunny's charm win the day?",
   "difficulty": "fun",
+  "category": "Fun",
   "agents": [
     {
       "role": "Skeptic",

@@ -3,6 +3,7 @@
   "name": "Enterprise Software Partnership",
   "description": "A high-stakes enterprise SaaS negotiation between a CRM account executive under quota pressure and a CTO navigating budget constraints. A procurement compliance advisor enforces strict contractual standards that create real friction.",
   "difficulty": "intermediate",
+  "category": "Corporate",
   "agents": [
     {
       "role": "Seller",

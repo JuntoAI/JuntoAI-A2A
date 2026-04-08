@@ -199,7 +199,7 @@ class TestListScenarios:
         ids = {entry["id"] for entry in result}
         assert ids == {"s1", "s2"}
         for entry in result:
-            assert set(entry.keys()) == {"id", "name", "description", "difficulty"}
+            assert set(entry.keys()) == {"id", "name", "description", "difficulty", "category"}
 
     def test_entries_contain_correct_fields(self, tmp_path):
         _write_scenario(tmp_path, "x.scenario.json", _scenario(id="x", name="X Name", description="X Desc"))
@@ -207,7 +207,7 @@ class TestListScenarios:
         registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
         result = registry.list_scenarios()
 
-        assert result == [{"id": "x", "name": "X Name", "description": "X Desc", "difficulty": "intermediate"}]
+        assert result == [{"id": "x", "name": "X Name", "description": "X Desc", "difficulty": "intermediate", "category": "General"}]
 
 
 # ---------------------------------------------------------------------------

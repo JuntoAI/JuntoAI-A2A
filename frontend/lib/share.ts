@@ -21,9 +21,26 @@ export interface ParticipantSummary {
   summary: string;
 }
 
+export interface EvaluationScores {
+  fairness: number;
+  mutual_respect: number;
+  value_creation: number;
+  satisfaction: number;
+  overall_score: number;
+}
+
+export interface PublicMessage {
+  agent_name: string;
+  role: string;
+  agent_type: string;
+  message: string;
+  turn_number: number;
+}
+
 export interface SharePayload {
   share_slug: string;
   session_id: string;
+  scenario_id: string;
   scenario_name: string;
   scenario_description: string;
   deal_status: "Agreed" | "Blocked" | "Failed";
@@ -32,6 +49,8 @@ export interface SharePayload {
   turns_completed: number;
   warning_count: number;
   participant_summaries: ParticipantSummary[];
+  evaluation_scores: EvaluationScores | null;
+  public_conversation: PublicMessage[];
   elapsed_time_ms: number;
   share_image_url: string;
   created_at: string;

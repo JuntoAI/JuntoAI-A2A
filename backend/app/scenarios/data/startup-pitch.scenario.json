@@ -3,6 +3,7 @@
   "name": "The Startup Pitch",
   "description": "A founder pitches their AI startup to a seasoned venture capitalist, negotiating valuation, equity, board seats, and control provisions. A legal advisor enforces term sheet standards and flags founder-unfriendly clauses.",
   "difficulty": "intermediate",
+  "category": "Corporate",
   "agents": [
     {
       "role": "Founder",

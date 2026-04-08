@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, MessageSquare, AlertTriangle, DollarSign, Users } from "lucide-react";
+import { Clock, MessageSquare, AlertTriangle, DollarSign, Users, Star, BarChart3 } from "lucide-react";
 import { backendFetch } from "@/lib/proxy";
 import type { SharePayload } from "@/lib/share";
 
@@ -138,6 +138,9 @@ export default async function SharePage({ params }: PageProps) {
   }
 
   const status = STATUS_STYLES[data.deal_status];
+  const arenaUrl = data.scenario_id
+    ? `/?scenario=${encodeURIComponent(data.scenario_id)}`
+    : "/";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
@@ -154,12 +157,20 @@ export default async function SharePage({ params }: PageProps) {
             JuntoAI A2A
           </span>
         </Link>
-        <Link
-          href="/"
-          className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        >
-          Try JuntoAI A2A
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={arenaUrl}
+            className="rounded-lg border border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue transition-opacity hover:opacity-80"
+          >
+            Run it yourself
+          </Link>
+          <Link
+            href="https://a2a.juntoai.org/"
+            className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Try JuntoAI
+          </Link>
+        </div>
       </header>
 
       {/* Main card */}
@@ -233,6 +244,76 @@ export default async function SharePage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* Evaluation scores */}
+        {data.evaluation_scores && (
+          <div className="mb-6 border-t border-gray-200 pt-5">
+            <div className="mb-3 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-gray-400" />
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                Negotiation Evaluation
+              </h2>
+              <span className="ml-auto flex items-center gap-1 text-lg font-bold text-brand-charcoal">
+                <Star className="h-4 w-4 text-yellow-500" />
+                {data.evaluation_scores.overall_score}/10
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {(
+                [
+                  ["Fairness", data.evaluation_scores.fairness],
+                  ["Mutual Respect", data.evaluation_scores.mutual_respect],
+                  ["Value Creation", data.evaluation_scores.value_creation],
+                  ["Satisfaction", data.evaluation_scores.satisfaction],
+                ] as const
+              ).map(([label, score]) => (
+                <div key={label} className="rounded-lg bg-white/70 p-3 text-center">
+                  <p className="text-xs text-gray-500">{label}</p>
+                  <p className="text-lg font-bold text-brand-charcoal">{score}<span className="text-sm font-normal text-gray-400">/10</span></p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Public conversation */}
+        {data.public_conversation && data.public_conversation.length > 0 && (
+          <div className="mb-6 border-t border-gray-200 pt-5">
+            <div className="mb-3 flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-gray-400" />
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                Public Conversation
+              </h2>
+            </div>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {data.public_conversation.map((msg, i) => (
+                <div key={i} className="rounded-lg bg-white/70 p-3">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span
+                      className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+                        msg.agent_type === "regulator"
+                          ? "bg-red-100 text-red-700"
+                          : msg.agent_type === "observer"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {msg.agent_name}
+                    </span>
+                    <span className="text-xs text-gray-400">Turn {msg.turn_number}</span>
+                  </div>
+                  <p className="text-sm leading-relaxed text-gray-700">{msg.message}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-center text-xs text-gray-400">
+              Want to see inner thoughts, metrics, and full analysis?{" "}
+              <Link href="https://a2a.juntoai.org/" className="font-medium text-brand-blue hover:underline">
+                Get more insights in JuntoAI
+              </Link>
+            </p>
+          </div>
+        )}
+
         {/* Participant summaries */}
         {data.participant_summaries.length > 0 && (
           <div className="border-t border-gray-200 pt-5">
@@ -267,8 +348,22 @@ export default async function SharePage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Footer CTA */}
-      <div className="mt-8 text-center">
+      {/* Bottom CTAs */}
+      <div className="mt-8 flex flex-col items-center gap-4">
+        <div className="flex items-center gap-3">
+          <Link
+            href={arenaUrl}
+            className="rounded-lg border border-brand-blue px-6 py-3 text-sm font-semibold text-brand-blue transition-opacity hover:opacity-80"
+          >
+            Run it yourself
+          </Link>
+          <Link
+            href="https://a2a.juntoai.org/"
+            className="rounded-lg bg-brand-blue px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Try JuntoAI
+          </Link>
+        </div>
         <p className="text-sm text-gray-500">
           Powered by{" "}
           <Link href="/" className="font-medium text-brand-blue hover:underline">

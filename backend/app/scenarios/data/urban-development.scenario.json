@@ -3,6 +3,7 @@
   "name": "The Urban Development Deal",
   "description": "A high-stakes urban redevelopment negotiation with five parties at the table: a real estate developer proposing a mixed-use tower, a city planning commissioner enforcing zoning and public benefit requirements, a community council president protecting neighborhood interests, an environmental compliance officer reviewing sustainability standards, and a bank investment director deciding whether to finance the project. Every party has veto power in their domain.",
   "difficulty": "advanced",
+  "category": "Corporate",
   "agents": [
     {
       "role": "Developer",

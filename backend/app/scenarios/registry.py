@@ -43,9 +43,17 @@ class ScenarioRegistry:
                 logger.warning(f"Skipping invalid scenario file {path}: {e}")
 
     def list_scenarios(self, email: str | None = None) -> list[dict[str, str]]:
+        def _sort_key(s: ArenaScenario) -> tuple:
+            # Primary: category alphabetical, "General" last
+            cat_key = (1, s.category) if s.category == "General" else (0, s.category)
+            # Secondary: difficulty order
+            diff_key = DIFFICULTY_ORDER.get(s.difficulty, 1)
+            # Tertiary: name
+            return (*cat_key, diff_key, s.name)
+
         sorted_scenarios = sorted(
             self._scenarios.values(),
-            key=lambda s: (DIFFICULTY_ORDER.get(s.difficulty, 1), s.name),
+            key=_sort_key,
         )
         return [
             {
@@ -53,6 +61,7 @@ class ScenarioRegistry:
                 "name": s.name,
                 "description": s.description,
                 "difficulty": s.difficulty,
+                "category": s.category,
             }
             for s in sorted_scenarios
             if self._user_can_access(s, email)

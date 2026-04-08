@@ -15,7 +15,9 @@ from app.db import get_session_store, get_share_store
 from app.exceptions import ShareNotFoundError
 from app.models.share import (
     CreateShareResponse,
+    EvaluationScores,
     ParticipantSummary,
+    PublicMessage,
     SharePayload,
     SocialPostText,
 )
@@ -178,9 +180,16 @@ def _build_share_payload(
     duration_seconds = session_doc.get("duration_seconds", 0) or 0
     elapsed_time_ms = int(duration_seconds * 1000)
 
+    # Evaluation scores — extract from evaluation report if present
+    evaluation_scores = _extract_evaluation_scores(session_doc)
+
+    # Public conversation — extract public_message fields from history
+    public_conversation = _extract_public_conversation(session_doc)
+
     return SharePayload(
         share_slug=slug,
         session_id=session_doc.get("session_id", ""),
+        scenario_id=session_doc.get("scenario_id", ""),
         scenario_name=scenario_name,
         scenario_description=scenario_description,
         deal_status=deal_status,
@@ -189,6 +198,8 @@ def _build_share_payload(
         turns_completed=max(0, int(session_doc.get("turn_count", 0) or 0)),
         warning_count=max(0, int(session_doc.get("warning_count", 0) or 0)),
         participant_summaries=participant_summaries,
+        evaluation_scores=evaluation_scores,
+        public_conversation=public_conversation,
         elapsed_time_ms=elapsed_time_ms,
         share_image_url="",  # placeholder — updated after image generation
         created_at=datetime.now(timezone.utc),
@@ -207,6 +218,68 @@ def _extract_outcome_text(session_doc: dict) -> str:
     else:
         max_turns = session_doc.get("max_turns", 0)
         return f"Negotiation failed after {max_turns} turns without agreement"
+
+
+def _extract_evaluation_scores(session_doc: dict) -> EvaluationScores | None:
+    """Extract evaluation dimension scores from the session's evaluation report.
+
+    Returns None if no evaluation data is present.
+    """
+    evaluation = session_doc.get("evaluation")
+    if not isinstance(evaluation, dict):
+        return None
+
+    dimensions = evaluation.get("dimensions")
+    if not isinstance(dimensions, dict):
+        return None
+
+    overall_score = evaluation.get("overall_score")
+    if overall_score is None:
+        return None
+
+    try:
+        return EvaluationScores(
+            fairness=int(dimensions.get("fairness", 5)),
+            mutual_respect=int(dimensions.get("mutual_respect", 5)),
+            value_creation=int(dimensions.get("value_creation", 5)),
+            satisfaction=int(dimensions.get("satisfaction", 5)),
+            overall_score=int(overall_score),
+        )
+    except (ValueError, TypeError):
+        return None
+
+
+def _extract_public_conversation(session_doc: dict) -> list[PublicMessage]:
+    """Extract public messages from session history.
+
+    Only includes public_message fields — never inner_thought, reasoning,
+    or other private agent data.
+    """
+    history = session_doc.get("history")
+    if not isinstance(history, list):
+        return []
+
+    messages: list[PublicMessage] = []
+    for entry in history:
+        if not isinstance(entry, dict):
+            continue
+        content = entry.get("content")
+        if not isinstance(content, dict):
+            continue
+        public_msg = content.get("public_message")
+        if not public_msg or not isinstance(public_msg, str):
+            continue
+        messages.append(
+            PublicMessage(
+                agent_name=entry.get("name", entry.get("role", "Unknown")),
+                role=entry.get("role", "Unknown"),
+                agent_type=entry.get("agent_type", "negotiator"),
+                message=public_msg,
+                turn_number=entry.get("turn_number", 0),
+            )
+        )
+
+    return messages
 
 
 def _build_image_prompt(payload: SharePayload) -> str:
