@@ -700,6 +700,13 @@ def _reconstruct_events_from_session(session_id: str, raw_doc: dict) -> list:
     if evaluation and isinstance(evaluation, dict):
         summary["evaluation"] = evaluation
 
+    # Compute usage summary from persisted agent_calls telemetry (Spec 145).
+    # This covers old sessions that were completed before the live-stream
+    # fix, as well as replayed sessions viewed from history.
+    summary["usage_summary"] = compute_usage_summary(
+        raw_doc.get("agent_calls", [])
+    )
+
     events.append(NegotiationCompleteEvent(
         event_type="negotiation_complete",
         session_id=session_id,
