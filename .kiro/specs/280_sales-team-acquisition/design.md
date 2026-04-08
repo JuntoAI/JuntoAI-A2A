@@ -2,13 +2,14 @@
 
 ## Overview
 
-This feature delivers three deliverables to position JuntoAI's A2A engine for sales team acquisition:
+This feature delivers four deliverables to position JuntoAI's A2A engine for sales team acquisition:
 
-1. **4 Sales Scenario JSONs** — Drop-in `.scenario.json` files conforming to the existing `ArenaScenario` schema. No engine code changes.
-2. **`/sales` Landing Page** — A public (unauthenticated) Next.js route with sales-specific messaging, value props, scenario showcase, and CTA to the Arena.
-3. **Demo Video Storyline** — A markdown shot list for a 60-second LinkedIn video featuring a sales simulation in the Glass Box view.
+1. **4 Sales Scenario JSONs** — Drop-in `.scenario.json` files conforming to the existing `ArenaScenario` schema.
+2. **Scenario Category Grouping** — A new `category` field on `ArenaScenario`, exposed via the API, and used by the frontend `ScenarioSelector` to group scenarios into `<optgroup>` sections (e.g., "Sales", "Corporate", "Everyday").
+3. **`/sales` Landing Page** — A public (unauthenticated) Next.js route with sales-specific messaging, value props, scenario showcase, and CTA to the Arena.
+4. **Demo Video Storyline** — A markdown shot list for a 60-second LinkedIn video featuring a sales simulation in the Glass Box view.
 
-All three deliverables are content-heavy with minimal code. The only new code is a single Next.js page component at `frontend/app/sales/page.tsx`.
+All four deliverables are content-heavy with minimal code. The code changes are: one optional field on the backend model, one field added to the API response, the frontend `ScenarioSelector` refactored to use `<optgroup>`, and a single Next.js page component at `frontend/app/sales/page.tsx`.
 
 ## Architecture
 
@@ -35,8 +36,8 @@ graph TD
 
 The architecture is intentionally flat:
 
-- **Backend**: Zero code changes. The `ScenarioRegistry._discover()` method already globs `*.scenario.json` from the data directory. Dropping files in is the entire integration.
-- **Frontend**: One new route at `frontend/app/sales/page.tsx` (server component). No new API calls, no new client state. Reuses `WaitlistForm` for lead capture.
+- **Backend**: One optional field added to `ArenaScenario` (`category: str`), exposed in the `list_scenarios` response. The `ScenarioRegistry._discover()` method already globs `*.scenario.json` from the data directory. Dropping files in is the entire integration.
+- **Frontend**: `ScenarioSelector` refactored to group by `category` using `<optgroup>`. One new route at `frontend/app/sales/page.tsx` (server component). No new API calls, no new client state. Reuses `WaitlistForm` for lead capture.
 - **Docs**: One markdown file. No tooling dependencies.
 
 ## Components and Interfaces
@@ -73,7 +74,58 @@ Each file conforms to the `ArenaScenario` Pydantic V2 model defined in `backend/
 - Instructions explicitly state "Do NOT reveal [the hidden information] directly"
 - Toggles create asymmetric information that visibly alters negotiation dynamics
 
-### Deliverable 2: `/sales` Landing Page
+### Deliverable 2: Scenario Category Grouping
+
+**Backend changes:**
+
+1. **`backend/app/scenarios/models.py`** — Add optional `category` field to `ArenaScenario`:
+   ```python
+   category: str = Field(
+       default="General",
+       min_length=1,
+       description="Scenario category for Arena dropdown grouping (e.g., 'Sales', 'Corporate', 'Everyday')",
+   )
+   ```
+   Default `"General"` ensures backward compatibility — existing scenarios without the field still validate.
+
+2. **`backend/app/scenarios/registry.py`** — Add `category` to the `list_scenarios` response dict:
+   ```python
+   {
+       "id": s.id,
+       "name": s.name,
+       "description": s.description,
+       "difficulty": s.difficulty,
+       "category": s.category,
+   }
+   ```
+   Sorting: primary sort by category (alphabetical, "General" last), secondary by difficulty order, tertiary by name.
+
+3. **Existing scenario JSONs** — Add `"category"` field to all 9 existing files:
+   - `talent-war`, `ma-buyout`, `b2b-sales`, `startup-pitch`, `urban-development`, `plg-vs-slg` → `"Corporate"`
+   - `family-curfew`, `freelance-gig` → `"Everyday"`
+   - `easter-bunny-debate` → `"Fun"`
+
+**Frontend changes:**
+
+4. **`frontend/lib/api.ts`** — Add `category` to `ScenarioSummary`:
+   ```typescript
+   export interface ScenarioSummary {
+     id: string;
+     name: string;
+     description: string;
+     difficulty: "beginner" | "intermediate" | "advanced" | "fun";
+     category: string;
+   }
+   ```
+
+5. **`frontend/components/arena/ScenarioSelector.tsx`** — Refactor to group by category:
+   - Group `scenarios` array by `category` field
+   - Render each group as an `<optgroup label="Sales">` / `<optgroup label="Corporate">` etc.
+   - Within each group, keep existing `[Difficulty] Name` format
+   - Sort groups alphabetically, with `"General"` last
+   - Keep "My Scenarios" `<optgroup>` and "Build Your Own" at the bottom
+
+### Deliverable 3: `/sales` Landing Page
 
 **File**: `frontend/app/sales/page.tsx`
 
@@ -130,7 +182,7 @@ export const metadata: Metadata = {
 
 **No new components needed.** The page is a single server component with static content and one imported client component (`WaitlistForm`).
 
-### Deliverable 3: Demo Video Storyline
+### Deliverable 4: Demo Video Storyline
 
 **File**: `docs/sales-demo-storyline.md`
 
@@ -146,9 +198,9 @@ A markdown document with shot-by-shot direction for a 60-second video. Features 
 
 ## Data Models
 
-No new data models. All four scenarios use the existing `ArenaScenario` schema without modification.
+One minor schema addition: an optional `category: str` field on `ArenaScenario` (default `"General"`). This is backward compatible — existing scenarios without the field pass validation unchanged.
 
-The schema already supports everything needed:
+The schema already supports everything else needed:
 - `AgentDefinition` with `persona_prompt`, `goals`, `budget`, `tone`, `output_fields`, `model_id`, `example_prompt`
 - `ToggleDefinition` with `hidden_context_payload` (arbitrary dict)
 - `NegotiationParams` with `value_format` (supports `"number"` for the discovery scenario's qualification score) and `value_label`
@@ -190,13 +242,16 @@ def test_sales_scenario_validates(filename):
     scenario = ArenaScenario.model_validate_json(path.read_text())
     assert len(scenario.agents) >= 2
     assert len(scenario.toggles) >= 2
+    assert scenario.category == "Sales"
     assert any(a.type == "negotiator" for a in scenario.agents)
     assert any(a.type == "regulator" for a in scenario.agents)
 ```
 
-**Structural assertions per scenario** — Verify agent counts, roles, types, max_turns ranges, and toggle counts match requirements.
+**Structural assertions per scenario** — Verify agent counts, roles, types, max_turns ranges, toggle counts, and category values match requirements.
 
 **Registry discovery test** — Instantiate `ScenarioRegistry`, assert all 4 new scenario IDs are present.
+
+**Category grouping tests** — Verify `list_scenarios` response includes `category` field, verify existing scenarios have correct categories, verify sorting (categories alphabetical with "General" last).
 
 ### Frontend Tests (Vitest + RTL)
 
@@ -209,6 +264,12 @@ def test_sales_scenario_validates(filename):
 - No redirect behavior (unlike main page)
 
 **Metadata test** — Import the `metadata` export, assert `title` and `openGraph` fields contain sales-specific content.
+
+**ScenarioSelector grouping test** — Render `ScenarioSelector` with scenarios that have different categories, assert:
+- `<optgroup>` elements are rendered with correct labels
+- Scenarios within each group retain `[Difficulty]` prefix
+- "My Scenarios" and "Build Your Own" remain at the bottom
+- Groups are sorted alphabetically with "General" last
 
 ### Manual Testing
 

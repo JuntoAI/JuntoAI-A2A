@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Sales team acquisition package for the JuntoAI A2A negotiation engine. The thesis: sales calls are structured negotiations — exactly what the engine was built for. This spec covers three deliverables: (1) four polished, drop-in sales scenario JSON files targeting the highest-value B2B call types, (2) a public sales landing page at `/sales` with sales-team-specific messaging and CTAs, and (3) a detailed 60-second demo video storyline/shot list for LinkedIn distribution. No engine code changes required — scenarios use the existing `ArenaScenario` schema, and the landing page is a standalone Next.js route.
+Sales team acquisition package for the JuntoAI A2A negotiation engine. The thesis: sales calls are structured negotiations — exactly what the engine was built for. This spec covers four deliverables: (1) four polished, drop-in sales scenario JSON files targeting the highest-value B2B call types, (2) a `category` field on the `ArenaScenario` schema so the Arena dropdown groups scenarios by type (e.g., "Sales", "Corporate", "Everyday") using `<optgroup>` elements, (3) a public sales landing page at `/sales` with sales-team-specific messaging and CTAs, and (4) a detailed 60-second demo video storyline/shot list for LinkedIn distribution.
 
 ## Glossary
 
@@ -15,6 +15,8 @@ Sales team acquisition package for the JuntoAI A2A negotiation engine. The thesi
 - **CTA**: Call-to-action UI element directing users to try sales scenarios or sign up
 - **BATNA**: Best Alternative To a Negotiated Agreement — a negotiation concept representing a party's fallback option
 - **Scenario_Registry**: The backend module that discovers and loads `.scenario.json` files from the scenarios data directory
+- **Scenario_Category**: A string label on each scenario (e.g., `"Sales"`, `"Corporate"`, `"Everyday"`) used to group scenarios in the Arena dropdown via `<optgroup>` elements
+- **ScenarioSelector**: The frontend React component (`frontend/components/arena/ScenarioSelector.tsx`) that renders the scenario dropdown in the Arena
 
 ## Requirements
 
@@ -98,7 +100,24 @@ Sales team acquisition package for the JuntoAI A2A negotiation engine. The thesi
 9. WHEN a user is in local mode, THE Sales_Landing_Page SHALL still be accessible at `/sales` (no redirect behavior like the main landing page)
 10. THE Sales_Landing_Page SHALL include a waitlist/signup form or link to the main waitlist for lead capture
 
-### Requirement 6: Demo Video Storyline
+### Requirement 6: Scenario Category Grouping
+
+**User Story:** As a user browsing the Arena dropdown, I want scenarios grouped by category (e.g., "Sales", "Corporate", "Everyday") so that I can quickly find scenarios relevant to my use case instead of scrolling through a flat list.
+
+#### Acceptance Criteria
+
+1. THE ArenaScenario_Schema SHALL include an optional `category` field of type `str` with a default value of `"General"`
+2. WHEN the `category` field is omitted from a Scenario_JSON, THE Scenario_Registry SHALL treat the scenario as belonging to the `"General"` category (backward compatible)
+3. THE Scenario_Registry `list_scenarios` method SHALL include the `category` field in each scenario summary returned by the `/api/v1/scenarios` endpoint
+4. THE four new sales scenarios SHALL have `category` set to `"Sales"`
+5. THE existing scenarios SHALL be updated with appropriate `category` values: `talent-war` → `"Corporate"`, `ma-buyout` → `"Corporate"`, `b2b-sales` → `"Corporate"`, `family-curfew` → `"Everyday"`, `freelance-gig` → `"Everyday"`, `startup-pitch` → `"Corporate"`, `urban-development` → `"Corporate"`, `plg-vs-slg` → `"Corporate"`, `easter-bunny-debate` → `"Fun"`
+6. THE frontend `ScenarioSummary` interface SHALL include a `category` field of type `string`
+7. THE ScenarioSelector component SHALL group scenarios by `category` using HTML `<optgroup>` elements, with each `<optgroup>` label set to the category name
+8. WITHIN each `<optgroup>`, scenarios SHALL retain the existing `[Difficulty]` prefix label format (e.g., `[Intermediate] SaaS Negotiation`)
+9. THE ScenarioSelector component SHALL sort category groups alphabetically, except `"General"` which SHALL appear last as a fallback group
+10. THE "My Scenarios" `<optgroup>` and "Build Your Own Scenario" option SHALL remain at the bottom of the dropdown, after all category groups
+
+### Requirement 7: Demo Video Storyline
 
 **User Story:** As a marketing team member, I want a detailed 60-second demo video script with shot-by-shot direction, so that a video editor can produce a compelling LinkedIn video showing a sales simulation in the Glass Box view.
 
