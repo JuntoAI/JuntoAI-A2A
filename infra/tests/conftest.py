@@ -53,6 +53,11 @@ def cloud_build_dir(modules_root):
 
 
 @pytest.fixture(scope="session")
+def alerting_dir(modules_root):
+    return os.path.join(modules_root, "alerting")
+
+
+@pytest.fixture(scope="session")
 def repo_root(infra_root):
     """Absolute path to the repository root (parent of infra/)."""
     return os.path.abspath(os.path.join(infra_root, os.pardir))
