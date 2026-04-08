@@ -8,13 +8,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.exceptions import DatabaseConnectionError, SessionNotFoundError
+from app.exceptions import DatabaseConnectionError, SessionNotFoundError, ShareNotFoundError
 from app.routers.auth import router as auth_router
 from app.routers.builder import router as builder_router
 from app.routers.health import router as health_router
 from app.routers.models import router as models_router
 from app.routers.negotiation import router as negotiation_router
 from app.routers.profile import router as profile_router
+from app.routers.share import router as share_router
 from app.scenarios.router import router as scenarios_router
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ api_router.include_router(profile_router)
 api_router.include_router(auth_router)
 api_router.include_router(scenarios_router)
 api_router.include_router(builder_router)
+api_router.include_router(share_router)
 
 if settings.ADMIN_PASSWORD:
     from app.routers.admin import router as admin_router
@@ -73,3 +75,9 @@ async def database_connection_handler(
 ):
     """Return 503 when the database is unavailable."""
     return JSONResponse(status_code=503, content={"detail": "Database unavailable"})
+
+
+@app.exception_handler(ShareNotFoundError)
+async def share_not_found_handler(request: Request, exc: ShareNotFoundError):
+    """Return 404 when a share is not found."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})

@@ -1,4 +1,4 @@
-"""Async SQLite client for negotiation session persistence (local mode)."""
+"""Async SQLite clients for negotiation session and share persistence (local mode)."""
 
 import json
 import os
@@ -8,6 +8,7 @@ import aiosqlite
 
 from app.exceptions import DatabaseConnectionError, SessionNotFoundError
 from app.models.negotiation import NegotiationStateModel
+from app.models.share import SharePayload
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS negotiation_sessions (
@@ -141,5 +142,95 @@ class SQLiteSessionClient:
                 if doc.get("owner_email") == owner_email:
                     results.append(doc)
             return results
+        finally:
+            await conn.close()
+
+
+_CREATE_SHARE_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS shared_negotiations (
+    share_slug TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL UNIQUE,
+    data JSON NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+"""
+
+_CREATE_SHARE_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_shared_session ON shared_negotiations(session_id)
+"""
+
+
+class SQLiteShareClient:
+    """Implements the ``ShareStore`` protocol using aiosqlite.
+
+    The constructor is synchronous. Table creation happens lazily on the
+    first database operation via ``_ensure_share_table()``.
+    """
+
+    def __init__(self, db_path: str = "data/juntoai.db") -> None:
+        self._db_path = db_path
+        self._table_ready = False
+
+    async def _get_connection(self) -> aiosqlite.Connection:
+        """Open a connection and ensure the share table exists."""
+        try:
+            parent = os.path.dirname(self._db_path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            conn = await aiosqlite.connect(self._db_path)
+        except Exception as e:
+            raise DatabaseConnectionError(
+                f"Failed to open SQLite database at {self._db_path}: {e}"
+            ) from e
+
+        if not self._table_ready:
+            await conn.execute(_CREATE_SHARE_TABLE_SQL)
+            await conn.execute(_CREATE_SHARE_INDEX_SQL)
+            await conn.commit()
+            self._table_ready = True
+
+        return conn
+
+    async def create_share(self, payload: SharePayload) -> None:
+        """Serialize and insert a new share row."""
+        conn = await self._get_connection()
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            await conn.execute(
+                "INSERT INTO shared_negotiations (share_slug, session_id, data, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (payload.share_slug, payload.session_id, payload.model_dump_json(), now),
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
+    async def get_share(self, share_slug: str) -> SharePayload | None:
+        """Read and deserialize a share by slug. Returns None if missing."""
+        conn = await self._get_connection()
+        try:
+            cursor = await conn.execute(
+                "SELECT data FROM shared_negotiations WHERE share_slug = ?",
+                (share_slug,),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return None
+            return SharePayload.model_validate_json(row[0])
+        finally:
+            await conn.close()
+
+    async def get_share_by_session(self, session_id: str) -> SharePayload | None:
+        """Find a share by session_id. Returns None if missing."""
+        conn = await self._get_connection()
+        try:
+            cursor = await conn.execute(
+                "SELECT data FROM shared_negotiations WHERE session_id = ?",
+                (session_id,),
+            )
+            row = await cursor.fetchone()
+            if row is None:
+                return None
+            return SharePayload.model_validate_json(row[0])
         finally:
             await conn.close()

@@ -1,7 +1,8 @@
-"""Async Firestore client for negotiation session persistence."""
+"""Async Firestore clients for negotiation session and share persistence."""
 
 from app.exceptions import SessionNotFoundError
 from app.models.negotiation import NegotiationStateModel
+from app.models.share import SharePayload
 
 
 class FirestoreSessionClient:
@@ -60,3 +61,37 @@ class FirestoreSessionClient:
         async for doc in query.stream():
             docs.append(doc.to_dict())
         return docs
+
+
+class FirestoreShareClient:
+    """Wraps a shared Firestore AsyncClient for share CRUD operations."""
+
+    COLLECTION = "shared_negotiations"
+
+    def __init__(self, db=None, project: str | None = None) -> None:
+        if db is not None:
+            self._db = db
+        else:
+            from google.cloud import firestore
+
+            self._db = firestore.AsyncClient(project=project)
+        self._collection = self._db.collection(self.COLLECTION)
+
+    async def create_share(self, payload: SharePayload) -> None:
+        """Write a new share document keyed by share_slug."""
+        doc_ref = self._collection.document(payload.share_slug)
+        await doc_ref.set(payload.model_dump())
+
+    async def get_share(self, share_slug: str) -> SharePayload | None:
+        """Read a share document by slug. Returns None if missing."""
+        doc = await self._collection.document(share_slug).get()
+        if not doc.exists:
+            return None
+        return SharePayload(**doc.to_dict())
+
+    async def get_share_by_session(self, session_id: str) -> SharePayload | None:
+        """Find a share document by session_id. Returns None if missing."""
+        query = self._collection.where("session_id", "==", session_id).limit(1)
+        async for doc in query.stream():
+            return SharePayload(**doc.to_dict())
+        return None

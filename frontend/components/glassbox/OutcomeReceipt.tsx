@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { formatValue, type ValueFormat } from "@/lib/valueFormat";
 import UsageSummaryCard from "./UsageSummaryCard";
+import SharePanel from "./SharePanel";
 import type { UsageSummary } from "@/types/sse";
 
 export interface OutcomeReceiptProps {
@@ -17,6 +18,8 @@ export interface OutcomeReceiptProps {
   valueFormat?: ValueFormat;
   valueLabel?: string;
   onDownloadTranscript?: () => void;
+  sessionId?: string;
+  email?: string;
 }
 
 const STATUS_CONFIG: Record<
@@ -52,6 +55,8 @@ export default function OutcomeReceipt({
   valueFormat = "currency",
   valueLabel = "Price",
   onDownloadTranscript,
+  sessionId,
+  email,
 }: OutcomeReceiptProps) {
   const router = useRouter();
   const config = STATUS_CONFIG[dealStatus];
@@ -365,6 +370,11 @@ export default function OutcomeReceipt({
             </button>
           )}
         </div>
+
+        {/* Share Panel — only when session_id and email are available */}
+        {sessionId && email && (
+          <SharePanel sessionId={sessionId} email={email} />
+        )}
       </div>
     </div>
   );

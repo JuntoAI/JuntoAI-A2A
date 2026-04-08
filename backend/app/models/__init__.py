@@ -34,6 +34,13 @@ from app.models.health import HealthResponse
 from app.models.history import DayGroup, SessionHistoryItem, SessionHistoryResponse
 from app.models.negotiation import NegotiationStateModel
 from app.models.profile import ProfileDocument, ProfileResponse, ProfileUpdateRequest
+from app.models.share import (
+    CreateShareRequest,
+    CreateShareResponse,
+    ParticipantSummary,
+    SharePayload,
+    SocialPostText,
+)
 
 __all__ = [
     "DayGroup",
@@ -68,4 +75,9 @@ __all__ = [
     "SimulationListResponse",
     "UserListParams",
     "SimulationListParams",
+    "CreateShareRequest",
+    "CreateShareResponse",
+    "ParticipantSummary",
+    "SharePayload",
+    "SocialPostText",
 ]

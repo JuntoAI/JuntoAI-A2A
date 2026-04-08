@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING
 from app.config import settings
 
 if TYPE_CHECKING:
-    from app.db.base import SessionStore
+    from app.db.base import SessionStore, ShareStore
 
 _client: SessionStore | None = None
+_share_client: ShareStore | None = None
 _firestore_db = None
 _profile_client = None
 _custom_scenario_store = None
@@ -86,6 +87,25 @@ def get_custom_scenario_store():
 
             _custom_scenario_store = CustomScenarioStore(profile_client=get_profile_client())
     return _custom_scenario_store
+
+
+def get_share_store() -> ShareStore:
+    """Return a module-level singleton ShareStore implementation.
+
+    - ``RUN_MODE=local``  → ``SQLiteShareClient``
+    - ``RUN_MODE=cloud``  → ``FirestoreShareClient``
+    """
+    global _share_client
+    if _share_client is None:
+        if settings.RUN_MODE == "local":
+            from app.db.sqlite_client import SQLiteShareClient
+
+            _share_client = SQLiteShareClient(db_path=settings.SQLITE_DB_PATH)
+        else:
+            from app.db.firestore_client import FirestoreShareClient
+
+            _share_client = FirestoreShareClient(db=get_firestore_db())
+    return _share_client
 
 
 # Backward-compat alias (deprecated) — keeps existing call sites working

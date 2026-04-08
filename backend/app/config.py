@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://ollama:11434"
     OLLAMA_MODEL: str = "llama3.1"
 
+    # --- Cloud-only: Share image storage ---
+    GCS_BUCKET_NAME: str = ""
+    VERTEX_AI_LOCATION: str = "europe-west1"
+
     # --- Cloud-only: Admin dashboard ---
     ADMIN_PASSWORD: str = ""
 

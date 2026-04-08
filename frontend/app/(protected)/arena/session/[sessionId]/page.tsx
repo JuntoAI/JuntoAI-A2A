@@ -226,6 +226,8 @@ export default function GlassBoxPage() {
             valueFormat={valueFormat}
             valueLabel={valueLabel}
             onDownloadTranscript={handleDownloadTranscript}
+            sessionId={sessionId as string}
+            email={email ?? undefined}
           />
         </div>
       )}

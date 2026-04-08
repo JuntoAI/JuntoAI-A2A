@@ -17,5 +17,13 @@ class DatabaseConnectionError(Exception):
         super().__init__(message)
 
 
+class ShareNotFoundError(Exception):
+    """Raised when a share_slug does not exist in the share store."""
+
+    def __init__(self, share_slug: str) -> None:
+        self.share_slug = share_slug
+        super().__init__(f"Share {share_slug} not found")
+
+
 # Backward compat alias (deprecated)
 FirestoreConnectionError = DatabaseConnectionError

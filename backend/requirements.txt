@@ -7,6 +7,7 @@ pydantic-settings>=2.0.0
 # GCP
 google-cloud-firestore>=2.16.0
 google-cloud-aiplatform>=1.60.0
+google-cloud-storage>=2.14.0
 
 # AI Orchestration
 langgraph>=0.2.0
