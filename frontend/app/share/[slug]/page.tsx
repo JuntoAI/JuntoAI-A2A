@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { Clock, MessageSquare, AlertTriangle, DollarSign, Users } from "lucide-react";
 import { backendFetch } from "@/lib/proxy";
 import type { SharePayload } from "@/lib/share";
@@ -140,6 +141,27 @@ export default async function SharePage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Branded header */}
+      <header className="mb-6 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/juntoai_logo_500x500.png"
+            alt="JuntoAI logo"
+            width={32}
+            height={32}
+          />
+          <span className="text-lg font-semibold text-brand-charcoal">
+            JuntoAI A2A
+          </span>
+        </Link>
+        <Link
+          href="/"
+          className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+        >
+          Try JuntoAI A2A
+        </Link>
+      </header>
+
       {/* Main card */}
       <div className={`rounded-xl border-2 ${status.border} ${status.bg} p-6 sm:p-8`}>
         {/* Status badge + scenario name */}
