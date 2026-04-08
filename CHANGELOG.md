@@ -6,6 +6,24 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## GCP Telegram Alerting Pipeline (Spec 300) — 2026-04-08
+
+- Terraform alerting module at `infra/modules/alerting/` with Terragrunt wrapper, GCS backend, and GCP API enablement (monitoring, cloudfunctions, pubsub, cloudbuild)
+- Pub/Sub notification topic (`juntoai-alerting-notifications`) with monitoring service account publisher grant and Cloud Function subscription
+- Dedicated `alerting-notifier-sa` service account with least-privilege IAM: pubsub.subscriber, cloudfunctions.invoker, secretmanager.secretAccessor scoped to Telegram secrets
+- Secret Manager secrets for `telegram-bot-token` and `telegram-chat-id` with IAM bindings
+- Log-based metrics: `backend/error-log-count` (severity >= ERROR), `backend/fatal-log-count` (severity = CRITICAL), `frontend/error-log-count` (severity >= ERROR)
+- Log-based alerting policies: Backend Error Log Rate (>5/5min, medium), Backend Fatal Log (>0/1min, critical), Frontend Error Log Rate (>5/5min, medium)
+- Cloud Run metric alerting policies: Backend High CPU (>80%, 2 consecutive periods), Backend High Memory (>85%), Backend/Frontend High Error Rate (5xx >10), Backend Instance Count Spike (>10)
+- All policies: configurable thresholds via Terraform variables, auto_close 1800s, notification rate limit 300s, absent data = not firing, notifications on open and close
+- Cloud Function (2nd gen, Python 3.11+, 256MB, 60s timeout): Pub/Sub event trigger with message type detection (alerting_policy, cloud_build, unknown)
+- Telegram notifier: 🚨 ALARM / ✅ RESOLVED for alerting incidents, 🔴 Build FAILED for CI/CD failures, HTML formatting via sendMessage API
+- Cloud Build failure notifications from `cloud-builds` topic — SUCCESS events discarded, failures include trigger name, branch, commit SHA, duration, log URL
+- Secret caching, non-2xx retry via exception, unknown schema discarding with warning log
+- Structural tests for module files, variables, outputs, and Terragrunt config
+- Unit tests for detect_message_type, parse/format functions, send_telegram_message (mocked HTTP), SUCCESS discarding, unknown schema handling
+- Property tests (6 Hypothesis properties): message type detection correctness, SUCCESS event discarding, alerting parse round-trip, Cloud Build parse round-trip, alerting format completeness, Cloud Build format completeness
+
 ## Negotiation Completion Notification (Spec 290) — 2026-04-08
 
 - Browser notification via Web Notification API when a negotiation reaches a terminal state (Agreed, Blocked, Failed) while the user's tab is hidden

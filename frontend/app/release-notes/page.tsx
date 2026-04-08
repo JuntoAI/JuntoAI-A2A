@@ -9,6 +9,28 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "GCP Telegram Alerting Pipeline",
+    specId: "300",
+    date: "2026-04-08",
+    items: [
+      "Terraform alerting module at infra/modules/alerting/ with Terragrunt wrapper, GCS backend, and GCP API enablement",
+      "Pub/Sub notification topic (juntoai-alerting-notifications) with monitoring service account publisher grant and Cloud Function subscription",
+      "Dedicated alerting-notifier-sa service account with least-privilege IAM: pubsub.subscriber, cloudfunctions.invoker, secretmanager.secretAccessor",
+      "Secret Manager secrets for telegram-bot-token and telegram-chat-id with scoped IAM bindings",
+      "Log-based metrics for backend error/fatal and frontend error log counts from Cloud Run structured logs",
+      "Log-based alerting policies: Backend Error Log Rate (>5/5min), Backend Fatal Log (>0/1min), Frontend Error Log Rate (>5/5min) with severity labels",
+      "Cloud Run metric alerting policies: Backend High CPU (>80%), Backend High Memory (>85%), Backend/Frontend High Error Rate (5xx >10), Backend Instance Count Spike",
+      "All policies: configurable thresholds via Terraform variables, auto_close 1800s, notification rate limit 300s, absent data = not firing, open + close notifications",
+      "Cloud Function (2nd gen, Python 3.11+, 256MB, 60s timeout) with Pub/Sub event trigger and message type detection",
+      "Telegram notifier: alarm/resolved emoji prefixes for alerting incidents, build failed prefix for CI/CD failures, HTML formatting via sendMessage API",
+      "Cloud Build failure notifications from cloud-builds topic — SUCCESS events discarded, failures include trigger, branch, commit SHA, duration, log URL",
+      "Secret caching, non-2xx retry via exception, unknown schema discarding with warning log",
+      "Structural tests for module files, variables, outputs, and Terragrunt config",
+      "Unit tests for message type detection, parse/format functions, send_telegram_message (mocked HTTP), SUCCESS discarding, unknown schema handling",
+      "Property tests (6 Hypothesis properties): detection correctness, SUCCESS discarding, alerting/Cloud Build parse round-trip, format completeness",
+    ],
+  },
+  {
     title: "Negotiation Completion Notification",
     specId: "290",
     date: "2026-04-08",
