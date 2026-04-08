@@ -6,6 +6,23 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Social Sharing (Spec 192) — 2026-04-08
+
+- Completed negotiation replay: terminal sessions stream reconstructed SSE events from persisted history without re-running the LangGraph orchestrator
+- Glass Box replay mode (`?mode=replay`): hides Stop Negotiation button and warm-up spinner, shows "Loading negotiation…" instead of "Connecting…"
+- `SharePayload` Pydantic V2 model with 8-char alphanumeric slug, session metadata, participant summaries, and deal outcome — excludes raw history, hidden context, and custom prompts
+- `ShareStore` protocol with `FirestoreShareClient` (`shared_negotiations` collection) and `SQLiteShareClient` implementations — idempotent creation returns existing slug for same session_id
+- Share image generation via Vertex AI Imagen with 15s timeout; fallback to static branded placeholder on failure or timeout
+- `SocialPostText` model with platform-specific variants: Twitter ≤280 chars (truncated preserving URL + branding + hashtags), LinkedIn/Facebook ≤3000 chars
+- Social post composition: one-sentence summary, participant roles, public share URL, "Created with @JuntoAI A2A" branding, #JuntoAI #A2A #AIAgents #Negotiation hashtags
+- Share API: `POST /api/v1/share` (session ownership validation, lazy payload creation) and `GET /api/v1/share/{slug}` (public, no auth)
+- SharePanel on Outcome Receipt (`data-testid="share-panel"`): LinkedIn, X/Twitter, Facebook, Copy Link (clipboard API with selectable text fallback), and Email (mailto with pre-filled subject/body)
+- Lazy share creation: first button click triggers API call, caches response; loading state disables all buttons during creation
+- Public share page at `/share/{slug}`: unauthenticated, server-rendered with Open Graph and Twitter Card meta tags (og:title, og:description ≤200 chars, og:image, twitter:card=summary_large_image)
+- JuntoAI branded header on share page with "Try JuntoAI A2A" CTA linking to landing page
+- Responsive layout: horizontal share buttons ≥1024px, 2-column grid on mobile; share page renders 320px–1920px
+- Property tests (8 Hypothesis/fast-check properties): SharePayload round-trip, slug format/uniqueness, idempotent creation, sensitive data exclusion, social post required elements, length constraints, mailto composition, meta tag generation
+
 ## LLM Usage Summary (Spec 190) — 2026-04-07
 
 - `compute_usage_summary(agent_calls)` pure aggregator: groups by `agent_role` and `model_id`, computes per-persona stats, per-model stats, session-wide totals, and `negotiation_duration_ms` from timestamp range

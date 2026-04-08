@@ -9,6 +9,27 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Social Sharing",
+    specId: "192",
+    date: "2026-04-08",
+    items: [
+      "Completed negotiation replay: terminal sessions stream reconstructed SSE events from persisted history without re-running the orchestrator",
+      "Glass Box replay mode (?mode=replay): hides Stop Negotiation button and warm-up spinner, shows Loading negotiation instead of Connecting",
+      "SharePayload Pydantic V2 model with 8-char alphanumeric slug, session metadata, participant summaries, and deal outcome — excludes raw history and sensitive data",
+      "ShareStore protocol with FirestoreShareClient and SQLiteShareClient — idempotent creation returns existing slug for same session_id",
+      "Share image generation via Vertex AI Imagen with 15s timeout; fallback to static branded placeholder on failure",
+      "SocialPostText model: Twitter ≤280 chars (truncated preserving URL + branding + hashtags), LinkedIn/Facebook ≤3000 chars",
+      "Social post composition: one-sentence summary, participant roles, share URL, Created with @JuntoAI A2A branding, and hashtags",
+      "Share API: POST /api/v1/share (session ownership validation, lazy creation) and GET /api/v1/share/{slug} (public, no auth)",
+      "SharePanel on Outcome Receipt: LinkedIn, X/Twitter, Facebook, Copy Link (clipboard with selectable text fallback), and Email (mailto with pre-filled subject/body)",
+      "Lazy share creation: first button click triggers API call, caches response; loading state disables all buttons during creation",
+      "Public share page at /share/{slug}: unauthenticated, server-rendered with Open Graph and Twitter Card meta tags",
+      "JuntoAI branded header on share page with Try JuntoAI A2A CTA linking to landing page",
+      "Responsive layout: horizontal share buttons at 1024px+, 2-column grid on mobile; share page renders 320px to 1920px",
+      "Property tests (8 Hypothesis/fast-check properties): SharePayload round-trip, slug uniqueness, idempotent creation, sensitive data exclusion, social post constraints, mailto composition, meta tags",
+    ],
+  },
+  {
     title: "LLM Usage Summary",
     specId: "190",
     date: "2026-04-07",
