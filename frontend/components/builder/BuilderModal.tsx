@@ -7,7 +7,7 @@ import type {
   HealthCheckFinding,
   HealthCheckFullReport,
 } from "@/lib/builder/types";
-import { saveScenario } from "@/lib/builder/api";
+import { saveScenario, type BuilderSaveCallbacks } from "@/lib/builder/api";
 import { BuilderChat } from "./BuilderChat";
 import { JsonPreview } from "./JsonPreview";
 import { ProgressIndicator } from "./ProgressIndicator";
@@ -131,10 +131,25 @@ export function BuilderModal({
     setHealthFindings([]);
     setHealthReport(null);
 
+    const callbacks: BuilderSaveCallbacks = {
+      onHealthFinding: (finding) => {
+        setHealthFindings((prev) => [...prev, finding]);
+      },
+      onHealthComplete: (report) => {
+        setHealthReport(report);
+        setHealthFindings(report.findings);
+        setIsAnalyzing(false);
+      },
+      onError: (message) => {
+        setSaveError(message);
+      },
+    };
+
     try {
       const result = await saveScenario(
         email,
         scenarioJson as Record<string, unknown>,
+        callbacks,
       );
       setIsAnalyzing(false);
       onScenarioSaved(result.scenario_id);

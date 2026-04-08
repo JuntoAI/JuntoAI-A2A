@@ -16,7 +16,8 @@ export type BuilderEventType =
   | "builder_error"
   | "builder_health_check_start"
   | "builder_health_check_finding"
-  | "builder_health_check_complete";
+  | "builder_health_check_complete"
+  | "builder_save_complete";
 
 export interface BuilderTokenEvent {
   event_type: "builder_token";
@@ -36,6 +37,14 @@ export interface BuilderCompleteEvent {
 export interface BuilderErrorEvent {
   event_type: "builder_error";
   message: string;
+}
+
+export interface BuilderSaveCompleteEvent {
+  event_type: "builder_save_complete";
+  scenario_id: string;
+  name: string;
+  readiness_score: number;
+  tier: string;
 }
 
 // ---------------------------------------------------------------------------

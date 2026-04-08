@@ -5,6 +5,11 @@
  * through the Next.js API proxy at /api/v1/*.
  */
 
+import type {
+  HealthCheckFinding,
+  HealthCheckFullReport,
+} from "./types";
+
 const API_BASE = "/api/v1";
 
 // ---------------------------------------------------------------------------
@@ -31,6 +36,13 @@ export interface BuilderSaveResponse {
   tier: string;
 }
 
+export interface BuilderSaveCallbacks {
+  onHealthStart?: () => void;
+  onHealthFinding?: (finding: HealthCheckFinding) => void;
+  onHealthComplete?: (report: HealthCheckFullReport) => void;
+  onError?: (message: string) => void;
+}
+
 export interface CustomScenarioSummary {
   scenario_id: string;
   scenario_json: Record<string, unknown>;
@@ -44,10 +56,16 @@ export interface CustomScenarioSummary {
 
 /**
  * Save a validated scenario JSON to the user's custom scenario store.
+ *
+ * The backend streams SSE events (health check progress + final save result).
+ * This function consumes the stream, dispatches health-check callbacks, and
+ * resolves with the final BuilderSaveResponse once `builder_save_complete`
+ * arrives.
  */
 export async function saveScenario(
   email: string,
   scenarioJson: Record<string, unknown>,
+  callbacks?: BuilderSaveCallbacks,
 ): Promise<BuilderSaveResponse> {
   const res = await fetch(`${API_BASE}/builder/save`, {
     method: "POST",
@@ -60,7 +78,71 @@ export async function saveScenario(
     throw new Error(detail);
   }
 
-  return res.json();
+  if (!res.body) {
+    throw new Error("Response body is empty");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let saveResult: BuilderSaveResponse | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary !== -1) {
+      const rawEvent = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+
+      for (const line of rawEvent.split("\n")) {
+        if (line.startsWith("data: ")) {
+          const json = line.slice(6);
+          try {
+            const parsed = JSON.parse(json);
+            switch (parsed.event_type) {
+              case "builder_health_check_start":
+                callbacks?.onHealthStart?.();
+                break;
+              case "builder_health_check_finding":
+                callbacks?.onHealthFinding?.(parsed as HealthCheckFinding);
+                break;
+              case "builder_health_check_complete":
+                callbacks?.onHealthComplete?.(
+                  parsed.report as HealthCheckFullReport,
+                );
+                break;
+              case "builder_save_complete":
+                saveResult = {
+                  scenario_id: parsed.scenario_id,
+                  name: parsed.name,
+                  readiness_score: parsed.readiness_score,
+                  tier: parsed.tier,
+                };
+                break;
+              case "builder_error":
+                callbacks?.onError?.(parsed.message);
+                throw new Error(parsed.message);
+            }
+          } catch (err) {
+            if (err instanceof Error && err.message !== json) throw err;
+            console.warn("[builder-save] Skipping malformed SSE payload:", json);
+          }
+        }
+      }
+
+      boundary = buffer.indexOf("\n\n");
+    }
+  }
+
+  if (!saveResult) {
+    throw new Error("Save stream ended without a save_complete event");
+  }
+
+  return saveResult;
 }
 
 /**
