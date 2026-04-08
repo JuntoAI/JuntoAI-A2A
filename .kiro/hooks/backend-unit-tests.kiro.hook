@@ -10,8 +10,7 @@
     ]
   },
   "then": {
-    "type": "runCommand",
-    "command": "bash -c 'cd backend && ../.venv/bin/python -m pytest -m unit -x -q --tb=short 2>&1 | tail -20'",
-    "timeout": 120
+    "type": "askAgent",
+    "prompt": "Run backend unit tests: cd backend && ../.venv/bin/python -m pytest -m unit -x -q --tb=short 2>&1 | tail -30. If any tests FAIL, clearly report which tests failed and why. If all pass, just say '✅ All unit tests pass' and nothing else."
   }
 }
