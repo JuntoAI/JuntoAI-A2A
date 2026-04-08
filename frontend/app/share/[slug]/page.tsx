@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Clock, MessageSquare, AlertTriangle, DollarSign, Users } from "lucide-react";
 import { backendFetch } from "@/lib/proxy";
@@ -141,28 +140,6 @@ export default async function SharePage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-      {/* Branded header */}
-      <header className="mb-8 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/juntoai_logo_500x500.png"
-            alt="JuntoAI logo"
-            width={32}
-            height={32}
-            priority
-          />
-          <span className="text-base font-semibold text-brand-charcoal">
-            JuntoAI A2A
-          </span>
-        </Link>
-        <Link
-          href="/"
-          className="rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
-        >
-          Try JuntoAI A2A
-        </Link>
-      </header>
-
       {/* Main card */}
       <div className={`rounded-xl border-2 ${status.border} ${status.bg} p-6 sm:p-8`}>
         {/* Status badge + scenario name */}
@@ -245,20 +222,22 @@ export default async function SharePage({ params }: PageProps) {
             </div>
             <div className="space-y-3">
               {data.participant_summaries.map((p, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
-                  <span
-                    className={`inline-block flex-shrink-0 rounded px-2 py-0.5 text-xs font-medium ${
-                      p.agent_type === "regulator"
-                        ? "bg-red-100 text-red-700"
-                        : p.agent_type === "observer"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-blue-100 text-blue-700"
-                    }`}
-                  >
-                    {p.name}
-                  </span>
-                  <span className="text-xs text-gray-400">{p.role}</span>
-                  <span className="text-gray-700">{p.summary}</span>
+                <div key={i} className="text-sm">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span
+                      className={`inline-block flex-shrink-0 rounded px-2 py-0.5 text-xs font-medium ${
+                        p.agent_type === "regulator"
+                          ? "bg-red-100 text-red-700"
+                          : p.agent_type === "observer"
+                            ? "bg-purple-100 text-purple-700"
+                            : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      {p.name}
+                    </span>
+                    <span className="text-xs text-gray-400">{p.role}</span>
+                  </div>
+                  <p className="text-gray-700 leading-relaxed">{p.summary}</p>
                 </div>
               ))}
             </div>

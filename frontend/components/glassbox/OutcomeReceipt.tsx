@@ -178,7 +178,7 @@ export default function OutcomeReceipt({
             </h3>
             <div className="space-y-2">
               {(finalSummary.participant_summaries as Array<Record<string, unknown>>).map((p, i) => (
-                <div key={i} className="flex items-start gap-2 text-sm">
+                <div key={i} className="text-sm">
                   <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
                     p.agent_type === "regulator"
                       ? "bg-red-100 text-red-700"
@@ -188,7 +188,7 @@ export default function OutcomeReceipt({
                   }`}>
                     {String(p.name)}
                   </span>
-                  <span className="text-gray-700">{String(p.summary)}</span>
+                  <p className="mt-1 text-gray-700 leading-relaxed">{String(p.summary)}</p>
                 </div>
               ))}
             </div>
@@ -283,17 +283,19 @@ export default function OutcomeReceipt({
               return (
                 <div className="space-y-2" data-testid="evaluation-participants">
                   {interviews.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      <span className="font-medium text-gray-700">{String(p.role)}</span>
-                      <span className={`font-semibold ${
-                        Number(p.satisfaction_rating) >= 7 ? "text-green-600" :
-                        Number(p.satisfaction_rating) >= 4 ? "text-amber-600" :
-                        "text-red-600"
-                      }`}>
-                        {String(p.satisfaction_rating)}/10
-                      </span>
+                    <div key={i} className="text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-700">{String(p.role)}</span>
+                        <span className={`font-semibold ${
+                          Number(p.satisfaction_rating) >= 7 ? "text-green-600" :
+                          Number(p.satisfaction_rating) >= 4 ? "text-amber-600" :
+                          "text-red-600"
+                        }`}>
+                          {String(p.satisfaction_rating)}/10
+                        </span>
+                      </div>
                       {p.criticism ? (
-                        <span className="text-gray-500">{String(p.criticism)}</span>
+                        <p className="mt-1 text-gray-500 leading-relaxed">{String(p.criticism)}</p>
                       ) : null}
                     </div>
                   ))}
