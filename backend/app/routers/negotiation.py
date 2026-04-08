@@ -710,7 +710,12 @@ def _reconstruct_events_from_session(session_id: str, raw_doc: dict) -> list:
     return events
 
 
-def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: list[dict] | None = None):
+def _snapshot_to_events(
+    snapshot: dict,
+    session_id: str,
+    accumulated_history: list[dict] | None = None,
+    accumulated_agent_calls: list[dict] | None = None,
+):
     """Convert a LangGraph state snapshot into SSE events.
 
     Each snapshot is keyed by node name. We extract the latest history
@@ -726,9 +731,15 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
         Full negotiation history accumulated across all prior snapshots.
         Used by the dispatcher early-exit path to build participant
         summaries when the delta itself has no history.
+    accumulated_agent_calls:
+        Full agent_calls list accumulated across all prior snapshots.
+        Used for usage summary computation since individual snapshot
+        deltas (especially the dispatcher) may not contain agent_calls.
     """
     if accumulated_history is None:
         accumulated_history = []
+    if accumulated_agent_calls is None:
+        accumulated_agent_calls = []
     events = []
     for _node_name, state in snapshot.items():
         if not isinstance(state, dict):
@@ -783,7 +794,7 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
                     else:
                         summary["reason"] = f"Reached maximum of {max_turns} turns without agreement"
                 summary["usage_summary"] = compute_usage_summary(
-                    state.get("agent_calls", [])
+                    accumulated_agent_calls or state.get("agent_calls", [])
                 )
                 events.append(NegotiationCompleteEvent(
                     event_type="negotiation_complete",
@@ -911,7 +922,7 @@ def _snapshot_to_events(snapshot: dict, session_id: str, accumulated_history: li
                     ))
 
             summary["usage_summary"] = compute_usage_summary(
-                state.get("agent_calls", [])
+                accumulated_agent_calls or state.get("agent_calls", [])
             )
             events.append(NegotiationCompleteEvent(
                 event_type="negotiation_complete",
@@ -1085,7 +1096,7 @@ async def stream_negotiation(
                             if "agent_states" in s and s["agent_states"]:
                                 final_state["agent_states"] = s["agent_states"]
                     final_state["history"] = accumulated_history
-                    events = _snapshot_to_events(snapshot, session_id, accumulated_history)
+                    events = _snapshot_to_events(snapshot, session_id, accumulated_history, final_state["agent_calls"])
                     # Track tokens and terminal state from snapshot
                     for _node, s in snapshot.items():
                         if isinstance(s, dict):
