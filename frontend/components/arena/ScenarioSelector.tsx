@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { ScenarioSummary } from "@/lib/api";
 
 const DIFFICULTY_LABEL: Record<string, string> = {
@@ -25,6 +25,8 @@ export interface ScenarioSelectorProps {
   onDeleteCustom?: (scenarioId: string, scenarioName: string) => void;
   /** Whether a delete operation is in progress. */
   isDeleting?: boolean;
+  /** Callback invoked when the user wants to edit a custom scenario. */
+  onEditCustom?: (scenarioId: string, scenarioName: string) => void;
 }
 
 const BUILD_YOUR_OWN_VALUE = "__build_your_own__";
@@ -64,6 +66,7 @@ export function ScenarioSelector({
   onBuildOwn,
   onDeleteCustom,
   isDeleting = false,
+  onEditCustom,
 }: ScenarioSelectorProps) {
   const categoryGroups = useMemo(() => groupByCategory(scenarios), [scenarios]);
 
@@ -120,6 +123,19 @@ export function ScenarioSelector({
         </option>
         <option value={BUILD_YOUR_OWN_VALUE}>🛠 Build Your Own Scenario</option>
         </select>
+
+        {isCustomSelected && onEditCustom && (
+          <button
+            type="button"
+            disabled={isDeleting}
+            onClick={() => onEditCustom(selectedId!, selectedCustomName)}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={`Edit custom scenario: ${selectedCustomName}`}
+          >
+            <Pencil size={16} />
+            <span className="hidden sm:inline">Edit</span>
+          </button>
+        )}
 
         {isCustomSelected && onDeleteCustom && (
           <button

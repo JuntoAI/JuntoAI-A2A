@@ -204,9 +204,11 @@ class TestVerifyEmail:
         # Override to local so the email verifier logs instead of calling SES
         _force_cloud_mode.RUN_MODE = "local"
 
-        resp = await test_client.post(
-            "/api/v1/profile/user@example.com/verify-email"
-        )
+        with patch("app.services.email_verifier.settings") as ev_settings:
+            ev_settings.RUN_MODE = "local"
+            resp = await test_client.post(
+                "/api/v1/profile/user@example.com/verify-email"
+            )
 
         assert resp.status_code == 200
         body = resp.json()

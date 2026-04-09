@@ -100,6 +100,18 @@ class CustomScenarioStore:
         await doc_ref.delete()
         return True
 
+    async def update(
+        self, email: str, scenario_id: str, scenario_json: dict
+    ) -> bool:
+        """Overwrite scenario_json and updated_at. Returns True if found."""
+        doc_ref = self._scenarios_ref(email).document(scenario_id)
+        doc = await doc_ref.get()
+        if not doc.exists:
+            return False
+        now = datetime.now(timezone.utc)
+        await doc_ref.update({"scenario_json": scenario_json, "updated_at": now})
+        return True
+
     async def count_by_email(self, email: str) -> int:
         """Return the number of custom scenarios for a user."""
         count = 0
@@ -213,6 +225,23 @@ class SQLiteCustomScenarioStore:
             cursor = await conn.execute(
                 "DELETE FROM custom_scenarios WHERE scenario_id = ? AND email = ?",
                 (scenario_id, email),
+            )
+            await conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            await conn.close()
+
+    async def update(
+        self, email: str, scenario_id: str, scenario_json: dict
+    ) -> bool:
+        """Overwrite scenario_json and updated_at. Returns True if found."""
+        now = datetime.now(timezone.utc).isoformat()
+        conn = await self._get_connection()
+        try:
+            cursor = await conn.execute(
+                "UPDATE custom_scenarios SET scenario_json = ?, updated_at = ? "
+                "WHERE scenario_id = ? AND email = ?",
+                (json.dumps(scenario_json), now, scenario_id, email),
             )
             await conn.commit()
             return cursor.rowcount > 0

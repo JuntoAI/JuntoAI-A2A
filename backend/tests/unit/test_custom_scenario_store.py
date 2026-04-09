@@ -112,6 +112,7 @@ class TestFirestoreCustomScenarioStore:
         inner_doc_ref.set = AsyncMock()
         inner_doc_ref.get = AsyncMock(return_value=doc_mock)
         inner_doc_ref.delete = AsyncMock()
+        inner_doc_ref.update = AsyncMock()
         sub_collection_ref.document.return_value = inner_doc_ref
 
         profile_doc_ref = MagicMock()
@@ -235,6 +236,32 @@ class TestFirestoreCustomScenarioStore:
         # Verify collection("custom_scenarios") was called
         store._mock_profile_doc_ref.collection.assert_called_with("custom_scenarios")
 
+    # --- update() tests (Requirements 5.3, 5.6) ---
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_existing(self, scenario):
+        """update() returns True and calls Firestore update for an existing doc."""
+        store = self._make_store()
+        result = await store.update("user@test.com", "some-id", scenario.model_dump())
+        assert result is True
+        store._mock_inner_doc_ref.update.assert_awaited_once()
+        call_args = store._mock_inner_doc_ref.update.call_args[0][0]
+        assert "scenario_json" in call_args
+        assert "updated_at" in call_args
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_nonexistent(self):
+        """update() returns False when the document does not exist."""
+        store = self._make_store()
+        not_found = MagicMock()
+        not_found.exists = False
+        store._mock_inner_doc_ref.get = AsyncMock(return_value=not_found)
+        result = await store.update("user@test.com", "nonexistent", {"any": "data"})
+        assert result is False
+        store._mock_inner_doc_ref.update.assert_not_awaited()
+
 
 # ---------------------------------------------------------------------------
 # SQLite CustomScenarioStore — real database
@@ -345,3 +372,51 @@ class TestSQLiteCustomScenarioStore:
             # Bob can still save
             sid = await store.save("bob@test.com", scenario)
             assert isinstance(sid, str)
+
+    # --- update() tests (Requirements 5.3, 5.6) ---
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_existing(self, scenario):
+        """update() returns True and get() returns the updated data."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = SQLiteCustomScenarioStore(db_path=f"{tmpdir}/test.db")
+            sid = await store.save("user@test.com", scenario)
+
+            updated_dict = scenario.model_dump()
+            updated_dict["name"] = "Renamed Scenario"
+            result = await store.update("user@test.com", sid, updated_dict)
+            assert result is True
+
+            doc = await store.get("user@test.com", sid)
+            assert doc is not None
+            assert doc["scenario_json"]["name"] == "Renamed Scenario"
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_nonexistent(self):
+        """update() returns False for a scenario_id that does not exist."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = SQLiteCustomScenarioStore(db_path=f"{tmpdir}/test.db")
+            result = await store.update("user@test.com", "no-such-id", {"any": "data"})
+            assert result is False
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_update_changes_updated_at(self, scenario):
+        """updated_at after update() is >= the previous value."""
+        import time
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = SQLiteCustomScenarioStore(db_path=f"{tmpdir}/test.db")
+            sid = await store.save("user@test.com", scenario)
+
+            before = await store.get("user@test.com", sid)
+            previous_updated_at = before["updated_at"]
+
+            time.sleep(0.02)  # ensure clock advances
+
+            await store.update("user@test.com", sid, scenario.model_dump())
+
+            after = await store.get("user@test.com", sid)
+            assert after["updated_at"] >= previous_updated_at

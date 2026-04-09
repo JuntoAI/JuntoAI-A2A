@@ -262,3 +262,110 @@ describe("ScenarioSelector — Category Grouping", () => {
     expect(lastOption.textContent).toContain("Build Your Own Scenario");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Edit Button Tests (Req 7.1, 7.7)
+// ---------------------------------------------------------------------------
+
+describe("ScenarioSelector — Edit Button", () => {
+  const baseProps = {
+    scenarios: mockScenarios,
+    selectedId: null,
+    onSelect: vi.fn(),
+    isLoading: false,
+    error: null,
+  };
+
+  // Req 7.1: edit button visible when custom scenario selected + onEditCustom provided
+  it("shows edit button when a custom scenario is selected and onEditCustom is provided", () => {
+    render(
+      <ScenarioSelector
+        {...baseProps}
+        customScenarios={mockCustomScenarios}
+        selectedId="custom_1"
+        onEditCustom={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByLabelText("Edit custom scenario: My Custom Scenario"),
+    ).toBeInTheDocument();
+  });
+
+  // Req 7.7: edit button hidden for built-in scenarios
+  it("does NOT show edit button when a built-in scenario is selected", () => {
+    render(
+      <ScenarioSelector
+        {...baseProps}
+        customScenarios={mockCustomScenarios}
+        selectedId="talent_war"
+        onEditCustom={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByLabelText(/Edit custom scenario/),
+    ).not.toBeInTheDocument();
+  });
+
+  // Req 7.7: edit button hidden when nothing selected
+  it("does NOT show edit button when no scenario is selected", () => {
+    render(
+      <ScenarioSelector
+        {...baseProps}
+        customScenarios={mockCustomScenarios}
+        selectedId={null}
+        onEditCustom={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByLabelText(/Edit custom scenario/),
+    ).not.toBeInTheDocument();
+  });
+
+  // Edit button hidden when onEditCustom is not provided
+  it("does NOT show edit button when onEditCustom prop is not provided", () => {
+    render(
+      <ScenarioSelector
+        {...baseProps}
+        customScenarios={mockCustomScenarios}
+        selectedId="custom_1"
+      />,
+    );
+    expect(
+      screen.queryByLabelText(/Edit custom scenario/),
+    ).not.toBeInTheDocument();
+  });
+
+  // Req 7.1: clicking edit calls onEditCustom with scenario ID and name
+  it("calls onEditCustom with scenario ID and name when clicked", () => {
+    const onEditCustom = vi.fn();
+    render(
+      <ScenarioSelector
+        {...baseProps}
+        customScenarios={mockCustomScenarios}
+        selectedId="custom_1"
+        onEditCustom={onEditCustom}
+      />,
+    );
+    fireEvent.click(
+      screen.getByLabelText("Edit custom scenario: My Custom Scenario"),
+    );
+    expect(onEditCustom).toHaveBeenCalledTimes(1);
+    expect(onEditCustom).toHaveBeenCalledWith("custom_1", "My Custom Scenario");
+  });
+
+  // Edit button disabled during delete operation
+  it("disables edit button when isDeleting is true", () => {
+    render(
+      <ScenarioSelector
+        {...baseProps}
+        customScenarios={mockCustomScenarios}
+        selectedId="custom_1"
+        onEditCustom={vi.fn()}
+        isDeleting={true}
+      />,
+    );
+    expect(
+      screen.getByLabelText("Edit custom scenario: My Custom Scenario"),
+    ).toBeDisabled();
+  });
+});

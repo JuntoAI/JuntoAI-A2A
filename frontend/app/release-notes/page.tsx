@@ -9,6 +9,25 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Scenario Management",
+    specId: "320",
+    date: "2026-04-09",
+    items: [
+      "Delete custom scenario with cascade: DELETE endpoint identifies and removes all connected negotiation sessions before deleting the scenario, returns deleted_sessions_count",
+      "Cascade delete user warning: confirmation dialog fetches session count and displays warning before proceeding with explicit confirm/cancel",
+      "list_sessions_by_scenario and delete_session methods added to SessionStore protocol with Firestore and SQLite implementations",
+      "update() method on both CustomScenarioStore (Firestore) and SQLiteCustomScenarioStore — overwrites scenario_json and updated_at",
+      "PUT /builder/scenarios/{scenario_id} endpoint: validates against ArenaScenario Pydantic model, returns 422 with specific validation errors on failure",
+      "ScenarioEditorModal component: monospace textarea with 2-space indented JSON, inline editable name field (max 100 chars), client-side JSON.parse validation",
+      "Backend validation errors displayed inline below textarea on 422 without closing the modal",
+      "Pencil icon edit button on custom scenarios in ScenarioSelector — hidden for built-in scenarios alongside existing delete button",
+      "DeleteConfirmDialog component: fetches session count, displays warning, confirm/cancel with loading state during delete",
+      "Ownership enforcement: 404 for non-existent or non-owned scenarios, 401 for missing email, 403 for built-in scenario operations",
+      "Abort-on-failure semantics: if any session deletion fails during cascade, entire operation aborts with HTTP 500",
+      "Property tests (5 Hypothesis properties): session lookup exactness, cascade delete correctness, scenario update round-trip, validation gate accept/reject, session deletion verification",
+    ],
+  },
+  {
     title: "LLM Availability Checker",
     specId: "310",
     date: "2026-04-09",

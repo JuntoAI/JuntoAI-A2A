@@ -6,6 +6,21 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Scenario Management (Spec 320) — 2026-04-09
+
+- Delete custom scenario with cascade: `DELETE /builder/scenarios/{id}` identifies and removes all connected negotiation sessions before deleting the scenario, returns `deleted_sessions_count`
+- Cascade delete user warning: confirmation dialog fetches session count via `GET /builder/scenarios/{id}/sessions/count` and displays "This will delete N connected simulations" before proceeding
+- `list_sessions_by_scenario` and `delete_session` methods added to `SessionStore` protocol with `FirestoreSessionClient` and `SQLiteSessionClient` implementations
+- `update()` method on both `CustomScenarioStore` (Firestore) and `SQLiteCustomScenarioStore` — overwrites `scenario_json` and `updated_at`, returns `False` if document not found
+- `PUT /builder/scenarios/{scenario_id}` endpoint: accepts `scenario_json` body, validates against `ArenaScenario` Pydantic model, returns 422 with specific validation errors on failure
+- `ScenarioEditorModal` component: monospace `<textarea>` with 2-space indented JSON, inline editable name field (max 100 chars), client-side `JSON.parse` validation (red border + disabled Save on invalid JSON)
+- Backend validation errors displayed inline below textarea on 422 without closing the modal
+- Pencil icon (Lucide `Pencil`) edit button on custom scenarios in `ScenarioSelector` — hidden for built-in scenarios alongside existing delete button
+- `DeleteConfirmDialog` component: fetches session count, displays warning, confirm/cancel with loading state during delete
+- Ownership enforcement: 404 for non-existent or non-owned scenarios, 401 for missing email, 403 for built-in scenario operations
+- Abort-on-failure semantics: if any session deletion fails during cascade, entire operation aborts with HTTP 500
+- Property tests (5 Hypothesis properties): session lookup exactness, cascade delete correctness, scenario update round-trip, validation gate accept/reject, session deletion verification
+
 ## LLM Availability Checker (Spec 310) — 2026-04-09
 
 - Model registry extended with `gemini-3.1-pro-preview` and `gemini-3.1-flash-lite-preview` entries — `VALID_MODEL_IDS`, `MODELS_PROMPT_BLOCK`, and `DEFAULT_MODEL_MAP` derive automatically

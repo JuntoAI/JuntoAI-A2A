@@ -145,6 +145,45 @@ class SQLiteSessionClient:
         finally:
             await conn.close()
 
+    async def list_sessions_by_scenario(
+        self, scenario_id: str, owner_email: str
+    ) -> list[dict]:
+        """Return session dicts where ``scenario_id`` and ``owner_email`` match.
+
+        Consistent with ``list_sessions_by_owner``: fetches all rows then
+        filters the JSON ``data`` column in Python.
+        """
+        conn = await self._get_connection()
+        try:
+            cursor = await conn.execute(
+                "SELECT data FROM negotiation_sessions "
+                "WHERE created_at >= '1970-01-01'",
+            )
+            rows = await cursor.fetchall()
+            results: list[dict] = []
+            for (raw,) in rows:
+                doc = json.loads(raw)
+                if (
+                    doc.get("scenario_id") == scenario_id
+                    and doc.get("owner_email") == owner_email
+                ):
+                    results.append(doc)
+            return results
+        finally:
+            await conn.close()
+
+    async def delete_session(self, session_id: str) -> None:
+        """Delete a single session by ``session_id``."""
+        conn = await self._get_connection()
+        try:
+            await conn.execute(
+                "DELETE FROM negotiation_sessions WHERE session_id = ?",
+                (session_id,),
+            )
+            await conn.commit()
+        finally:
+            await conn.close()
+
 
 _CREATE_SHARE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS shared_negotiations (

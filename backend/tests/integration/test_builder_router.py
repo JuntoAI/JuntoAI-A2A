@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.db import get_custom_scenario_store, get_profile_client
+from app.db import get_custom_scenario_store, get_profile_client, get_session_store
 from app.main import app
 from app.routers.builder import (
     get_builder_llm_agent,
@@ -97,6 +97,7 @@ def mock_store():
     store.delete = AsyncMock(return_value=True)
     store.save = AsyncMock(return_value="saved-scenario-id")
     store.count_by_email = AsyncMock(return_value=0)
+    store.get = AsyncMock(return_value={"scenario_id": "some-id", "scenario_json": {}})
     return store
 
 
@@ -447,7 +448,10 @@ async def test_list_scenarios_missing_email():
 @pytest.mark.asyncio
 async def test_delete_scenario_success(mock_store):
     """DELETE /builder/scenarios/{id} deletes owned scenario."""
+    mock_session_store = MagicMock()
+    mock_session_store.list_sessions_by_scenario = AsyncMock(return_value=[])
     app.dependency_overrides[get_custom_scenario_store] = lambda: mock_store
+    app.dependency_overrides[get_session_store] = lambda: mock_session_store
 
     try:
         async with httpx.AsyncClient(
@@ -460,6 +464,7 @@ async def test_delete_scenario_success(mock_store):
             )
             assert resp.status_code == 200
             assert resp.json()["scenario_id"] == "some-id"
+            assert resp.json()["deleted_sessions_count"] == 0
     finally:
         app.dependency_overrides.clear()
 
@@ -467,8 +472,12 @@ async def test_delete_scenario_success(mock_store):
 @pytest.mark.asyncio
 async def test_delete_scenario_not_found(mock_store):
     """DELETE /builder/scenarios/{id} returns 404 for non-existent."""
+    mock_store.get = AsyncMock(return_value=None)
     mock_store.delete = AsyncMock(return_value=False)
+    mock_session_store = MagicMock()
+    mock_session_store.list_sessions_by_scenario = AsyncMock(return_value=[])
     app.dependency_overrides[get_custom_scenario_store] = lambda: mock_store
+    app.dependency_overrides[get_session_store] = lambda: mock_session_store
 
     try:
         async with httpx.AsyncClient(
@@ -489,7 +498,10 @@ async def test_delete_scenario_missing_email():
     """DELETE /builder/scenarios/{id} without email returns 401."""
     mock_store = MagicMock()
     mock_store.delete = AsyncMock(return_value=False)
+    mock_session_store = MagicMock()
+    mock_session_store.list_sessions_by_scenario = AsyncMock(return_value=[])
     app.dependency_overrides[get_custom_scenario_store] = lambda: mock_store
+    app.dependency_overrides[get_session_store] = lambda: mock_session_store
 
     try:
         async with httpx.AsyncClient(

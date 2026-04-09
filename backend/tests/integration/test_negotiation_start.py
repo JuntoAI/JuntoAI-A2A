@@ -3,7 +3,7 @@
 Validates: Requirements 3.1, 3.2
 """
 
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -11,6 +11,14 @@ from app.scenarios.exceptions import ScenarioNotFoundError
 
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture(autouse=True)
+def _force_local_mode():
+    """Force RUN_MODE=local so tests use the SessionStore protocol path."""
+    with patch("app.routers.negotiation.settings") as mock_settings:
+        mock_settings.RUN_MODE = "local"
+        yield mock_settings
 
 
 class TestStartNegotiationSuccess:

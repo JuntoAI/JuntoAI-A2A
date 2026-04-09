@@ -62,6 +62,24 @@ class FirestoreSessionClient:
             docs.append(doc.to_dict())
         return docs
 
+    async def list_sessions_by_scenario(
+        self, scenario_id: str, owner_email: str
+    ) -> list[dict]:
+        """Return session dicts where scenario_id and owner_email both match."""
+        query = (
+            self._collection
+            .where("scenario_id", "==", scenario_id)
+            .where("owner_email", "==", owner_email)
+        )
+        docs: list[dict] = []
+        async for doc in query.stream():
+            docs.append(doc.to_dict())
+        return docs
+
+    async def delete_session(self, session_id: str) -> None:
+        """Delete a single session document by session_id."""
+        await self._collection.document(session_id).delete()
+
 
 class FirestoreShareClient:
     """Wraps a shared Firestore AsyncClient for share CRUD operations."""

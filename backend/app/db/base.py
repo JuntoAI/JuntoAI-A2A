@@ -26,6 +26,16 @@ class SessionStore(Protocol):
         self, owner_email: str, since: str
     ) -> list[dict]: ...
 
+    async def list_sessions_by_scenario(
+        self, scenario_id: str, owner_email: str
+    ) -> list[dict]:
+        """Return session dicts where scenario_id matches and owner_email matches."""
+        ...
+
+    async def delete_session(self, session_id: str) -> None:
+        """Delete a single session by session_id."""
+        ...
+
 
 @runtime_checkable
 class ShareStore(Protocol):

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { saveScenario, listCustomScenarios, deleteCustomScenario } from "@/lib/builder/api";
+import { saveScenario, listCustomScenarios, deleteCustomScenario, updateCustomScenario, getScenarioSessionCount } from "@/lib/builder/api";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -233,5 +233,69 @@ describe("deleteCustomScenario", () => {
       json: () => Promise.resolve({ detail: "Not allowed" }),
     });
     await expect(deleteCustomScenario("u@e.com", "s1")).rejects.toThrow("Not allowed");
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// updateCustomScenario
+// ---------------------------------------------------------------------------
+
+describe("updateCustomScenario", () => {
+  it("sends PUT request with correct URL, method, and body", async () => {
+    const responsePayload = { scenario_id: "s1", name: "Updated", updated_at: "2025-01-01T00:00:00Z" };
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(responsePayload) });
+
+    const scenarioJson = { name: "Updated", agents: [] };
+    const result = await updateCustomScenario("u@e.com", "s1", scenarioJson);
+
+    expect(result).toEqual(responsePayload);
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/v1/builder/scenarios/s1?email=u%40e.com",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scenario_json: scenarioJson }),
+      },
+    );
+  });
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable Entity",
+      json: () => Promise.resolve({ detail: "Validation failed" }),
+    });
+
+    await expect(updateCustomScenario("u@e.com", "s1", {})).rejects.toThrow("Validation failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getScenarioSessionCount
+// ---------------------------------------------------------------------------
+
+describe("getScenarioSessionCount", () => {
+  it("sends GET request with correct URL and returns count", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ count: 5 }) });
+
+    const result = await getScenarioSessionCount("u@e.com", "s1");
+
+    expect(result).toEqual({ count: 5 });
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/v1/builder/scenarios/s1/sessions/count?email=u%40e.com",
+    );
+  });
+
+  it("throws on non-ok response", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: "Not Found",
+      json: () => Promise.resolve({ detail: "Scenario not found" }),
+    });
+
+    await expect(getScenarioSessionCount("u@e.com", "s1")).rejects.toThrow("Scenario not found");
   });
 });

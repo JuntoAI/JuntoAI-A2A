@@ -5,7 +5,7 @@ Uses hypothesis to verify universal invariants across generated inputs.
 
 import json
 
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from app.orchestrator.outputs import AgentMemory
@@ -264,7 +264,7 @@ def state_with_populated_memories(draw):
     return state
 
 
-@settings(max_examples=100)
+@settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
 @given(state=state_with_populated_memories())
 def test_state_round_trip_with_memory(state):
     """to_pydantic → from_pydantic must preserve agent_memories and structured_memory_enabled.

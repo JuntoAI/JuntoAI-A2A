@@ -180,3 +180,47 @@ export async function deleteCustomScenario(
     throw new Error(detail);
   }
 }
+
+/**
+ * Update a custom scenario's JSON by ID.
+ */
+export async function updateCustomScenario(
+  email: string,
+  scenarioId: string,
+  scenarioJson: Record<string, unknown>,
+): Promise<{ scenario_id: string; name: string; updated_at: string }> {
+  const res = await fetch(
+    `${API_BASE}/builder/scenarios/${encodeURIComponent(scenarioId)}?email=${encodeURIComponent(email)}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario_json: scenarioJson }),
+    },
+  );
+
+  if (!res.ok) {
+    const detail = await extractErrorDetail(res);
+    throw new Error(detail);
+  }
+
+  return res.json();
+}
+
+/**
+ * Get the number of sessions linked to a custom scenario.
+ */
+export async function getScenarioSessionCount(
+  email: string,
+  scenarioId: string,
+): Promise<{ count: number }> {
+  const res = await fetch(
+    `${API_BASE}/builder/scenarios/${encodeURIComponent(scenarioId)}/sessions/count?email=${encodeURIComponent(email)}`,
+  );
+
+  if (!res.ok) {
+    const detail = await extractErrorDetail(res);
+    throw new Error(detail);
+  }
+
+  return res.json();
+}

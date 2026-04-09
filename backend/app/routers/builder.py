@@ -20,7 +20,8 @@ from app.builder.health_check import HealthCheckAnalyzer
 from app.builder.llm_agent import BuilderLLMAgent
 from app.builder.session_manager import BuilderSessionManager
 from app.config import settings
-from app.db import get_custom_scenario_store, get_profile_client
+from app.db import get_custom_scenario_store, get_profile_client, get_session_store
+from app.db.base import SessionStore
 from app.scenarios.loader import load_scenario_from_dict
 from app.scenarios.models import ArenaScenario
 from app.scenarios.pretty_printer import pretty_print
@@ -73,6 +74,10 @@ class BuilderSaveResponse(BaseModel):
     name: str
     readiness_score: float
     tier: str
+
+
+class UpdateScenarioRequest(BaseModel):
+    scenario_json: dict
 
 
 # ---------------------------------------------------------------------------
@@ -367,19 +372,134 @@ async def delete_scenario(
     scenario_id: str,
     email: str = Query(default=""),
     store=Depends(get_custom_scenario_store),
+    session_store: SessionStore = Depends(get_session_store),
 ):
-    """Delete a custom scenario by ID."""
+    """Delete a custom scenario and cascade-delete all connected sessions."""
     if not email or not email.strip():
         return JSONResponse(status_code=401, content={"detail": "Valid email required"})
 
-    deleted = await store.delete(email.strip(), scenario_id)
+    email = email.strip()
+
+    # 1. Verify scenario exists and is owned by email
+    scenario = await store.get(email, scenario_id)
+    if not scenario:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Scenario not found or not owned by this email"},
+        )
+
+    # 2. List all sessions connected to this scenario
+    sessions = await session_store.list_sessions_by_scenario(scenario_id, email)
+
+    # 3. Delete each session — abort on failure
+    deleted_count = 0
+    for session in sessions:
+        sid = session.get("session_id")
+        try:
+            await session_store.delete_session(sid)
+            deleted_count += 1
+        except Exception as exc:
+            logger.error("Cascade delete failed on session %s: %s", sid, exc)
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "detail": f"Cascade delete failed: could not delete session {sid}"
+                },
+            )
+
+    # 4. Delete the scenario itself
+    deleted = await store.delete(email, scenario_id)
     if not deleted:
         return JSONResponse(
             status_code=404,
             content={"detail": "Scenario not found or not owned by this email"},
         )
 
-    return {"detail": "Scenario deleted", "scenario_id": scenario_id}
+    return {
+        "scenario_id": scenario_id,
+        "deleted_sessions_count": deleted_count,
+        "detail": "Scenario deleted",
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /builder/scenarios/{scenario_id}/sessions/count — session count for
+#   cascade-delete confirmation dialog
+# ---------------------------------------------------------------------------
+
+
+@router.get("/scenarios/{scenario_id}/sessions/count")
+async def get_scenario_session_count(
+    scenario_id: str,
+    email: str = Query(default=""),
+    store=Depends(get_custom_scenario_store),
+    session_store: SessionStore = Depends(get_session_store),
+):
+    """Return the number of sessions linked to a scenario for the given email."""
+    if not email or not email.strip():
+        return JSONResponse(status_code=401, content={"detail": "Valid email required"})
+
+    email = email.strip()
+
+    # Verify scenario exists and is owned by email
+    scenario = await store.get(email, scenario_id)
+    if not scenario:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Scenario not found or not owned by this email"},
+        )
+
+    sessions = await session_store.list_sessions_by_scenario(scenario_id, email)
+    return {"count": len(sessions)}
+
+
+# ---------------------------------------------------------------------------
+# PUT /builder/scenarios/{scenario_id} — update a custom scenario
+# ---------------------------------------------------------------------------
+
+
+@router.put("/scenarios/{scenario_id}")
+async def update_scenario(
+    scenario_id: str,
+    body: UpdateScenarioRequest,
+    email: str = Query(default=""),
+    store=Depends(get_custom_scenario_store),
+):
+    """Validate and overwrite a custom scenario's JSON."""
+    # 1. Validate email
+    if not email or not email.strip():
+        return JSONResponse(status_code=401, content={"detail": "Valid email required"})
+
+    email = email.strip()
+
+    # 2. Validate scenario_json against ArenaScenario
+    try:
+        validated = ArenaScenario.model_validate(body.scenario_json)
+    except ValidationError as e:
+        errors = [
+            {"loc": list(err["loc"]), "msg": err["msg"], "type": err["type"]}
+            for err in e.errors()
+        ]
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "Validation failed", "errors": errors},
+        )
+
+    # 3. Check scenario exists and is owned by email, then update
+    updated = await store.update(email, scenario_id, validated.model_dump())
+    if not updated:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": "Scenario not found or not owned by this email"},
+        )
+
+    # 4. Fetch the updated record to get updated_at
+    record = await store.get(email, scenario_id)
+    return {
+        "scenario_id": scenario_id,
+        "name": validated.name,
+        "updated_at": record["updated_at"] if record else None,
+    }
 
 
 # ---------------------------------------------------------------------------
