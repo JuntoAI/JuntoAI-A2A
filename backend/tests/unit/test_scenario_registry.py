@@ -199,7 +199,7 @@ class TestListScenarios:
         ids = {entry["id"] for entry in result}
         assert ids == {"s1", "s2"}
         for entry in result:
-            assert set(entry.keys()) == {"id", "name", "description", "difficulty", "category"}
+            assert set(entry.keys()) == {"id", "name", "description", "difficulty", "category", "available"}
 
     def test_entries_contain_correct_fields(self, tmp_path):
         _write_scenario(tmp_path, "x.scenario.json", _scenario(id="x", name="X Name", description="X Desc"))
@@ -207,7 +207,7 @@ class TestListScenarios:
         registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
         result = registry.list_scenarios()
 
-        assert result == [{"id": "x", "name": "X Name", "description": "X Desc", "difficulty": "intermediate", "category": "General"}]
+        assert result == [{"id": "x", "name": "X Name", "description": "X Desc", "difficulty": "intermediate", "category": "General", "available": True}]
 
 
 # ---------------------------------------------------------------------------
@@ -336,3 +336,123 @@ class TestUserCanAccess:
 
         with pytest.raises(ScenarioNotFoundError):
             registry.get_scenario("gated", email="no-at-sign")
+
+
+# ---------------------------------------------------------------------------
+# Allowed model IDs — availability flagging (Requirements 5.1, 5.2, 5.3)
+# ---------------------------------------------------------------------------
+
+
+class TestAllowedModelIds:
+    """Tests for the allowed_model_ids constructor param, setter, and availability flag."""
+
+    def test_no_allowed_ids_marks_all_available(self, tmp_path):
+        """When allowed_model_ids is None (default), all scenarios are available."""
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s"))
+        registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+        result = registry.list_scenarios()
+        assert result[0]["available"] is True
+
+    def test_all_models_allowed_marks_available(self, tmp_path):
+        """Scenario is available when all agent model_ids are in the allowed set."""
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s"))
+        registry = ScenarioRegistry(
+            scenarios_dir=str(tmp_path),
+            allowed_model_ids=frozenset({"gemini-3-flash-preview"}),
+        )
+
+        result = registry.list_scenarios()
+        assert result[0]["available"] is True
+
+    def test_missing_model_marks_unavailable(self, tmp_path):
+        """Scenario is unavailable when an agent's model_id is not in the allowed set."""
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s"))
+        registry = ScenarioRegistry(
+            scenarios_dir=str(tmp_path),
+            allowed_model_ids=frozenset({"some-other-model"}),
+        )
+
+        result = registry.list_scenarios()
+        assert result[0]["available"] is False
+
+    def test_fallback_model_makes_available(self, tmp_path):
+        """Scenario is available if agent's fallback_model_id is in the allowed set."""
+        agents = [
+            _agent(role="Buyer", model_id="gemini-3-flash-preview", fallback_model_id="gemini-2.5-flash"),
+            _agent(role="Seller", model_id="gemini-3-flash-preview", type="negotiator"),
+        ]
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s", agents=agents))
+        # Only fallback is allowed for Buyer, primary is allowed for Seller
+        registry = ScenarioRegistry(
+            scenarios_dir=str(tmp_path),
+            allowed_model_ids=frozenset({"gemini-2.5-flash", "gemini-3-flash-preview"}),
+        )
+
+        result = registry.list_scenarios()
+        assert result[0]["available"] is True
+
+    def test_fallback_only_allowed_still_available(self, tmp_path):
+        """Agent with unavailable primary but available fallback → scenario available."""
+        agents = [
+            _agent(role="Buyer", model_id="gemini-2.5-pro", fallback_model_id="gemini-3-flash-preview"),
+            _agent(role="Seller", model_id="gemini-3-flash-preview", type="negotiator"),
+        ]
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s", agents=agents))
+        # Only gemini-3-flash-preview is allowed — Buyer's fallback matches
+        registry = ScenarioRegistry(
+            scenarios_dir=str(tmp_path),
+            allowed_model_ids=frozenset({"gemini-3-flash-preview"}),
+        )
+
+        result = registry.list_scenarios()
+        assert result[0]["available"] is True
+
+    def test_set_allowed_model_ids_updates_availability(self, tmp_path):
+        """set_allowed_model_ids() changes availability on subsequent list_scenarios() calls."""
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s"))
+        registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+        # Default: None → available
+        assert registry.list_scenarios()[0]["available"] is True
+
+        # Set to empty → unavailable
+        registry.set_allowed_model_ids(frozenset())
+        assert registry.list_scenarios()[0]["available"] is False
+
+        # Set to matching → available again
+        registry.set_allowed_model_ids(frozenset({"gemini-3-flash-preview"}))
+        assert registry.list_scenarios()[0]["available"] is True
+
+    def test_discover_logs_warning_for_unavailable_agents(self, tmp_path, caplog):
+        """_discover() logs WARNING for agents with no available model."""
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s"))
+
+        with caplog.at_level(logging.WARNING):
+            ScenarioRegistry(
+                scenarios_dir=str(tmp_path),
+                allowed_model_ids=frozenset({"some-other-model"}),
+            )
+
+        assert "has no available model" in caplog.text
+        assert "Buyer" in caplog.text
+
+    def test_discover_no_warning_when_allowed_is_none(self, tmp_path, caplog):
+        """No WARNING logged when allowed_model_ids is None (backward compat)."""
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s"))
+
+        with caplog.at_level(logging.WARNING):
+            ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+        assert "has no available model" not in caplog.text
+
+    def test_empty_allowed_set_marks_all_unavailable(self, tmp_path):
+        """Empty frozenset means no models are allowed → all scenarios unavailable."""
+        _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s"))
+        registry = ScenarioRegistry(
+            scenarios_dir=str(tmp_path),
+            allowed_model_ids=frozenset(),
+        )
+
+        result = registry.list_scenarios()
+        assert result[0]["available"] is False

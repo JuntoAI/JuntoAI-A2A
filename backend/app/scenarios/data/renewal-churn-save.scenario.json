@@ -27,7 +27,7 @@
         "reasoning",
         "value_proposition"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Lead with empathy for their experience. Acknowledge support failures before pivoting to roadmap improvements and untapped module value."
     },
     {
@@ -52,7 +52,7 @@
         "reasoning",
         "grievances"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Lead with specific support failures and the 15% price increase. Reference competitor pricing without revealing full evaluation status."
     },
     {
@@ -78,7 +78,7 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Review retention offers against discount ceiling policies and ASC 606 revenue recognition rules. Flag margin erosion risks."
     }

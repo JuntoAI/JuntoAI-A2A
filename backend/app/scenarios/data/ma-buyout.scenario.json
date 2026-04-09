@@ -27,7 +27,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Lead with strategic synergies rather than price. Emphasize growth potential and market expansion."
     },
     {
@@ -52,7 +52,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Anchor high and protect employee retention terms. Don't concede on earn-out structure easily."
     },
     {
@@ -77,7 +77,7 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Scrutinize market concentration effects. Require detailed remedies for any anti-competitive concerns."
     }

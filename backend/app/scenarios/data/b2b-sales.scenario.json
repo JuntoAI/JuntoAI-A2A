@@ -27,7 +27,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Emphasize ROI and cost savings over feature lists. Use case studies to justify premium pricing."
     },
     {
@@ -52,7 +52,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Push hard on implementation timeline and SLA guarantees. Price is secondary to reliability."
     },
     {
@@ -78,7 +78,7 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Focus on data security and compliance requirements. Block any deal without SOC 2 certification."
     }

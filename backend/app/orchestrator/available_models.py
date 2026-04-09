@@ -30,6 +30,8 @@ AVAILABLE_MODELS: tuple[ModelEntry, ...] = (
     ModelEntry("gemini-2.5-flash", "gemini", "Gemini 2.5 Flash"),
     ModelEntry("gemini-2.5-pro", "gemini", "Gemini 2.5 Pro"),
     ModelEntry("gemini-3-flash-preview", "gemini", "Gemini 3 Flash (Preview)"),
+    ModelEntry("gemini-3.1-flash-lite-preview", "gemini", "Gemini 3.1 Flash Lite (Preview)"),
+    ModelEntry("gemini-3.1-pro-preview", "gemini", "Gemini 3.1 Pro (Preview)"),
     ModelEntry("claude-3-5-sonnet", "claude", "Claude 3.5 Sonnet"),
     ModelEntry("claude-sonnet-4", "claude", "Claude Sonnet 4"),
 )
@@ -41,3 +43,16 @@ VALID_MODEL_IDS: frozenset[str] = frozenset(m.model_id for m in AVAILABLE_MODELS
 MODELS_PROMPT_BLOCK: str = "\n".join(
     f"  - `{m.model_id}` ({m.label})" for m in AVAILABLE_MODELS
 )
+
+
+def filter_models_prompt_block(allowed_model_ids: frozenset[str]) -> str:
+    """Return a MODELS_PROMPT_BLOCK filtered to only allowed model IDs.
+
+    Lines are kept in registry order. If ``allowed_model_ids`` is empty the
+    result is an empty string.
+    """
+    return "\n".join(
+        f"  - `{m.model_id}` ({m.label})"
+        for m in AVAILABLE_MODELS
+        if m.model_id in allowed_model_ids
+    )

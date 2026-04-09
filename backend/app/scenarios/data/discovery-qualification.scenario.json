@@ -28,7 +28,7 @@
         "reasoning",
         "bant_progress"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Lead with open-ended questions about their current workflow. Never pitch features — focus on understanding their world first."
     },
     {
@@ -54,7 +54,7 @@
         "reasoning",
         "engagement_level"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Start guarded. Only open up if the SDR asks specific, relevant questions about your actual workflow and challenges."
     },
     {
@@ -81,7 +81,7 @@
         "warnings",
         "coaching_notes"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Score each BANT criterion 0–25. Flag premature pitching and closed-ended questions. Praise effective discovery techniques."
     }

@@ -27,7 +27,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Lead with ROI metrics: reduced onboarding time, employee retention lift. Justify implementation fee with scope details."
     },
     {
@@ -52,7 +52,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Anchor on total cost of ownership. Use competing vendor quotes to pressure seat pricing. Demand SLA penalties with financial impact."
     },
     {
@@ -78,7 +78,7 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Focus on security certifications and SLA penalty enforcement. Block any deal without SOC 2 Type II and executed DPA."
     }

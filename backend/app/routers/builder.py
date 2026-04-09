@@ -11,7 +11,7 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 
@@ -130,6 +130,7 @@ async def _deduct_token(profile_client: Any, email: str, current_balance: int) -
 
 @router.post("/chat")
 async def builder_chat(
+    request: Request,
     body: BuilderChatRequest,
     profile_client=Depends(get_profile_client),
     session_mgr: BuilderSessionManager = Depends(get_builder_session_manager),
@@ -179,6 +180,12 @@ async def builder_chat(
         )
 
     # 7. Stream LLM response
+    # Read allowed model IDs from app state (set during startup probes)
+    allowed_model_ids: frozenset[str] | None = None
+    allowed_models = getattr(request.app.state, "allowed_models", None)
+    if allowed_models is not None:
+        allowed_model_ids = allowed_models.model_ids
+
     async def event_stream():
         event_id = 0
         accumulated_text = ""
@@ -186,6 +193,7 @@ async def builder_chat(
             async for event in llm_agent.stream_response(
                 conversation_history=session.conversation_history,
                 partial_scenario=session.partial_scenario,
+                allowed_model_ids=allowed_model_ids,
             ):
                 event_id += 1
                 yield format_sse_event(event, event_id=event_id)

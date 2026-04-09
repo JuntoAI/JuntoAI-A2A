@@ -27,7 +27,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Use scientific method arguments. Demand falsifiable evidence rather than anecdotal stories."
     },
     {
@@ -52,7 +52,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Appeal to cultural significance and the joy of belief. Use philosophical arguments about the nature of reality."
     },
     {
@@ -78,7 +78,7 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Evaluate arguments on logical consistency, not emotional appeal. Penalize logical fallacies from both sides."
     }

@@ -24,7 +24,7 @@ from app.builder.events import (
 )
 from app.builder.linkedin import is_linkedin_url
 from app.config import settings
-from app.orchestrator.available_models import MODELS_PROMPT_BLOCK
+from app.orchestrator.available_models import MODELS_PROMPT_BLOCK, filter_models_prompt_block
 from app.scenarios.models import ArenaScenario
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,10 @@ _JSON_DELTA_RE = re.compile(r"<<JSON_DELTA:(\w+):(.*?)>>", re.DOTALL)
 # Auto-generate the JSON schema from the Pydantic model so the LLM always
 # sees the exact field names, types, and constraints.
 _ARENA_SCHEMA_JSON = json.dumps(ArenaScenario.model_json_schema(), indent=2)
+
+# Sentinel placeholder for the models block — replaced at request time
+# by ``build_system_prompt()`` with the filtered (allowed-only) model list.
+_MODELS_PLACEHOLDER = "{{models_prompt_block}}"
 
 BUILDER_SYSTEM_PROMPT = f"""\
 You are an expert AI scenario builder for JuntoAI's negotiation arena. Your job \
@@ -74,7 +78,7 @@ price_unit, value_label, value_format
 5. **Outcome Receipt**: equivalent_human_time, process_label
 
 ## Available Models (use ONLY these for model_id and fallback_model_id)
-{MODELS_PROMPT_BLOCK}
+{_MODELS_PLACEHOLDER}
 
 When assigning model_id to agents, pick from the list above. Suggest \
 a flash/smaller model for simpler roles and a pro/larger model for complex \
@@ -93,6 +97,19 @@ a persona based on the professional background implied by the URL.
 with at least 1 having type "negotiator".
 - Be conversational and helpful. Explain what each field means when asked.
 """
+
+
+def build_system_prompt(allowed_model_ids: frozenset[str] | None = None) -> str:
+    """Return ``BUILDER_SYSTEM_PROMPT`` with the models block filtered to *allowed_model_ids*.
+
+    When *allowed_model_ids* is ``None`` the full ``MODELS_PROMPT_BLOCK`` is used
+    (backwards-compatible default for tests and local dev).
+    """
+    if allowed_model_ids is not None:
+        block = filter_models_prompt_block(allowed_model_ids)
+    else:
+        block = MODELS_PROMPT_BLOCK
+    return BUILDER_SYSTEM_PROMPT.replace(_MODELS_PLACEHOLDER, block)
 
 
 def _build_default_model() -> BaseChatModel:
@@ -145,8 +162,16 @@ class BuilderLLMAgent:
         conversation_history: list[dict],
         partial_scenario: dict,
         system_prompt: str = BUILDER_SYSTEM_PROMPT,
+        allowed_model_ids: frozenset[str] | None = None,
     ) -> AsyncIterator[BuilderSSEEvent]:
         """Stream LLM response as BuilderSSEEvents.
+
+        Parameters
+        ----------
+        allowed_model_ids:
+            When provided, the models block in the system prompt is filtered
+            to only include these model IDs.  ``None`` keeps the full list
+            (backwards-compatible default).
 
         Yields:
             BuilderTokenEvent for each streamed token,
@@ -154,6 +179,12 @@ class BuilderLLMAgent:
             BuilderCompleteEvent at the end,
             BuilderErrorEvent on failure.
         """
+        # Resolve the system prompt — filter models block when allowed_model_ids
+        # is provided and the caller hasn't overridden the prompt entirely.
+        if system_prompt is BUILDER_SYSTEM_PROMPT:
+            resolved_prompt = build_system_prompt(allowed_model_ids)
+        else:
+            resolved_prompt = system_prompt
         # Check for LinkedIn URLs in the latest user message
         linkedin_context = ""
         if conversation_history:
@@ -177,7 +208,7 @@ class BuilderLLMAgent:
 
         # Construct messages for the LLM
         full_system = (
-            system_prompt
+            resolved_prompt
             + f"\n\nCurrent partial scenario JSON:\n```json\n{json.dumps(partial_scenario, indent=2)}\n```"
             + linkedin_context
             + validation_context

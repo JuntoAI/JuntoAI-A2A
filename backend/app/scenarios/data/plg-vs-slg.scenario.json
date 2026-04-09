@@ -30,7 +30,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Argue for developer experience and self-serve adoption. Use data on PLG conversion funnels from similar companies."
     },
     {
@@ -55,7 +55,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Emphasize enterprise deal sizes and predictable revenue. Push for a hybrid approach if pure SLG is rejected."
     }
   ],

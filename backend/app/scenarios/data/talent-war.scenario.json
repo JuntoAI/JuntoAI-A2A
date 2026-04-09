@@ -27,7 +27,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Focus on total compensation packaging instead of base salary. Lead with equity and signing bonus before increasing base."
     },
     {
@@ -52,7 +52,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Prioritize remote work flexibility over salary. Be willing to accept a lower base if you get 4+ days remote."
     },
     {
@@ -77,7 +77,7 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Be stricter about policy enforcement. Flag any verbal promises about future promotions immediately."
     }

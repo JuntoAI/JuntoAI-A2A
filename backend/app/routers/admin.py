@@ -1000,6 +1000,61 @@ async def admin_export_simulations(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Model availability endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/models",
+    dependencies=[Depends(verify_admin_session)],
+)
+async def admin_models(request: Request) -> JSONResponse:
+    """Return model availability details from the startup probe.
+
+    Returns 503 if the availability probe has not yet completed.
+    """
+    from app.orchestrator.available_models import AVAILABLE_MODELS
+
+    allowed_models = getattr(request.app.state, "allowed_models", None)
+    if allowed_models is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Probe results not yet available",
+        )
+
+    # Build label lookup from the full registry
+    label_map = {m.model_id: m.label for m in AVAILABLE_MODELS}
+
+    models_list = [
+        {
+            "model_id": r.model_id,
+            "family": r.family,
+            "label": label_map.get(r.model_id, r.model_id),
+            "status": "available" if r.available else "unavailable",
+            "error": r.error,
+            "latency_ms": r.latency_ms,
+        }
+        for r in allowed_models.probe_results
+    ]
+
+    total_registered = len(allowed_models.probe_results)
+    total_available = sum(1 for r in allowed_models.probe_results if r.available)
+
+    return JSONResponse(content={
+        "total_registered": total_registered,
+        "total_available": total_available,
+        "total_unavailable": total_registered - total_available,
+        "probed_at": allowed_models.probed_at,
+        "models": models_list,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Broadcast email
+# ---------------------------------------------------------------------------
+
+
 @router.post(
     "/broadcast/preview",
     response_model=BroadcastPreviewResponse,

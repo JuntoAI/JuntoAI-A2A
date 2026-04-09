@@ -19,7 +19,13 @@ from app.builder.events import (
 from app.builder.llm_agent import (
     BUILDER_SYSTEM_PROMPT,
     BuilderLLMAgent,
+    build_system_prompt,
     validate_agents_section,
+)
+from app.orchestrator.available_models import (
+    AVAILABLE_MODELS,
+    MODELS_PROMPT_BLOCK,
+    filter_models_prompt_block,
 )
 
 
@@ -370,3 +376,81 @@ async def test_invalid_json_delta_is_skipped():
 
     # Should still complete successfully
     assert isinstance(events[-1], BuilderCompleteEvent)
+
+
+# ---------------------------------------------------------------------------
+# filter_models_prompt_block + build_system_prompt tests
+# Feature: llm-availability-checker
+# Requirements: 6.1, 6.2
+# ---------------------------------------------------------------------------
+
+
+class TestFilterModelsPromptBlock:
+    """Tests for filter_models_prompt_block and build_system_prompt."""
+
+    def test_filter_returns_only_allowed_models(self):
+        allowed = frozenset({"gemini-2.5-flash", "claude-sonnet-4"})
+        result = filter_models_prompt_block(allowed)
+        assert "`gemini-2.5-flash`" in result
+        assert "`claude-sonnet-4`" in result
+        assert "`gemini-2.5-pro`" not in result
+        assert "`claude-3-5-sonnet`" not in result
+
+    def test_filter_empty_allowed_returns_empty(self):
+        result = filter_models_prompt_block(frozenset())
+        assert result == ""
+
+    def test_filter_all_allowed_matches_full_block(self):
+        all_ids = frozenset(m.model_id for m in AVAILABLE_MODELS)
+        result = filter_models_prompt_block(all_ids)
+        assert result == MODELS_PROMPT_BLOCK
+
+    def test_build_system_prompt_none_uses_full_block(self):
+        prompt = build_system_prompt(None)
+        for m in AVAILABLE_MODELS:
+            assert f"`{m.model_id}`" in prompt
+
+    def test_build_system_prompt_filters_models(self):
+        allowed = frozenset({"gemini-2.5-flash"})
+        prompt = build_system_prompt(allowed)
+        assert "`gemini-2.5-flash`" in prompt
+        assert "`gemini-2.5-pro`" not in prompt
+        assert "`claude-sonnet-4`" not in prompt
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_stream_response_with_allowed_model_ids_filters_prompt():
+    """Verify that passing allowed_model_ids filters the models in the system prompt."""
+    model = _make_mock_model(["OK"])
+    agent = BuilderLLMAgent(model=model)
+
+    allowed = frozenset({"gemini-2.5-flash", "claude-sonnet-4"})
+    events = []
+    async for event in agent.stream_response([], {}, allowed_model_ids=allowed):
+        events.append(event)
+
+    call_args = model.astream.call_args[0][0]
+    system_msg = call_args[0]
+    assert "`gemini-2.5-flash`" in system_msg.content
+    assert "`claude-sonnet-4`" in system_msg.content
+    # These should be filtered out
+    assert "`gemini-2.5-pro`" not in system_msg.content
+    assert "`claude-3-5-sonnet`" not in system_msg.content
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_stream_response_without_allowed_model_ids_uses_full_block():
+    """Verify that omitting allowed_model_ids includes all models."""
+    model = _make_mock_model(["OK"])
+    agent = BuilderLLMAgent(model=model)
+
+    events = []
+    async for event in agent.stream_response([], {}):
+        events.append(event)
+
+    call_args = model.astream.call_args[0][0]
+    system_msg = call_args[0]
+    for m in AVAILABLE_MODELS:
+        assert f"`{m.model_id}`" in system_msg.content

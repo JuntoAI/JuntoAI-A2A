@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.exceptions import DatabaseConnectionError, SessionNotFoundError, ShareNotFoundError
+from app.orchestrator.availability_checker import AvailabilityChecker
+from app.orchestrator.available_models import AVAILABLE_MODELS
 from app.routers.auth import router as auth_router
 from app.routers.builder import router as builder_router
 from app.routers.health import router as health_router
@@ -23,7 +25,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Log startup info."""
+    """Run availability probes then log startup info."""
+    checker = AvailabilityChecker()
+    app.state.allowed_models = await checker.probe_all(AVAILABLE_MODELS)
+
     logger.info(
         "Starting JuntoAI A2A API v%s [env=%s] CORS origins=%s",
         settings.APP_VERSION,

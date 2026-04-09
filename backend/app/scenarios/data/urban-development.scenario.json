@@ -27,7 +27,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "example_prompt": "Propose phased construction to minimize community disruption. Offer community benefits like parks or affordable units."
     },
     {
@@ -53,7 +53,7 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Enforce zoning compliance strictly. Require environmental impact assessments before any approvals."
     },
@@ -79,7 +79,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Prioritize affordable housing quotas and local hiring commitments. Push for binding community benefit agreements."
     },
     {
@@ -105,7 +105,7 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.1-flash-lite-preview",
       "fallback_model_id": "gemini-3-flash-preview",
       "example_prompt": "Demand green building certifications and stormwater management plans. Block any proposal without carbon offset commitments."
     },
@@ -132,7 +132,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-2.5-pro",
+      "model_id": "gemini-3.1-pro-preview",
       "example_prompt": "Focus on project financial viability and risk mitigation. Require pre-leasing commitments before funding approval."
     }
   ],

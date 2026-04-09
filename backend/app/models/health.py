@@ -8,6 +8,8 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+    models: dict | None = None
+    unavailable_models: list[str] | None = None
 
 
 class DeployReadinessResponse(BaseModel):

@@ -21,7 +21,7 @@ def get_scenario_registry() -> ScenarioRegistry:
 async def list_scenarios(
     email: str | None = Query(default=None, description="User email for access filtering"),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
-) -> list[dict[str, str]]:
+) -> list[dict[str, str | bool]]:
     return registry.list_scenarios(email=email)
 
 

@@ -15,7 +15,18 @@ from app.main import app
 from app.middleware import get_event_buffer, get_sse_tracker
 from app.middleware.event_buffer import SSEEventBuffer
 from app.middleware.sse_limiter import SSEConnectionTracker
+from app.orchestrator.availability_checker import AllowedModels
 from app.scenarios.router import get_scenario_registry
+
+
+def _empty_allowed_models() -> AllowedModels:
+    """Return an empty AllowedModels for mocking the lifespan probe."""
+    return AllowedModels(
+        entries=(),
+        model_ids=frozenset(),
+        probe_results=(),
+        probed_at="2025-01-01T00:00:00+00:00",
+    )
 
 
 def _make_mock_db(session_id: str = "test-session") -> SessionStore:
@@ -125,7 +136,12 @@ def test_local_mode_accepts_any_email(email: str):
 
     try:
         with patch("app.routers.negotiation.settings") as mock_settings, \
-             patch("app.routers.negotiation.run_negotiation") as mock_run:
+             patch("app.routers.negotiation.run_negotiation") as mock_run, \
+             patch(
+                 "app.main.AvailabilityChecker.probe_all",
+                 new_callable=AsyncMock,
+                 return_value=_empty_allowed_models(),
+             ):
             mock_settings.RUN_MODE = "local"
             # run_negotiation yields nothing — stream ends immediately
             mock_run.return_value = aiter_empty()
