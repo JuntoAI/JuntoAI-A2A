@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Linkedin, Loader2 } from "lucide-react";
+import { Send, Linkedin, Loader2, Globe } from "lucide-react";
 import type { BuilderChatMessage, HealthCheckFullReport } from "@/lib/builder/types";
 import { streamBuilderChat } from "@/lib/builder/sse-client";
 import type { BuilderSSECallbacks } from "@/lib/builder/sse-client";
@@ -94,6 +94,9 @@ export function BuilderChat({
   const [isWaiting, setIsWaiting] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [hasReceivedToken, setHasReceivedToken] = useState(false);
+  const [researchStatus, setResearchStatus] = useState<
+    Map<string, "fetching" | "done" | "failed">
+  >(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -119,6 +122,7 @@ export function BuilderChat({
     setIsWaiting(true);
     setStreamingContent("");
     setHasReceivedToken(false);
+    setResearchStatus(new Map());
 
     const callbacks: BuilderSSECallbacks = {
       onToken: (token) => {
@@ -127,6 +131,13 @@ export function BuilderChat({
       },
       onJsonDelta: (section, data) => {
         onJsonDelta(section, data);
+      },
+      onResearch: (url, status) => {
+        setResearchStatus((prev) => {
+          const next = new Map(prev);
+          next.set(url, status);
+          return next;
+        });
       },
       onComplete: () => {
         setStreamingContent((prev) => {
@@ -203,6 +214,29 @@ export function BuilderChat({
             </div>
           </div>
         ))}
+
+        {/* Web research indicator */}
+        {researchStatus.size > 0 && (
+          <div className="flex justify-start" data-testid="research-indicator">
+            <div className="rounded-2xl rounded-bl-md bg-white px-4 py-3 text-sm shadow-sm space-y-1">
+              {Array.from(researchStatus.entries()).map(([url, status]) => (
+                <div key={url} className="flex items-center gap-2 text-gray-500">
+                  {status === "fetching" ? (
+                    <Loader2 size={14} className="animate-spin text-[#007BFF]" />
+                  ) : status === "done" ? (
+                    <Globe size={14} className="text-[#00E676]" />
+                  ) : (
+                    <Globe size={14} className="text-red-400" />
+                  )}
+                  <span className="truncate max-w-[250px]">
+                    {status === "fetching" ? "Researching " : status === "done" ? "Researched " : "Failed "}
+                    <span className="text-[#007BFF]">{new URL(url).hostname}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Thinking indicator — before first token arrives */}
         {isWaiting && !hasReceivedToken && !streamingContent && (

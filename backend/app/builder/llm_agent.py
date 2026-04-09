@@ -20,9 +20,16 @@ from app.builder.events import (
     BuilderCompleteEvent,
     BuilderErrorEvent,
     BuilderJsonDeltaEvent,
+    BuilderResearchEvent,
     BuilderTokenEvent,
 )
 from app.builder.linkedin import is_linkedin_url
+from app.builder.web_research import (
+    extract_urls,
+    format_research_context,
+    has_research_intent,
+    research_urls,
+)
 from app.config import settings
 from app.orchestrator.available_models import MODELS_PROMPT_BLOCK, filter_models_prompt_block
 from app.scenarios.models import ArenaScenario
@@ -30,7 +37,13 @@ from app.scenarios.models import ArenaScenario
 logger = logging.getLogger(__name__)
 
 # Type alias matching the design doc
-BuilderSSEEvent = BuilderTokenEvent | BuilderJsonDeltaEvent | BuilderCompleteEvent | BuilderErrorEvent
+BuilderSSEEvent = (
+    BuilderTokenEvent
+    | BuilderJsonDeltaEvent
+    | BuilderResearchEvent
+    | BuilderCompleteEvent
+    | BuilderErrorEvent
+)
 
 # Regex to detect JSON delta markers emitted by the LLM
 _JSON_DELTA_RE = re.compile(r"<<JSON_DELTA:(\w+):(.*?)>>", re.DOTALL)
@@ -174,6 +187,7 @@ class BuilderLLMAgent:
             (backwards-compatible default).
 
         Yields:
+            BuilderResearchEvent when fetching URLs from user message,
             BuilderTokenEvent for each streamed token,
             BuilderJsonDeltaEvent when a <<JSON_DELTA:...>> marker is parsed,
             BuilderCompleteEvent at the end,
@@ -187,15 +201,45 @@ class BuilderLLMAgent:
             resolved_prompt = system_prompt
         # Check for LinkedIn URLs in the latest user message
         linkedin_context = ""
+        web_research_context = ""
         if conversation_history:
             last_msg = conversation_history[-1]
-            if last_msg.get("role") == "user" and is_linkedin_url(last_msg.get("content", "")):
-                linkedin_context = (
-                    "\n\n[SYSTEM NOTE: The user pasted a LinkedIn profile URL. "
-                    "Generate a detailed agent persona based on the professional "
-                    "background implied by this LinkedIn profile. Include suggested "
-                    "role, name, persona_prompt, goals, and tone.]"
-                )
+            if last_msg.get("role") == "user":
+                user_text = last_msg.get("content", "")
+
+                if is_linkedin_url(user_text):
+                    linkedin_context = (
+                        "\n\n[SYSTEM NOTE: The user pasted a LinkedIn profile URL. "
+                        "Generate a detailed agent persona based on the professional "
+                        "background implied by this LinkedIn profile. Include suggested "
+                        "role, name, persona_prompt, goals, and tone.]"
+                    )
+
+                # Web research: detect URLs and research intent
+                urls = extract_urls(user_text)
+                # Filter out LinkedIn URLs (handled separately)
+                urls = [u for u in urls if "linkedin.com/in/" not in u]
+
+                if urls or has_research_intent(user_text):
+                    if urls:
+                        # Yield research status events
+                        for url in urls[:3]:
+                            yield BuilderResearchEvent(
+                                event_type="builder_research",
+                                url=url,
+                                status="fetching",
+                            )
+
+                        results = await research_urls(urls)
+
+                        for r in results:
+                            yield BuilderResearchEvent(
+                                event_type="builder_research",
+                                url=r["url"],
+                                status="done" if r.get("success") else "failed",
+                            )
+
+                        web_research_context = format_research_context(results)
 
         # Build agent validation context
         validation_context = ""
@@ -211,6 +255,7 @@ class BuilderLLMAgent:
             resolved_prompt
             + f"\n\nCurrent partial scenario JSON:\n```json\n{json.dumps(partial_scenario, indent=2)}\n```"
             + linkedin_context
+            + web_research_context
             + validation_context
         )
 

@@ -26,6 +26,14 @@ class BuilderCompleteEvent(BaseModel):
     event_type: Literal["builder_complete"]
 
 
+class BuilderResearchEvent(BaseModel):
+    """SSE event signaling web research is in progress."""
+
+    event_type: Literal["builder_research"]
+    url: str
+    status: Literal["fetching", "done", "failed"]
+
+
 class BuilderErrorEvent(BaseModel):
     """SSE event for errors during builder streaming."""
 

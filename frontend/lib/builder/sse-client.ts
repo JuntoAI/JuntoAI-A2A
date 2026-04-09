@@ -21,6 +21,7 @@ const BACKEND_URL =
 export interface BuilderSSECallbacks {
   onToken: (token: string) => void;
   onJsonDelta: (section: string, data: Record<string, unknown>) => void;
+  onResearch: (url: string, status: "fetching" | "done" | "failed") => void;
   onComplete: () => void;
   onError: (message: string) => void;
   onHealthStart: () => void;
@@ -56,6 +57,12 @@ function dispatchEvent(
       callbacks.onJsonDelta(
         parsed.section as string,
         parsed.data as Record<string, unknown>,
+      );
+      break;
+    case "builder_research":
+      callbacks.onResearch(
+        parsed.url as string,
+        parsed.status as "fetching" | "done" | "failed",
       );
       break;
     case "builder_complete":

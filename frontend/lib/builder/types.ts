@@ -12,6 +12,7 @@
 export type BuilderEventType =
   | "builder_token"
   | "builder_json_delta"
+  | "builder_research"
   | "builder_complete"
   | "builder_error"
   | "builder_health_check_start"
@@ -37,6 +38,12 @@ export interface BuilderCompleteEvent {
 export interface BuilderErrorEvent {
   event_type: "builder_error";
   message: string;
+}
+
+export interface BuilderResearchEvent {
+  event_type: "builder_research";
+  url: string;
+  status: "fetching" | "done" | "failed";
 }
 
 export interface BuilderSaveCompleteEvent {
