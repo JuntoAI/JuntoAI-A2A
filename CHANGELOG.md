@@ -6,6 +6,21 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## LLM Availability Checker (Spec 310) — 2026-04-09
+
+- Model registry extended with `gemini-3.1-pro-preview` and `gemini-3.1-flash-lite-preview` entries — `VALID_MODEL_IDS`, `MODELS_PROMPT_BLOCK`, and `DEFAULT_MODEL_MAP` derive automatically
+- Startup availability probe: concurrent `asyncio.gather` probes of all registered models via Vertex AI (cloud) or LiteLLM (local) with configurable 15s timeout per probe
+- `ProbeResult` and `AllowedModels` frozen dataclasses — immutable after construction, stored in `app.state.allowed_models` for dependency injection
+- Zero-model degraded mode: application starts with empty allowed list and `"degraded"` health status instead of crashing
+- `/api/v1/models` endpoint returns only verified-working models from the Allowed_Models_List
+- Scenario registry `available` boolean flag: validates each agent's `model_id` and `fallback_model_id` against allowed set at load time, logs WARNING for unavailable models
+- Builder prompt block filtered to allowed models only — generated scenarios reference only reachable LLMs
+- Health endpoint enhanced with `models` object (`total_registered`, `total_available`), `unavailable_models` list, and `"degraded"` status when zero models available
+- `GET /admin/models` endpoint: per-model probe status, error reason, latency_ms, summary counts, 503 if probes not yet complete, gated behind admin session auth
+- Standalone CLI script (`python -m scripts.check_models`): formatted table output, summary line (`X/Y models available`), exit code 0 (all pass) or 1 (any fail)
+- Probe mechanism: deterministic minimal prompt ("Respond with OK"), exception-safe per probe, idempotent given identical external conditions
+- Property tests (11 Hypothesis properties): registry derivation consistency, probe exception safety, allowed list correctness, immutability, models endpoint filtering, scenario availability flag, builder prompt filtering, health/admin count consistency, probe idempotence, CLI output completeness, CLI exit code
+
 ## GCP Telegram Alerting Pipeline (Spec 300) — 2026-04-08
 
 - Terraform alerting module at `infra/modules/alerting/` with Terragrunt wrapper, GCS backend, and GCP API enablement (monitoring, cloudfunctions, pubsub, cloudbuild)

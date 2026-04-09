@@ -9,6 +9,25 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "LLM Availability Checker",
+    specId: "310",
+    date: "2026-04-09",
+    items: [
+      "Model registry extended with gemini-3.1-pro-preview and gemini-3.1-flash-lite-preview — VALID_MODEL_IDS, MODELS_PROMPT_BLOCK, and DEFAULT_MODEL_MAP derive automatically",
+      "Startup availability probe: concurrent asyncio.gather probes of all registered models via Vertex AI (cloud) or LiteLLM (local) with configurable 15s timeout",
+      "ProbeResult and AllowedModels frozen dataclasses — immutable after construction, stored in app.state.allowed_models for dependency injection",
+      "Zero-model degraded mode: application starts with empty allowed list and degraded health status instead of crashing",
+      "/api/v1/models endpoint returns only verified-working models from the Allowed Models List",
+      "Scenario registry available boolean flag: validates each agent's model_id and fallback_model_id against allowed set at load time",
+      "Builder prompt block filtered to allowed models only — generated scenarios reference only reachable LLMs",
+      "Health endpoint enhanced with models object (total_registered, total_available), unavailable_models list, and degraded status when zero models available",
+      "GET /admin/models endpoint: per-model probe status, error reason, latency_ms, summary counts, 503 if probes not yet complete",
+      "Standalone CLI script (python -m scripts.check_models): formatted table output, summary line, exit code 0 (all pass) or 1 (any fail)",
+      "Probe mechanism: deterministic minimal prompt, exception-safe per probe, idempotent given identical external conditions",
+      "Property tests (11 Hypothesis properties): registry derivation, probe safety, allowed list correctness, immutability, endpoint filtering, scenario availability, builder filtering, count consistency, idempotence, CLI output, CLI exit code",
+    ],
+  },
+  {
     title: "GCP Telegram Alerting Pipeline",
     specId: "300",
     date: "2026-04-08",
