@@ -20,7 +20,8 @@ import { InitializeButton } from "@/components/arena/InitializeButton";
 import { NegotiationHistory } from "@/components/arena/NegotiationHistory";
 import { AdvancedConfigModal, type MemoryStrategy } from "@/components/arena/AdvancedConfigModal";
 import { BuilderModal } from "@/components/builder/BuilderModal";
-import { listCustomScenarios, deleteCustomScenario } from "@/lib/builder/api";
+import { listCustomScenarios, deleteCustomScenario, updateCustomScenario, type CustomScenarioSummary } from "@/lib/builder/api";
+import { ScenarioEditorModal } from "@/components/arena/ScenarioEditorModal";
 import { Spinner } from "@/components/ui/Spinner";
 
 function ArenaPageContent() {
@@ -41,6 +42,11 @@ function ArenaPageContent() {
   const [customScenarios, setCustomScenarios] = useState<ScenarioSummary[]>([]);
   const [showBuilder, setShowBuilder] = useState(false);
   const [isDeletingScenario, setIsDeletingScenario] = useState(false);
+  const customScenariosRaw = useRef<CustomScenarioSummary[]>([]);
+
+  // Editor modal state
+  const [editorScenarioId, setEditorScenarioId] = useState<string | null>(null);
+  const [editorScenarioJson, setEditorScenarioJson] = useState<Record<string, unknown>>({});
 
   // Advanced config state
   const [customPrompts, setCustomPrompts] = useState<Record<string, string>>({});
@@ -59,6 +65,7 @@ function ArenaPageContent() {
     if (!email) return;
     try {
       const list = await listCustomScenarios(email);
+      customScenariosRaw.current = list;
       setCustomScenarios(
         list.map((cs) => {
           const json = cs.scenario_json as Record<string, string>;
@@ -116,6 +123,39 @@ function ArenaPageContent() {
       }
     },
     [email, selectedScenarioId, refreshCustomScenarios],
+  );
+
+  // Edit a custom scenario
+  const handleEditCustomScenario = useCallback(
+    (scenarioId: string, _scenarioName: string) => {
+      const raw = customScenariosRaw.current.find((cs) => cs.scenario_id === scenarioId);
+      if (!raw) return;
+      setEditorScenarioId(scenarioId);
+      setEditorScenarioJson(raw.scenario_json);
+    },
+    [],
+  );
+
+  const handleSaveEditedScenario = useCallback(
+    async (updated: Record<string, unknown>) => {
+      if (!email || !editorScenarioId) return;
+      await updateCustomScenario(email, editorScenarioId, updated);
+      setEditorScenarioId(null);
+      await refreshCustomScenarios();
+      // Refresh detail if the edited scenario is currently selected
+      if (selectedScenarioId === editorScenarioId) {
+        setIsLoadingDetail(true);
+        try {
+          const detail = await fetchScenarioDetail(editorScenarioId, email);
+          setScenarioDetail(detail);
+        } catch {
+          // Non-critical
+        } finally {
+          setIsLoadingDetail(false);
+        }
+      }
+    },
+    [email, editorScenarioId, refreshCustomScenarios, selectedScenarioId],
   );
 
   useEffect(() => {
@@ -331,6 +371,7 @@ function ArenaPageContent() {
           onBuildOwn={() => setShowBuilder(true)}
           onDeleteCustom={handleDeleteCustomScenario}
           isDeleting={isDeletingScenario}
+          onEditCustom={handleEditCustomScenario}
         />
       )}
 
@@ -448,6 +489,15 @@ function ArenaPageContent() {
         }}
         email={email ?? ""}
         tokenBalance={tokenBalance}
+      />
+
+      {/* Scenario Editor Modal */}
+      <ScenarioEditorModal
+        isOpen={editorScenarioId !== null}
+        onClose={() => setEditorScenarioId(null)}
+        scenarioId={editorScenarioId ?? ""}
+        scenarioJson={editorScenarioJson}
+        onSave={handleSaveEditedScenario}
       />
     </div>
   );
