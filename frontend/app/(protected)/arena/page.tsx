@@ -144,15 +144,7 @@ function ArenaPageContent() {
       await refreshCustomScenarios();
       // Refresh detail if the edited scenario is currently selected
       if (selectedScenarioId === editorScenarioId) {
-        setIsLoadingDetail(true);
-        try {
-          const detail = await fetchScenarioDetail(editorScenarioId, email);
-          setScenarioDetail(detail);
-        } catch {
-          // Non-critical
-        } finally {
-          setIsLoadingDetail(false);
-        }
+        setScenarioDetail({ id: editorScenarioId, ...updated } as ArenaScenario);
       }
     },
     [email, editorScenarioId, refreshCustomScenarios, selectedScenarioId],
@@ -273,8 +265,15 @@ function ArenaPageContent() {
     setError(null);
     setIsLoadingDetail(true);
     try {
-      const detail = await fetchScenarioDetail(scenarioId, email ?? undefined);
-      setScenarioDetail(detail);
+      // Custom scenarios aren't in the main /scenarios registry — use stored JSON
+      const customRaw = customScenariosRaw.current.find((cs) => cs.scenario_id === scenarioId);
+      if (customRaw) {
+        const json = customRaw.scenario_json as Record<string, unknown>;
+        setScenarioDetail({ id: scenarioId, ...json } as ArenaScenario);
+      } else {
+        const detail = await fetchScenarioDetail(scenarioId, email ?? undefined);
+        setScenarioDetail(detail);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load scenario details.");
     } finally {
