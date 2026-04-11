@@ -136,13 +136,46 @@ def _mock_llm_response(content: str) -> MagicMock:
     return response
 
 
-def _make_mock_model() -> AsyncMock:
-    """Create a mock LLM model that returns structured JSON responses."""
+def _make_routing_mock(
+    pq_score: int = 80,
+    pq_findings: str = "[]",
+    tension_score: int = 80,
+    tension_findings: str = "[]",
+    te_score: int = 70,
+    te_findings: str = "[]",
+    reg_has_criteria: bool = True,
+    reg_findings: str = "[]",
+    per_agent_pq: dict[str, int] | None = None,
+    per_agent_pq_findings: dict[str, str] | None = None,
+) -> AsyncMock:
+    """Create a mock LLM that routes responses based on prompt content.
+
+    Works correctly with parallelized asyncio.gather calls.
+    """
+    async def _route(prompt):
+        p = str(prompt).lower()
+        # Prompt quality — per-agent evaluation
+        if "evaluate this agent" in p or "prompt quality" in p:
+            if per_agent_pq:
+                for role, score in per_agent_pq.items():
+                    if role.lower() in p:
+                        findings = (per_agent_pq_findings or {}).get(role, "[]")
+                        return _mock_llm_response(f'{{"score": {score}, "findings": {findings}}}')
+            return _mock_llm_response(f'{{"score": {pq_score}, "findings": {pq_findings}}}')
+        # Goal tension
+        if "tension" in p or "opposing" in p or "conflict" in p:
+            return _mock_llm_response(f'{{"tension_score": {tension_score}, "findings": {tension_findings}}}')
+        # Toggle effectiveness
+        if "toggle" in p:
+            return _mock_llm_response(f'{{"score": {te_score}, "findings": {te_findings}}}')
+        # Regulator feasibility
+        if "regulator" in p or "enforcement" in p or "criteria" in p:
+            return _mock_llm_response(f'{{"has_criteria": {"true" if reg_has_criteria else "false"}, "findings": {reg_findings}}}')
+        # Fallback
+        return _mock_llm_response(f'{{"score": {pq_score}, "findings": {pq_findings}}}')
+
     model = AsyncMock()
-    # Default: return a reasonable prompt quality response
-    model.ainvoke = AsyncMock(
-        return_value=_mock_llm_response('{"score": 75, "findings": ["Good structure"]}')
-    )
+    model.ainvoke = AsyncMock(side_effect=_route)
     return model
 
 
@@ -155,20 +188,7 @@ def _make_mock_model() -> AsyncMock:
 @pytest.mark.asyncio
 async def test_analyze_yields_correct_sse_event_sequence():
     """Verify the analyzer yields Start, Findings, then Complete events."""
-    model = _make_mock_model()
-    # Set up different responses for different calls
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            # Prompt quality for Buyer
-            _mock_llm_response('{"score": 80, "findings": ["Clear strategy"]}'),
-            # Prompt quality for Seller
-            _mock_llm_response('{"score": 70, "findings": ["Good persona"]}'),
-            # Goal tension
-            _mock_llm_response('{"tension_score": 85, "findings": ["Strong opposing interests"]}'),
-            # Toggle effectiveness
-            _mock_llm_response('{"score": 90, "findings": ["Actionable context"]}'),
-        ]
-    )
+    model = _make_routing_mock(pq_score=80, tension_score=85, te_score=90)
 
     analyzer = HealthCheckAnalyzer(model=model)
     scenario = _make_scenario()
@@ -203,13 +223,13 @@ async def test_analyze_yields_correct_sse_event_sequence():
 @pytest.mark.asyncio
 async def test_analyze_includes_gold_standard_in_prompts():
     """Verify gold-standard scenarios are passed to LLM prompts."""
-    model = _make_mock_model()
     call_args_list: list[str] = []
 
     async def capture_invoke(prompt):
         call_args_list.append(str(prompt))
         return _mock_llm_response('{"score": 75, "findings": [], "tension_score": 70, "has_criteria": true}')
 
+    model = AsyncMock()
     model.ainvoke = AsyncMock(side_effect=capture_invoke)
 
     analyzer = HealthCheckAnalyzer(model=model)
@@ -232,7 +252,7 @@ async def test_analyze_includes_gold_standard_in_prompts():
 @pytest.mark.asyncio
 async def test_prompt_quality_per_agent_scoring():
     """Verify prompt quality returns per-agent scores."""
-    model = _make_mock_model()
+    model = AsyncMock()
 
     # With parallelized LLM calls, side_effect order is non-deterministic.
     # Use a function that inspects the prompt to return the right response.
@@ -280,18 +300,7 @@ async def test_prompt_quality_per_agent_scoring():
 @pytest.mark.asyncio
 async def test_goal_tension_opposing_goals():
     """Verify high tension score for opposing goals."""
-    model = _make_mock_model()
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            # Prompt quality (2 agents)
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            # Goal tension: strong opposition
-            _mock_llm_response('{"tension_score": 95, "findings": ["Buyer wants low, Seller wants high"]}'),
-            # Toggle effectiveness
-            _mock_llm_response('{"score": 70, "findings": []}'),
-        ]
-    )
+    model = _make_routing_mock(pq_score=80, tension_score=95, te_score=70)
 
     analyzer = HealthCheckAnalyzer(model=model)
     scenario = _make_scenario()
@@ -308,18 +317,7 @@ async def test_goal_tension_opposing_goals():
 @pytest.mark.asyncio
 async def test_goal_tension_aligned_goals():
     """Verify low tension score triggers critical finding."""
-    model = _make_mock_model()
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            # Prompt quality (2 agents)
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            # Goal tension: no opposition
-            _mock_llm_response('{"tension_score": 15, "findings": ["Goals are aligned"]}'),
-            # Toggle effectiveness
-            _mock_llm_response('{"score": 70, "findings": []}'),
-        ]
-    )
+    model = _make_routing_mock(pq_score=80, tension_score=15, te_score=70)
 
     analyzer = HealthCheckAnalyzer(model=model)
     scenario = _make_scenario()
@@ -343,18 +341,8 @@ async def test_goal_tension_aligned_goals():
 @pytest.mark.asyncio
 async def test_toggle_effectiveness_evaluation():
     """Verify toggle effectiveness scoring."""
-    model = _make_mock_model()
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            # Prompt quality (2 agents)
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            # Goal tension
-            _mock_llm_response('{"tension_score": 80, "findings": []}'),
-            # Toggle effectiveness: weak toggle
-            _mock_llm_response('{"score": 30, "findings": ["Toggle lacks specificity"]}'),
-        ]
-    )
+    model = _make_routing_mock(pq_score=80, tension_score=80, te_score=30,
+                               te_findings='["Toggle lacks specificity"]')
 
     analyzer = HealthCheckAnalyzer(model=model)
     scenario = _make_scenario()
@@ -376,21 +364,9 @@ async def test_toggle_effectiveness_evaluation():
 @pytest.mark.asyncio
 async def test_regulator_feasibility_check():
     """Verify regulator feasibility evaluation."""
-    model = _make_mock_model()
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            # Prompt quality (3 agents: Buyer, Seller, Regulator)
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            # Goal tension
-            _mock_llm_response('{"tension_score": 80, "findings": []}'),
-            # Toggle effectiveness
-            _mock_llm_response('{"score": 70, "findings": []}'),
-            # Regulator feasibility: lacks criteria
-            _mock_llm_response('{"has_criteria": false, "findings": ["No enforcement thresholds"]}'),
-        ]
-    )
+    model = _make_routing_mock(pq_score=80, tension_score=80, te_score=70,
+                               reg_has_criteria=False,
+                               reg_findings='["No enforcement thresholds"]')
 
     analyzer = HealthCheckAnalyzer(model=model)
     scenario = _make_scenario_with_regulator()
@@ -410,7 +386,7 @@ async def test_regulator_feasibility_check():
 @pytest.mark.asyncio
 async def test_llm_error_graceful_fallback():
     """Verify analyzer handles LLM errors gracefully with fallback scores."""
-    model = _make_mock_model()
+    model = AsyncMock()
     model.ainvoke = AsyncMock(side_effect=Exception("Vertex AI unavailable"))
 
     analyzer = HealthCheckAnalyzer(model=model)
@@ -434,17 +410,10 @@ async def test_llm_error_graceful_fallback():
 @pytest.mark.asyncio
 async def test_recommendations_ordered_critical_first():
     """Verify recommendations are ordered: critical first, then warnings."""
-    model = _make_mock_model()
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            # Prompt quality: low scores to generate findings
-            _mock_llm_response('{"score": 25, "findings": ["Very weak prompt"]}'),
-            _mock_llm_response('{"score": 25, "findings": ["Very weak prompt"]}'),
-            # Goal tension: low
-            _mock_llm_response('{"tension_score": 10, "findings": []}'),
-            # Toggle effectiveness: weak
-            _mock_llm_response('{"score": 30, "findings": []}'),
-        ]
+    model = _make_routing_mock(
+        per_agent_pq={"Buyer": 25, "Seller": 25},
+        per_agent_pq_findings={"Buyer": '["Very weak prompt"]', "Seller": '["Very weak prompt"]'},
+        tension_score=10, te_score=30,
     )
 
     analyzer = HealthCheckAnalyzer(model=model)
@@ -471,19 +440,7 @@ async def test_recommendations_ordered_critical_first():
 @pytest.mark.asyncio
 async def test_budget_overlap_pure_function_delegation():
     """Verify budget overlap uses the pure function, not LLM."""
-    model = _make_mock_model()
-    # Only set up LLM responses for the 4 LLM-powered checks
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            # Prompt quality (2 agents)
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            # Goal tension
-            _mock_llm_response('{"tension_score": 80, "findings": []}'),
-            # Toggle effectiveness
-            _mock_llm_response('{"score": 70, "findings": []}'),
-        ]
-    )
+    model = _make_routing_mock(pq_score=80, tension_score=80, te_score=70)
 
     analyzer = HealthCheckAnalyzer(model=model)
     scenario = _make_scenario()
@@ -506,15 +463,7 @@ async def test_budget_overlap_pure_function_delegation():
 @pytest.mark.asyncio
 async def test_complete_report_has_all_fields():
     """Verify the final report contains all required HealthCheckReport fields."""
-    model = _make_mock_model()
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            _mock_llm_response('{"score": 80, "findings": []}'),
-            _mock_llm_response('{"tension_score": 80, "findings": []}'),
-            _mock_llm_response('{"score": 70, "findings": []}'),
-        ]
-    )
+    model = _make_routing_mock(pq_score=80, tension_score=80, te_score=70)
 
     analyzer = HealthCheckAnalyzer(model=model)
     scenario = _make_scenario()

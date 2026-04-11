@@ -168,12 +168,14 @@ async def test_put_valid_update_returns_200():
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_put_nonexistent_scenario_returns_404():
-    """PUT for a scenario_id that doesn't exist returns 404."""
+    """PUT for a scenario_id that doesn't exist returns error in SSE stream."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = str(Path(tmpdir) / "update404.db")
         store = SQLiteCustomScenarioStore(db_path)
 
+        stub_analyzer = _make_stub_analyzer()
         app.dependency_overrides[get_custom_scenario_store] = lambda: store
+        app.dependency_overrides[get_health_check_analyzer] = lambda: stub_analyzer
         try:
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
@@ -185,11 +187,14 @@ async def test_put_nonexistent_scenario_returns_404():
                     json={"scenario_json": _valid_scenario_dict()},
                 )
 
-            assert resp.status_code == 404
-            body = resp.json()
-            assert "detail" in body
+            # Endpoint returns 200 SSE stream; the error is in the stream body
+            assert resp.status_code == 200
+            body = _parse_sse_final_event(resp.text)
+            assert body["event_type"] == "builder_error"
+            assert "not found" in body["message"].lower() or "not owned" in body["message"].lower()
         finally:
             app.dependency_overrides.pop(get_custom_scenario_store, None)
+            app.dependency_overrides.pop(get_health_check_analyzer, None)
 
 
 @pytest.mark.unit
