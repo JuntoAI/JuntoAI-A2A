@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 
 from app.config import settings
-from app.db import get_profile_client, get_session_store
+from app.db import get_custom_scenario_store, get_profile_client, get_session_store
 from app.db.base import SessionStore
 from app.middleware import get_event_buffer, get_sse_tracker
 from app.middleware.event_buffer import SSEEventBuffer
@@ -33,6 +33,7 @@ from app.orchestrator import model_router
 from app.orchestrator.available_models import VALID_MODEL_IDS
 from app.orchestrator.graph import run_negotiation
 from app.orchestrator.state import create_initial_state
+from app.scenarios.loader import load_scenario_from_dict
 from app.scenarios.registry import ScenarioRegistry
 from app.scenarios.router import get_scenario_registry
 from app.services.tier_calculator import calculate_tier, get_daily_limit
@@ -91,6 +92,7 @@ async def get_negotiation_history(
     days: int = Query(default=7, ge=1, le=90, description="Number of days to look back"),
     db: SessionStore = Depends(get_session_store),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
+    custom_store=Depends(get_custom_scenario_store),
 ):
     """Return the user's completed negotiation sessions grouped by UTC day."""
     # Validate email presence
@@ -114,12 +116,18 @@ async def get_negotiation_history(
             continue
 
         scenario_id = doc.get("scenario_id", "")
-        # Resolve scenario name from registry, fallback to scenario_id
+        # Resolve scenario name from registry, then custom store, fallback to scenario_id
+        scenario_name = scenario_id
         try:
             scenario = registry.get_scenario(scenario_id, email=email)
             scenario_name = scenario.name
         except Exception:
-            scenario_name = scenario_id
+            try:
+                custom_doc = await custom_store.get(email.strip(), scenario_id)
+                if custom_doc and custom_doc.get("scenario_json"):
+                    scenario_name = custom_doc["scenario_json"].get("name", scenario_id)
+            except Exception:
+                pass
 
         total_tokens_used = doc.get("total_tokens_used", 0) or 0
         items.append(
@@ -183,6 +191,7 @@ async def start_negotiation(
     db: SessionStore = Depends(get_session_store),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
     profile_client=Depends(get_profile_client),
+    custom_store=Depends(get_custom_scenario_store),
 ):
     """Create a new negotiation session.
 
@@ -200,10 +209,23 @@ async def start_negotiation(
             if user_status == "banned":
                 return JSONResponse(status_code=403, content={"detail": "Account banned"})
 
-    # 1. Validate scenario exists
+    # 1. Validate scenario exists — check built-in registry first, then custom store
+    scenario = None
     try:
         scenario = registry.get_scenario(body.scenario_id, email=body.email)
     except Exception:
+        pass
+
+    if scenario is None:
+        # Fallback: look up in user's custom scenarios
+        try:
+            custom_doc = await custom_store.get(body.email, body.scenario_id)
+            if custom_doc and custom_doc.get("scenario_json"):
+                scenario = load_scenario_from_dict(custom_doc["scenario_json"])
+        except Exception:
+            pass
+
+    if scenario is None:
         return JSONResponse(
             status_code=404,
             content={"detail": f"Scenario '{body.scenario_id}' not found"},
