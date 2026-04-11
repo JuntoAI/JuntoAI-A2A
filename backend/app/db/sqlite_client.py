@@ -184,6 +184,24 @@ class SQLiteSessionClient:
         finally:
             await conn.close()
 
+    async def list_sessions(self, since: datetime | None = None) -> list[dict]:
+        """Return all session dicts, optionally filtered by created_at >= since."""
+        conn = await self._get_connection()
+        try:
+            if since is not None:
+                cursor = await conn.execute(
+                    "SELECT data FROM negotiation_sessions WHERE created_at >= ?",
+                    (since.isoformat(),),
+                )
+            else:
+                cursor = await conn.execute(
+                    "SELECT data FROM negotiation_sessions",
+                )
+            rows = await cursor.fetchall()
+            return [json.loads(raw) for (raw,) in rows]
+        finally:
+            await conn.close()
+
 
 _CREATE_SHARE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS shared_negotiations (

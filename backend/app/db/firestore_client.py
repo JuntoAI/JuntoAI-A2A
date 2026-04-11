@@ -1,5 +1,7 @@
 """Async Firestore clients for negotiation session and share persistence."""
 
+from datetime import datetime
+
 from app.exceptions import SessionNotFoundError
 from app.models.negotiation import NegotiationStateModel
 from app.models.share import SharePayload
@@ -79,6 +81,17 @@ class FirestoreSessionClient:
     async def delete_session(self, session_id: str) -> None:
         """Delete a single session document by session_id."""
         await self._collection.document(session_id).delete()
+
+    async def list_sessions(self, since: datetime | None = None) -> list[dict]:
+        """Return all session dicts, optionally filtered by created_at >= since."""
+        if since is not None:
+            query = self._collection.where("created_at", ">=", since.isoformat())
+        else:
+            query = self._collection
+        docs: list[dict] = []
+        async for doc in query.stream():
+            docs.append(doc.to_dict())
+        return docs
 
 
 class FirestoreShareClient:

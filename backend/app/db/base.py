@@ -1,5 +1,6 @@
 """Abstract store protocols for database-agnostic persistence."""
 
+from datetime import datetime
 from typing import Protocol, runtime_checkable
 
 from app.models.negotiation import NegotiationStateModel
@@ -34,6 +35,10 @@ class SessionStore(Protocol):
 
     async def delete_session(self, session_id: str) -> None:
         """Delete a single session by session_id."""
+        ...
+
+    async def list_sessions(self, since: datetime | None = None) -> list[dict]:
+        """Return all session dicts, optionally filtered by created_at >= since."""
         ...
 
 

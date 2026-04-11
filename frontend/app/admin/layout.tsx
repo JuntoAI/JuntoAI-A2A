@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { label: "Users", href: "/admin/users" },
   { label: "Simulations", href: "/admin/simulations" },
   { label: "Broadcast", href: "/admin/broadcast" },
+  { label: "Platform Stats", href: "/admin/stats" },
 ] as const;
 
 export default async function AdminLayout({

@@ -1167,3 +1167,87 @@ async def admin_broadcast_email(body: BroadcastEmailRequest) -> BroadcastEmailRe
         failed=failed,
         errors=errors[:50],  # Cap error list to avoid huge responses
     )
+
+
+# ---------------------------------------------------------------------------
+# Stats Dashboard
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/stats",
+    response_model=None,
+    dependencies=[Depends(verify_admin_session)],
+)
+async def admin_stats():
+    """Return aggregated platform stats for the admin stats dashboard.
+
+    Queries all sessions and computes metrics via the stats aggregator.
+    """
+    from datetime import timedelta
+
+    from app.config import settings as app_settings
+    from app.db import get_session_store
+    from app.models.stats import StatsResponse
+    from app.services.stats_aggregator import compute_stats
+
+    store = get_session_store()
+    now = datetime.now(timezone.utc)
+    # Fetch sessions from the last 7 days (plus a buffer)
+    since = now - timedelta(days=8)
+
+    try:
+        sessions = await store.list_sessions(since=since)
+    except Exception as exc:
+        logger.error("Failed to fetch sessions for stats: %s", exc)
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    result = compute_stats(sessions, now=now)
+
+    # Enrich with custom scenario counts in cloud mode
+    if app_settings.RUN_MODE == "cloud":
+        try:
+            result = await _enrich_custom_scenario_counts(result, now)
+        except Exception as exc:
+            logger.warning("Failed to fetch custom scenario counts: %s", exc)
+
+    return result
+
+
+async def _enrich_custom_scenario_counts(
+    stats: "StatsResponse", now: datetime
+) -> "StatsResponse":
+    """Query Firestore for custom scenario counts and update the stats response."""
+    from datetime import timedelta
+
+    from app.db import get_firestore_db
+
+    db = get_firestore_db()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    seven_days_ago = now - timedelta(days=7)
+
+    count_today = 0
+    count_7d = 0
+    count_all = 0
+
+    # Collection group query across all profiles' custom_scenarios sub-collections
+    async for doc in db.collection_group("custom_scenarios").stream():
+        count_all += 1
+        data = doc.to_dict()
+        created_at = data.get("created_at", "")
+        if isinstance(created_at, str) and created_at:
+            try:
+                dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                if dt >= today_start:
+                    count_today += 1
+                if dt >= seven_days_ago:
+                    count_7d += 1
+            except (ValueError, TypeError):
+                pass
+
+    stats.custom_scenarios_today = count_today
+    stats.custom_scenarios_7d = count_7d
+    stats.custom_scenarios_all_time = count_all
+    return stats
