@@ -1,6 +1,7 @@
 "use client";
 
-import { SlidersHorizontal } from "lucide-react";
+import { useState } from "react";
+import { SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
 import type { MemoryStrategy } from "./AdvancedConfigModal";
 
 const AGENT_COLORS = [
@@ -24,6 +25,11 @@ export interface AgentCardProps {
   modelOverride?: string | null;
   memoryStrategy?: MemoryStrategy;
   onAdvancedConfig?: () => void;
+  personaPrompt?: string;
+  tone?: string;
+  budget?: { min: number; max: number; target: number };
+  outputFields?: string[];
+  agentType?: "negotiator" | "regulator" | "observer";
 }
 
 export function AgentCard({
@@ -36,22 +42,43 @@ export function AgentCard({
   modelOverride = null,
   memoryStrategy = "structured",
   onAdvancedConfig = () => {},
+  personaPrompt,
+  tone,
+  budget,
+  outputFields,
+  agentType,
 }: AgentCardProps) {
   const color = AGENT_COLORS[index % AGENT_COLORS.length];
   const displayModel = modelOverride ?? modelId;
+  const [expanded, setExpanded] = useState(false);
+
+  const hasDetails = personaPrompt || tone || budget || (outputFields && outputFields.length > 0);
 
   return (
     <div
       className="rounded-xl border bg-white p-5 shadow-sm"
       style={{ borderLeftColor: color, borderLeftWidth: 4 }}
     >
-      <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
-      <span
-        className="mt-1 inline-block rounded-full px-3 py-0.5 text-xs font-medium text-white"
-        style={{ backgroundColor: color }}
-      >
-        {role}
-      </span>
+      <div className="flex items-start justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
+          <div className="mt-1 flex items-center gap-2">
+            <span
+              className="inline-block rounded-full px-3 py-0.5 text-xs font-medium text-white"
+              style={{ backgroundColor: color }}
+            >
+              {role}
+            </span>
+            {agentType && agentType !== "negotiator" && (
+              <span className="inline-block rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-500">
+                {agentType}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Goals */}
       <ul className="mt-3 space-y-1">
         {goals.map((goal, i) => (
           <li key={i} className="text-sm text-gray-600">
@@ -59,6 +86,74 @@ export function AgentCard({
           </li>
         ))}
       </ul>
+
+      {/* Budget range — always visible when present */}
+      {budget && (
+        <div className="mt-3 flex items-center gap-3 rounded-md bg-gray-50 px-3 py-2">
+          <span className="text-xs font-medium text-gray-500">Budget range</span>
+          <div className="flex items-center gap-1.5 text-xs text-gray-700">
+            <span>{budget.min}</span>
+            <span className="text-gray-300">→</span>
+            <span className="font-semibold" style={{ color }}>{budget.target}</span>
+            <span className="text-gray-300">→</span>
+            <span>{budget.max}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Expandable persona details */}
+      {hasDetails && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="flex w-full items-center gap-1 text-xs font-medium text-gray-500 transition-colors hover:text-gray-700"
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? "Hide persona details" : "Show persona details"}
+          </button>
+
+          {expanded && (
+            <div className="mt-2 space-y-3 border-t border-gray-100 pt-3">
+              {/* Tone */}
+              {tone && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Tone</p>
+                  <p className="mt-0.5 text-sm italic text-gray-600">{tone}</p>
+                </div>
+              )}
+
+              {/* Persona prompt */}
+              {personaPrompt && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Persona</p>
+                  <p className="mt-0.5 max-h-40 overflow-y-auto text-sm leading-relaxed text-gray-600">
+                    {personaPrompt}
+                  </p>
+                </div>
+              )}
+
+              {/* Output fields */}
+              {outputFields && outputFields.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Output fields</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {outputFields.map((field) => (
+                      <span
+                        key={field}
+                        className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                      >
+                        {field}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <p className="mt-3 text-xs text-gray-400">
         Model: {displayModel}
         {modelOverride && (

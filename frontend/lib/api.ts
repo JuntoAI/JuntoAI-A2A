@@ -23,13 +23,24 @@ export interface ScenarioSummary {
   category: string;
 }
 
+export interface AgentBudget {
+  min: number;
+  max: number;
+  target: number;
+}
+
 export interface AgentDefinition {
   name: string;
   role: string;
   goals: string[];
   model_id: string;
   type: "negotiator" | "regulator" | "observer";
+  persona_prompt?: string;
+  tone?: string;
+  budget?: AgentBudget;
+  output_fields?: string[];
   example_prompt?: string | null;
+  fallback_model_id?: string | null;
 }
 
 export interface ToggleDefinition {

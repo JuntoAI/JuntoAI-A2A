@@ -394,6 +394,11 @@ function ArenaPageContent() {
                   hasCustomPrompt={!!customPrompts[agent.role]?.trim()}
                   modelOverride={modelOverrides[agent.role] ?? null}
                   memoryStrategy={memoryStrategies[agent.role] ?? "structured"}
+                  personaPrompt={agent.persona_prompt}
+                  tone={agent.tone}
+                  budget={agent.budget}
+                  outputFields={agent.output_fields}
+                  agentType={agent.type}
                   onAdvancedConfig={() =>
                     setAdvancedConfigAgent({
                       name: agent.name,
