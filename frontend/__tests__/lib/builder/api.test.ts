@@ -243,13 +243,20 @@ describe("deleteCustomScenario", () => {
 
 describe("updateCustomScenario", () => {
   it("sends PUT request with correct URL, method, and body", async () => {
-    const responsePayload = { scenario_id: "s1", name: "Updated", updated_at: "2025-01-01T00:00:00Z" };
-    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(responsePayload) });
+    const events = [
+      sseEvent({
+        event_type: "builder_save_complete",
+        scenario_id: "s1",
+        name: "Updated",
+        updated_at: "2025-01-01T00:00:00Z",
+      }, 1),
+    ];
+    mockFetch.mockResolvedValueOnce(mockSSEResponse(events));
 
     const scenarioJson = { name: "Updated", agents: [] };
     const result = await updateCustomScenario("u@e.com", "s1", scenarioJson);
 
-    expect(result).toEqual(responsePayload);
+    expect(result).toEqual({ scenario_id: "s1", name: "Updated", updated_at: "2025-01-01T00:00:00Z" });
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/v1/builder/scenarios/s1?email=u%40e.com",
       {

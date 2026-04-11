@@ -580,6 +580,17 @@ resource "google_cloudfunctions2_function" "notifier" {
   ]
 }
 
+# 9.2a — Grant the default Compute SA roles/run.invoker on the alerting
+# Cloud Function service. Eventarc triggers use this SA to push Pub/Sub
+# messages to the Cloud Run service backing the function.
+resource "google_cloud_run_service_iam_member" "notifier_invoker" {
+  project  = var.gcp_project_id
+  location = var.gcp_region
+  service  = google_cloudfunctions2_function.notifier.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.gcp_project_number}-compute@developer.gserviceaccount.com"
+}
+
 # 9.3 — Ensure the cloud-builds topic exists (GCP auto-creates it on first build,
 # but we need it to exist for the event trigger)
 resource "google_pubsub_topic" "cloud_builds" {
@@ -645,4 +656,15 @@ resource "google_cloudfunctions2_function" "notifier_builds" {
     google_project_service.eventarc,
     google_project_service.run,
   ]
+}
+
+# 9.3b — Grant the default Compute SA roles/run.invoker on the builds
+# Cloud Function service. Eventarc triggers use this SA to push Pub/Sub
+# messages to the Cloud Run service backing the function.
+resource "google_cloud_run_service_iam_member" "notifier_builds_invoker" {
+  project  = var.gcp_project_id
+  location = var.gcp_region
+  service  = google_cloudfunctions2_function.notifier_builds.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.gcp_project_number}-compute@developer.gserviceaccount.com"
 }
