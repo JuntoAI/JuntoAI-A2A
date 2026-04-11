@@ -287,8 +287,11 @@ def handle_pubsub(cloud_event) -> None:
 
     elif message_type == "cloud_build":
         status = payload.get("status", "")
-        if status == "SUCCESS":
-            logger.info("Discarding SUCCESS Cloud Build event")
+        # Only notify on terminal failure statuses — ignore QUEUED, WORKING,
+        # SUCCESS, CANCELLED, and any other non-failure transitions.
+        failure_statuses = {"FAILURE", "TIMEOUT", "INTERNAL_ERROR"}
+        if status not in failure_statuses:
+            logger.info("Discarding Cloud Build event with status: %s", status)
             return
         build = parse_cloud_build_event(payload)
         message = format_cloud_build_message(build)

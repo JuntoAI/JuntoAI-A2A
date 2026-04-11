@@ -211,30 +211,30 @@ class TestMessageTypeDetectionCorrectness:
 
 
 # ===========================================================================
-# Property 2: SUCCESS events are discarded
-# Feature: gcp-telegram-alerting, Property 2: SUCCESS events are discarded
+# Property 2: Non-failure events are discarded
+# Feature: gcp-telegram-alerting, Property 2: Non-failure events are discarded
 #
-# For any Cloud Build event payload where status = "SUCCESS", the notifier
-# function SHALL not produce a Telegram message.
+# For any Cloud Build event payload where status is not a terminal failure
+# (FAILURE, TIMEOUT, INTERNAL_ERROR), the notifier function SHALL not
+# produce a Telegram message.
 #
 # Validates: Requirements 5.3
 # ===========================================================================
 
 
-class TestSuccessEventsDiscarded:
-    """Feature: gcp-telegram-alerting, Property 2: SUCCESS events are discarded"""
+class TestNonFailureEventsDiscarded:
+    """Feature: gcp-telegram-alerting, Property 2: Non-failure events are discarded"""
 
     @pytest.mark.property
     @settings(max_examples=100)
-    @given(build=cloud_build_events())
-    def test_success_build_not_sent(self, build):
+    @given(build=cloud_build_events(), status=st.sampled_from(["SUCCESS", "QUEUED", "WORKING", "CANCELLED"]))
+    def test_non_failure_build_not_sent(self, build, status):
         """**Validates: Requirements 5.3**
 
-        For any Cloud Build event with SUCCESS status, no Telegram message is sent.
+        For any Cloud Build event with a non-failure status, no Telegram message is sent.
         """
-        # Override status to SUCCESS
         payload = serialize_cloud_build_event(build)
-        payload["status"] = "SUCCESS"
+        payload["status"] = status
 
         event = _make_cloud_event(payload)
 

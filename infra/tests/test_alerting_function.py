@@ -518,6 +518,17 @@ class TestHandlePubsubIntegration:
 
     @patch("main.send_telegram_message")
     @patch("main._get_secrets", return_value=("tok", "cid"))
+    def test_non_failure_build_statuses_are_discarded(self, mock_secrets, mock_send):
+        """QUEUED, WORKING, CANCELLED build events should NOT trigger a Telegram message."""
+        for status in ("QUEUED", "WORKING", "CANCELLED"):
+            mock_send.reset_mock()
+            payload = {**CLOUD_BUILD_SUCCESS_PAYLOAD, "status": status}
+            event = _make_cloud_event(payload)
+            handle_pubsub(event)
+            mock_send.assert_not_called(), f"Expected no message for status={status}"
+
+    @patch("main.send_telegram_message")
+    @patch("main._get_secrets", return_value=("tok", "cid"))
     def test_unknown_schema_is_discarded(self, mock_secrets, mock_send):
         """Payloads matching no known schema should NOT trigger a Telegram message."""
         event = _make_cloud_event({"random": "data", "nothing": "useful"})
