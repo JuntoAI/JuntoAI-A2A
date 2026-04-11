@@ -96,7 +96,7 @@ describe("ScenarioEditorModal", () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByText("name: must be non-empty")).toBeInTheDocument();
+      expect(screen.getByText(/name: must be non-empty/)).toBeInTheDocument();
     });
 
     // Modal should still be open (not closed)

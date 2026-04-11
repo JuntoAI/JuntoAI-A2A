@@ -589,6 +589,17 @@ resource "google_pubsub_topic" "cloud_builds" {
   depends_on = [google_project_service.pubsub]
 }
 
+# 9.3a — Grant the Cloud Build service agent roles/pubsub.publisher on the
+# cloud-builds topic. When triggers use a custom service account (not the
+# default Cloud Build SA), GCP does NOT auto-publish build events to the
+# cloud-builds topic. This IAM binding enables the service agent to publish.
+resource "google_pubsub_topic_iam_member" "cloudbuild_publisher" {
+  project = var.gcp_project_id
+  topic   = google_pubsub_topic.cloud_builds.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${var.gcp_project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+}
+
 # 9.3 — Second Cloud Function (2nd gen) for Cloud Build events
 # Cloud Functions 2nd gen supports only one event trigger per function,
 # so we deploy a second function with identical config but triggered by
