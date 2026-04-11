@@ -9,6 +9,25 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "Public Stats Dashboard",
+    specId: "270",
+    date: "2026-04-11",
+    items: [
+      "Stats aggregator service: StatsAggregator computes unique users, simulation counts, outcome breakdown, token sums, per-model tokens, per-model avg response time, scenario popularity, avg turns, custom scenario counts, and custom agent session counts",
+      "StatsResponse, OutcomeBreakdown, ModelTokenBreakdown, ModelPerformance, ScenarioPopularity Pydantic V2 response models",
+      "list_sessions method added to SessionStore protocol with Firestore and SQLite implementations (optional since datetime filter)",
+      "GET /api/v1/admin/stats endpoint on existing admin router — auth-protected, returns StatsResponse JSON, HTTP 503 on store unavailability",
+      "Custom scenario counts via Firestore collection group query in cloud mode; returns 0 in local mode",
+      "Custom agent session detection via endpoint_overrides presence on session documents (BYOA flow)",
+      "Admin stats page at /admin/stats: server-rendered with cookie auth, StatCard components, responsive grid layout, comma-formatted numbers, 1-decimal averages",
+      "Platform Stats link added to admin sidebar navigation adjacent to Broadcast",
+      "Scenario popularity ranked descending by simulation count; avg turns computed from terminal sessions only",
+      "Graceful handling of malformed session data via .get() with defaults and logged warnings",
+      "Property tests (8 Hypothesis properties): unique user count, simulation counts, total token sum, per-model tokens, per-model avg response time, scenario popularity, average turns, custom agent session classification",
+      "Integration tests (8): stats aggregation shape, empty sessions, outcomes breakdown, model tokens/performance, scenario popularity sorting, custom agent detection, avg turns, router registration",
+    ],
+  },
+  {
     title: "Scenario Management",
     specId: "320",
     date: "2026-04-09",

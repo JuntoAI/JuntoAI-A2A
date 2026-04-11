@@ -6,6 +6,22 @@ Each entry corresponds to a completed spec - shipped when the last task was fini
 
 ---
 
+## Public Stats Dashboard (Spec 270) — 2026-04-11
+
+- Stats aggregator service: `StatsAggregator` computes unique users, simulation counts, outcome breakdown, token sums, per-model tokens, per-model avg response time, scenario popularity, avg turns, custom scenario counts, and custom agent session counts from `SessionStore`
+- `StatsResponse`, `OutcomeBreakdown`, `ModelTokenBreakdown`, `ModelPerformance`, `ScenarioPopularity` Pydantic V2 response models
+- `list_sessions` method added to `SessionStore` protocol with `FirestoreSessionClient` and `SQLiteSessionClient` implementations (optional `since` datetime filter)
+- `GET /api/v1/admin/stats` endpoint on existing admin router — auth-protected, returns `StatsResponse` JSON, HTTP 503 on store unavailability
+- Custom scenario counts via Firestore `profiles/{email}/custom_scenarios` collection group query in cloud mode; returns 0 in local mode
+- Custom agent session detection via `endpoint_overrides` presence on session documents (BYOA flow from Spec 230)
+- Admin stats page at `/admin/stats`: server-rendered with cookie auth, StatCard components, responsive grid layout, comma-formatted numbers, 1-decimal averages
+- "Platform Stats" link added to admin sidebar navigation adjacent to Broadcast
+- Scenario popularity ranked descending by simulation count; avg turns computed from terminal sessions only (Agreed, Blocked, Failed)
+- Graceful handling of malformed session data via `.get()` with defaults and logged warnings
+- Property tests (8 Hypothesis properties): unique user count, simulation counts/outcome breakdown, total token sum, per-model token breakdown, per-model avg response time, scenario popularity ranking, average turns, custom agent session classification
+- Session data round-trip property test: stats-relevant fields preserved through store write/read cycle
+- Integration tests (8): stats aggregation shape, empty sessions, outcomes breakdown, model tokens/performance, scenario popularity sorting, custom agent detection, avg turns terminal-only, router registration
+
 ## Scenario Management (Spec 320) — 2026-04-09
 
 - Delete custom scenario with cascade: `DELETE /builder/scenarios/{id}` identifies and removes all connected negotiation sessions before deleting the scenario, returns `deleted_sessions_count`
