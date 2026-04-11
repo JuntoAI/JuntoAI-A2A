@@ -13,6 +13,58 @@ export interface ScenarioEditorModalProps {
 
 const MAX_NAME_LENGTH = 100;
 
+/**
+ * Tokenise a JSON string into spans with syntax-highlight classes.
+ * Handles strings, numbers, booleans, null, and structural characters.
+ * Unmatched text (whitespace, newlines) is escaped and passed through.
+ */
+function highlightJson(json: string): string {
+  // Match JSON tokens: strings, numbers, booleans, null, punctuation
+  const tokenRegex = /("(?:[^"\\]|\\.)*")|(true|false)|(null)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}[\]:,])/g;
+  let result = "";
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = tokenRegex.exec(json)) !== null) {
+    // Append any text between the last match and this one (whitespace/newlines)
+    if (match.index > lastIndex) {
+      result += escapeHtml(json.slice(lastIndex, match.index));
+    }
+    const [, str, bool, nil, num, punct] = match;
+
+    if (str) {
+      // Check if this string is a key (followed by optional whitespace then colon)
+      const after = json.slice(match.index + match[0].length);
+      if (/^\s*:/.test(after)) {
+        result += `<span class="json-key">${escapeHtml(str)}</span>`;
+      } else {
+        result += `<span class="json-string">${escapeHtml(str)}</span>`;
+      }
+    } else if (bool) {
+      result += `<span class="json-bool">${match[0]}</span>`;
+    } else if (nil) {
+      result += `<span class="json-null">${match[0]}</span>`;
+    } else if (num) {
+      result += `<span class="json-number">${match[0]}</span>`;
+    } else if (punct) {
+      result += `<span class="json-punct">${escapeHtml(match[0])}</span>`;
+    }
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Append any remaining text
+  if (lastIndex < json.length) {
+    result += escapeHtml(json.slice(lastIndex));
+  }
+
+  return result;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 export function ScenarioEditorModal({
   isOpen,
   onClose,
@@ -28,6 +80,15 @@ export function ScenarioEditorModal({
 
   const modalRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightRef = useRef<HTMLPreElement>(null);
+
+  // Sync scroll between textarea and highlight layer
+  const syncScroll = useCallback(() => {
+    if (textareaRef.current && highlightRef.current) {
+      highlightRef.current.scrollTop = textareaRef.current.scrollTop;
+      highlightRef.current.scrollLeft = textareaRef.current.scrollLeft;
+    }
+  }, []);
 
   // Initialize state when modal opens or scenarioJson changes
   useEffect(() => {
@@ -86,16 +147,13 @@ export function ScenarioEditorModal({
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newName = e.target.value.slice(0, MAX_NAME_LENGTH);
       setName(newName);
-
-      // Try to update the name inside the JSON text
       try {
         const parsed = JSON.parse(jsonText);
         parsed.name = newName;
         setJsonText(JSON.stringify(parsed, null, 2));
         setParseError(null);
       } catch {
-        // JSON is currently invalid — just update the name state,
-        // user will fix JSON separately
+        // JSON is currently invalid — just update the name state
       }
     },
     [jsonText],
@@ -107,11 +165,9 @@ export function ScenarioEditorModal({
       const text = e.target.value;
       setJsonText(text);
       setBackendErrors([]);
-
       try {
         const parsed = JSON.parse(text);
         setParseError(null);
-        // Sync name field from parsed JSON
         if (typeof parsed.name === "string") {
           setName(parsed.name);
         }
@@ -124,8 +180,26 @@ export function ScenarioEditorModal({
     [],
   );
 
+  // Handle Tab key for indentation instead of focus change
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const ta = e.currentTarget;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const newText = jsonText.substring(0, start) + "  " + jsonText.substring(end);
+        setJsonText(newText);
+        // Restore cursor position after React re-render
+        requestAnimationFrame(() => {
+          ta.selectionStart = ta.selectionEnd = start + 2;
+        });
+      }
+    },
+    [jsonText],
+  );
+
   const handleSave = useCallback(async () => {
-    // Final parse check
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(jsonText);
@@ -133,14 +207,11 @@ export function ScenarioEditorModal({
       setParseError("Invalid JSON — cannot save");
       return;
     }
-
     setIsSaving(true);
     setBackendErrors([]);
-
     try {
       await onSave(parsed);
     } catch (err) {
-      // Display backend validation errors inline
       const message = err instanceof Error ? err.message : String(err);
       setBackendErrors([message]);
     } finally {
@@ -158,6 +229,9 @@ export function ScenarioEditorModal({
   const isSaveDisabled = hasParseError || isSaving;
 
   if (!isOpen) return null;
+
+  // Build highlighted HTML — append a newline so the pre always matches textarea height
+  const highlighted = highlightJson(jsonText) + "\n";
 
   return (
     <div
@@ -203,7 +277,7 @@ export function ScenarioEditorModal({
           </p>
         </div>
 
-        {/* JSON textarea */}
+        {/* Syntax-highlighted JSON editor */}
         <div className="mb-4 flex-1">
           <label
             htmlFor="scenario-json"
@@ -211,19 +285,34 @@ export function ScenarioEditorModal({
           >
             Scenario JSON
           </label>
-          <textarea
-            ref={textareaRef}
-            id="scenario-json"
-            value={jsonText}
-            onChange={handleJsonChange}
-            disabled={isSaving}
-            spellCheck={false}
-            className={`w-full min-h-[300px] rounded-lg border px-3 py-2 font-mono text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 resize-y disabled:cursor-not-allowed disabled:opacity-50 ${
+          <div
+            className={`relative rounded-lg border overflow-hidden ${
               hasParseError
-                ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:border-brand-blue focus:ring-brand-blue"
+                ? "border-red-500 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500"
+                : "border-gray-300 focus-within:border-brand-blue focus-within:ring-1 focus-within:ring-brand-blue"
             }`}
-          />
+            style={{ backgroundColor: "#1e1e2e" }}
+          >
+            {/* Highlight layer (behind) */}
+            <pre
+              ref={highlightRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 m-0 overflow-hidden whitespace-pre-wrap break-words p-3 font-mono text-sm leading-[1.625]"
+              dangerouslySetInnerHTML={{ __html: highlighted }}
+            />
+            {/* Editable textarea (on top, transparent text) */}
+            <textarea
+              ref={textareaRef}
+              id="scenario-json"
+              value={jsonText}
+              onChange={handleJsonChange}
+              onScroll={syncScroll}
+              onKeyDown={handleKeyDown}
+              disabled={isSaving}
+              spellCheck={false}
+              className="relative z-10 m-0 min-h-[340px] w-full resize-y whitespace-pre-wrap break-words bg-transparent p-3 font-mono text-sm leading-[1.625] text-transparent caret-white outline-none disabled:cursor-not-allowed"
+            />
+          </div>
 
           {/* Parse error */}
           {hasParseError && (

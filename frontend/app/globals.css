@@ -31,3 +31,11 @@ body {
 .animate-scroll:hover {
   animation-play-state: paused;
 }
+
+/* JSON syntax highlighting — Scenario Editor Modal (dark theme) */
+.json-key { color: #89b4fa; }       /* blue — keys */
+.json-string { color: #a6e3a1; }    /* green — string values */
+.json-number { color: #fab387; }    /* peach — numbers */
+.json-bool { color: #cba6f7; }      /* mauve — true/false */
+.json-null { color: #f38ba8; }      /* red — null */
+.json-punct { color: #6c7086; }     /* overlay — brackets, colons, commas */
