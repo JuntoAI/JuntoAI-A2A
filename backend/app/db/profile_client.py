@@ -73,7 +73,9 @@ class ProfileClient:
 
     async def get_profile_by_google_oauth_id(self, google_oauth_id: str) -> dict | None:
         """Look up a profile by its linked Google OAuth ID."""
-        query = self._profiles.where("google_oauth_id", "==", google_oauth_id).limit(1)
+        from google.cloud.firestore_v1.base_query import FieldFilter
+
+        query = self._profiles.where(filter=FieldFilter("google_oauth_id", "==", google_oauth_id)).limit(1)
         docs = query.stream()
         async for doc in docs:
             data = doc.to_dict()

@@ -2,6 +2,8 @@
 
 from datetime import datetime
 
+from google.cloud.firestore_v1.base_query import FieldFilter
+
 from app.exceptions import SessionNotFoundError
 from app.models.negotiation import NegotiationStateModel
 from app.models.share import SharePayload
@@ -55,8 +57,8 @@ class FirestoreSessionClient:
         """Return session dicts for *owner_email* created at or after *since* (ISO timestamp)."""
         query = (
             self._collection
-            .where("owner_email", "==", owner_email)
-            .where("created_at", ">=", since)
+            .where(filter=FieldFilter("owner_email", "==", owner_email))
+            .where(filter=FieldFilter("created_at", ">=", since))
             .order_by("created_at", direction="DESCENDING")
         )
         docs: list[dict] = []
@@ -70,8 +72,8 @@ class FirestoreSessionClient:
         """Return session dicts where scenario_id and owner_email both match."""
         query = (
             self._collection
-            .where("scenario_id", "==", scenario_id)
-            .where("owner_email", "==", owner_email)
+            .where(filter=FieldFilter("scenario_id", "==", scenario_id))
+            .where(filter=FieldFilter("owner_email", "==", owner_email))
         )
         docs: list[dict] = []
         async for doc in query.stream():
@@ -85,7 +87,7 @@ class FirestoreSessionClient:
     async def list_sessions(self, since: datetime | None = None) -> list[dict]:
         """Return all session dicts, optionally filtered by created_at >= since."""
         if since is not None:
-            query = self._collection.where("created_at", ">=", since.isoformat())
+            query = self._collection.where(filter=FieldFilter("created_at", ">=", since.isoformat()))
         else:
             query = self._collection
         docs: list[dict] = []
@@ -122,7 +124,7 @@ class FirestoreShareClient:
 
     async def get_share_by_session(self, session_id: str) -> SharePayload | None:
         """Find a share document by session_id. Returns None if missing."""
-        query = self._collection.where("session_id", "==", session_id).limit(1)
+        query = self._collection.where(filter=FieldFilter("session_id", "==", session_id)).limit(1)
         async for doc in query.stream():
             return SharePayload(**doc.to_dict())
         return None

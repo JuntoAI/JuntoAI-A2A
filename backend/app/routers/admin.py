@@ -591,8 +591,10 @@ async def admin_delete_user(
             await scenario_doc.reference.delete()
         await profile_ref.delete()
 
+    from google.cloud.firestore_v1.base_query import FieldFilter
+
     # 3. Delete simulations owned by this user
-    sims_query = db.collection("negotiation_sessions").where("owner_email", "==", normalised_email)
+    sims_query = db.collection("negotiation_sessions").where(filter=FieldFilter("owner_email", "==", normalised_email))
     async for sim_doc in sims_query.stream():
         await sim_doc.reference.delete()
 
