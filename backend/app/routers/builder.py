@@ -464,8 +464,13 @@ async def update_scenario(
     body: UpdateScenarioRequest,
     email: str = Query(default=""),
     store=Depends(get_custom_scenario_store),
+    analyzer: HealthCheckAnalyzer = Depends(get_health_check_analyzer),
 ):
-    """Validate and overwrite a custom scenario's JSON."""
+    """Validate, run health check, and overwrite a custom scenario's JSON.
+
+    Returns an SSE stream identical to POST /builder/save so the frontend
+    can reuse the same health-check progress UI.
+    """
     # 1. Validate email
     if not email or not email.strip():
         return JSONResponse(status_code=401, content={"detail": "Valid email required"})
@@ -485,21 +490,86 @@ async def update_scenario(
             content={"detail": "Validation failed", "errors": errors},
         )
 
-    # 3. Check scenario exists and is owned by email, then update
-    updated = await store.update(email, scenario_id, validated.model_dump())
-    if not updated:
+    # 3. Round-trip validation
+    try:
+        serialized = pretty_print(validated)
+        reparsed_data = json.loads(serialized)
+        reparsed_scenario = ArenaScenario.model_validate(reparsed_data)
+        if reparsed_scenario.model_dump() != validated.model_dump():
+            return JSONResponse(
+                status_code=422,
+                content={
+                    "detail": "Round-trip validation failed: serialized scenario differs from original"
+                },
+            )
+    except Exception as exc:
         return JSONResponse(
-            status_code=404,
-            content={"detail": "Scenario not found or not owned by this email"},
+            status_code=422,
+            content={"detail": f"Round-trip validation error: {exc}"},
         )
 
-    # 4. Fetch the updated record to get updated_at
-    record = await store.get(email, scenario_id)
-    return {
-        "scenario_id": scenario_id,
-        "name": validated.name,
-        "updated_at": record["updated_at"] if record else None,
-    }
+    # 4. Stream health check + persist via SSE
+    async def update_stream():
+        event_id = 0
+        readiness_score = 0
+        tier_label = "Not Ready"
+
+        try:
+            gold_scenarios = _load_gold_standard_scenarios()
+
+            async for event in analyzer.analyze(validated, gold_scenarios):
+                event_id += 1
+                yield format_sse_event(event, event_id=event_id)
+
+                if hasattr(event, "report") and isinstance(event.report, dict):
+                    readiness_score = event.report.get("readiness_score", 0)
+                    tier_label = event.report.get("tier", "Not Ready")
+
+        except Exception as exc:
+            logger.exception("Health check failed during update")
+            error_event = BuilderErrorEvent(
+                event_type="builder_error",
+                message=f"Health check error: {exc}",
+            )
+            yield format_sse_event(error_event, event_id=event_id + 1)
+
+        # 5. Persist updated scenario
+        try:
+            updated = await store.update(email, scenario_id, validated.model_dump())
+            if not updated:
+                error_event = BuilderErrorEvent(
+                    event_type="builder_error",
+                    message="Scenario not found or not owned by this email",
+                )
+                yield format_sse_event(error_event, event_id=event_id + 1)
+                return
+        except Exception as exc:
+            logger.exception("Scenario update failed")
+            error_event = BuilderErrorEvent(
+                event_type="builder_error",
+                message=f"Update error: {exc}",
+            )
+            yield format_sse_event(error_event, event_id=event_id + 1)
+            return
+
+        # 6. Emit update response as final SSE event
+        record = await store.get(email, scenario_id)
+        update_response = {
+            "event_type": "builder_save_complete",
+            "scenario_id": scenario_id,
+            "name": validated.name,
+            "readiness_score": readiness_score,
+            "tier": tier_label,
+            "updated_at": record["updated_at"] if record else None,
+        }
+        event_id += 1
+        yield f"id: {event_id}\ndata: {json.dumps(update_response)}\n\n"
+
+    return StreamingResponse(
+        update_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 # ---------------------------------------------------------------------------

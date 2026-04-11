@@ -96,30 +96,35 @@ class HealthCheckAnalyzer:
         scenario: ArenaScenario,
         gold_standard_scenarios: list[ArenaScenario],
     ) -> AsyncIterator[HealthCheckSSEEvent]:
-        """Run all 7 health checks and yield SSE events progressively."""
+        """Run all 7 health checks and yield SSE events progressively.
+
+        LLM-powered checks run concurrently via asyncio.gather to minimise
+        wall-clock time.  Pure-function checks execute inline (instant).
+        """
+        import asyncio
+
         yield HealthCheckStartEvent(event_type="builder_health_check_start")
 
         findings: list[HealthCheckFindingEvent] = []
         gold_summary = _format_gold_standard_summary(gold_standard_scenarios)
 
-        # 1. Prompt quality (LLM)
-        pq_scores, pq_findings = await self._check_prompt_quality(scenario, gold_summary)
-        findings.extend(pq_findings)
-        for f in pq_findings:
-            yield f
-        prompt_quality_score = (
-            round(sum(s.prompt_quality_score for s in pq_scores) / len(pq_scores))
-            if pq_scores
-            else 0
+        # --- Kick off ALL LLM checks concurrently ---
+        pq_task = asyncio.ensure_future(
+            self._check_prompt_quality(scenario, gold_summary)
+        )
+        tension_task = asyncio.ensure_future(
+            self._check_goal_tension(scenario, gold_summary)
+        )
+        te_task = asyncio.ensure_future(
+            self._check_toggle_effectiveness(scenario, gold_summary)
+        )
+        reg_task = asyncio.ensure_future(
+            self._check_regulator_feasibility(scenario, gold_summary)
         )
 
-        # 2. Goal tension (LLM)
-        tension_score, tension_findings = await self._check_goal_tension(scenario, gold_summary)
-        findings.extend(tension_findings)
-        for f in tension_findings:
-            yield f
+        # --- Run pure-function checks while LLM calls are in-flight ---
 
-        # 3. Budget overlap (pure function)
+        # Budget overlap (pure function)
         bo_result = compute_budget_overlap(scenario.agents)
         bo_findings = self._budget_overlap_findings(bo_result)
         findings.extend(bo_findings)
@@ -127,13 +132,7 @@ class HealthCheckAnalyzer:
             yield f
         budget_overlap_score = self._budget_overlap_score(bo_result)
 
-        # 4. Toggle effectiveness (LLM)
-        te_score, te_findings = await self._check_toggle_effectiveness(scenario, gold_summary)
-        findings.extend(te_findings)
-        for f in te_findings:
-            yield f
-
-        # 5. Turn sanity (pure function)
+        # Turn sanity (pure function)
         agents_dicts = [a.model_dump() for a in scenario.agents]
         params_dict = scenario.negotiation_params.model_dump()
         ts_score, ts_findings = check_turn_sanity(agents_dicts, params_dict)
@@ -141,7 +140,7 @@ class HealthCheckAnalyzer:
         for f in ts_findings:
             yield f
 
-        # 6. Stall risk (pure function)
+        # Stall risk (pure function)
         stall_agents = [
             {
                 "type": a.type,
@@ -158,8 +157,28 @@ class HealthCheckAnalyzer:
         for f in stall_findings:
             yield f
 
-        # 7. Regulator feasibility (LLM)
-        reg_findings = await self._check_regulator_feasibility(scenario, gold_summary)
+        # --- Await all LLM results ---
+        pq_scores, pq_findings = await pq_task
+        findings.extend(pq_findings)
+        for f in pq_findings:
+            yield f
+        prompt_quality_score = (
+            round(sum(s.prompt_quality_score for s in pq_scores) / len(pq_scores))
+            if pq_scores
+            else 0
+        )
+
+        tension_score, tension_findings = await tension_task
+        findings.extend(tension_findings)
+        for f in tension_findings:
+            yield f
+
+        te_score, te_findings = await te_task
+        findings.extend(te_findings)
+        for f in te_findings:
+            yield f
+
+        reg_findings = await reg_task
         findings.extend(reg_findings)
         for f in reg_findings:
             yield f
@@ -206,11 +225,16 @@ class HealthCheckAnalyzer:
         scenario: ArenaScenario,
         gold_summary: str,
     ) -> tuple[list[AgentPromptScore], list[HealthCheckFindingEvent]]:
-        """Evaluate each agent's persona_prompt and goals (Req 15)."""
+        """Evaluate each agent's persona_prompt and goals (Req 15).
+
+        All per-agent LLM calls run concurrently.
+        """
+        import asyncio
+
         scores: list[AgentPromptScore] = []
         findings: list[HealthCheckFindingEvent] = []
 
-        for agent in scenario.agents:
+        async def _eval_agent(agent):
             prompt = (
                 "You are an expert AI scenario designer evaluating agent prompt quality.\n\n"
                 f"Gold-standard scenario examples:\n{gold_summary}\n\n"
@@ -239,7 +263,13 @@ class HealthCheckAnalyzer:
                 logger.exception("Prompt quality check failed for agent %s", agent.role)
                 score = 50
                 agent_findings = ["Could not evaluate prompt quality (LLM error)"]
+            return agent, score, agent_findings
 
+        results = await asyncio.gather(
+            *[_eval_agent(a) for a in scenario.agents]
+        )
+
+        for agent, score, agent_findings in results:
             scores.append(
                 AgentPromptScore(
                     role=agent.role,
@@ -343,16 +373,20 @@ class HealthCheckAnalyzer:
         scenario: ArenaScenario,
         gold_summary: str,
     ) -> tuple[int, list[HealthCheckFindingEvent]]:
-        """Evaluate each toggle's hidden_context_payload (Req 18)."""
+        """Evaluate each toggle's hidden_context_payload (Req 18).
+
+        All per-toggle LLM calls run concurrently.
+        """
+        import asyncio
+
         findings: list[HealthCheckFindingEvent] = []
 
         if not scenario.toggles:
             return 50, findings
 
-        toggle_scores: list[int] = []
         agent_map = {a.role: a for a in scenario.agents}
 
-        for toggle in scenario.toggles:
+        async def _eval_toggle(toggle):
             target_agent = agent_map.get(toggle.target_agent_role)
             agent_context = ""
             if target_agent:
@@ -389,6 +423,14 @@ class HealthCheckAnalyzer:
                 score = 50
                 toggle_findings = ["Could not evaluate toggle (LLM error)"]
 
+            return toggle, score, toggle_findings
+
+        results = await asyncio.gather(
+            *[_eval_toggle(t) for t in scenario.toggles]
+        )
+
+        toggle_scores: list[int] = []
+        for toggle, score, toggle_findings in results:
             toggle_scores.append(score)
 
             if score < 50:
@@ -412,7 +454,12 @@ class HealthCheckAnalyzer:
         scenario: ArenaScenario,
         gold_summary: str,
     ) -> list[HealthCheckFindingEvent]:
-        """Check regulator agents for enforcement criteria (Req 21)."""
+        """Check regulator agents for enforcement criteria (Req 21).
+
+        All per-regulator LLM calls run concurrently.
+        """
+        import asyncio
+
         findings: list[HealthCheckFindingEvent] = []
         regulators = [a for a in scenario.agents if a.type == "regulator"]
 
@@ -425,7 +472,7 @@ class HealthCheckAnalyzer:
             if a.type == "negotiator"
         )
 
-        for reg in regulators:
+        async def _eval_regulator(reg):
             prompt = (
                 "You are an expert AI scenario designer evaluating regulator feasibility.\n\n"
                 f"Gold-standard examples:\n{gold_summary}\n\n"
@@ -452,6 +499,13 @@ class HealthCheckAnalyzer:
                 has_criteria = True
                 reg_findings = ["Could not evaluate regulator (LLM error)"]
 
+            return reg, has_criteria, reg_findings
+
+        results = await asyncio.gather(
+            *[_eval_regulator(r) for r in regulators]
+        )
+
+        for reg, has_criteria, reg_findings in results:
             if not has_criteria:
                 findings.append(
                     _finding(

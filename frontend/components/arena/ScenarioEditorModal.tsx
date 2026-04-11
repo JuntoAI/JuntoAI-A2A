@@ -3,12 +3,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 
+export interface HealthCheckFindingDisplay {
+  check_name: string;
+  severity: "critical" | "warning" | "info";
+  message: string;
+}
+
+export interface SaveCallbacks {
+  onHealthStart: () => void;
+  onHealthFinding: (finding: HealthCheckFindingDisplay) => void;
+  onHealthComplete: (report: { readiness_score: number; tier: string }) => void;
+  onError: (message: string) => void;
+}
+
 export interface ScenarioEditorModalProps {
   isOpen: boolean;
   onClose: () => void;
   scenarioId: string;
   scenarioJson: Record<string, unknown>;
-  onSave: (updated: Record<string, unknown>) => Promise<void>;
+  onSave: (updated: Record<string, unknown>, callbacks: SaveCallbacks) => Promise<void>;
 }
 
 const MAX_NAME_LENGTH = 100;
@@ -77,6 +90,9 @@ export function ScenarioEditorModal({
   const [parseError, setParseError] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [healthChecking, setHealthChecking] = useState(false);
+  const [healthFindings, setHealthFindings] = useState<HealthCheckFindingDisplay[]>([]);
+  const [healthResult, setHealthResult] = useState<{ readiness_score: number; tier: string } | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -99,6 +115,9 @@ export function ScenarioEditorModal({
       setParseError(null);
       setBackendErrors([]);
       setIsSaving(false);
+      setHealthChecking(false);
+      setHealthFindings([]);
+      setHealthResult(null);
     }
   }, [isOpen, scenarioJson]);
 
@@ -209,14 +228,29 @@ export function ScenarioEditorModal({
     }
     setIsSaving(true);
     setBackendErrors([]);
+    setHealthChecking(false);
+    setHealthFindings([]);
+    setHealthResult(null);
+
+    const callbacks: SaveCallbacks = {
+      onHealthStart: () => setHealthChecking(true),
+      onHealthFinding: (f) => setHealthFindings((prev) => [...prev, f]),
+      onHealthComplete: (report) => {
+        setHealthChecking(false);
+        setHealthResult({ readiness_score: report.readiness_score, tier: report.tier });
+      },
+      onError: (msg) => setBackendErrors((prev) => [...prev, msg]),
+    };
+
     try {
-      await onSave(parsed);
+      await onSave(parsed, callbacks);
     } catch (err) {
       // Display backend validation errors inline — split newlines into separate items
       const message = err instanceof Error ? err.message : String(err);
       setBackendErrors(message.split("\n").filter(Boolean));
     } finally {
       setIsSaving(false);
+      setHealthChecking(false);
     }
   }, [jsonText, onSave]);
 
@@ -338,6 +372,49 @@ export function ScenarioEditorModal({
             </div>
           )}
         </div>
+
+        {/* Health check progress */}
+        {(healthChecking || healthFindings.length > 0 || healthResult) && (
+          <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-2 flex items-center gap-2">
+              {healthChecking && <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-blue" />}
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {healthChecking ? "Running quality audit…" : "Quality Audit"}
+              </p>
+              {healthResult && (
+                <span
+                  className={`ml-auto rounded-full px-2 py-0.5 text-xs font-medium ${
+                    healthResult.tier === "Ready"
+                      ? "bg-green-100 text-green-700"
+                      : healthResult.tier === "Needs Work"
+                        ? "bg-yellow-100 text-yellow-700"
+                        : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {healthResult.readiness_score}/100 — {healthResult.tier}
+                </span>
+              )}
+            </div>
+            {healthFindings.length > 0 && (
+              <ul className="max-h-32 space-y-1 overflow-y-auto">
+                {healthFindings.map((f, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-xs">
+                    <span
+                      className={`mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
+                        f.severity === "critical"
+                          ? "bg-red-500"
+                          : f.severity === "warning"
+                            ? "bg-yellow-500"
+                            : "bg-blue-400"
+                      }`}
+                    />
+                    <span className="text-gray-600">{f.message}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-3">

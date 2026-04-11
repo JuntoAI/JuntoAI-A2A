@@ -194,11 +194,22 @@ export async function deleteCustomScenario(
 
 /**
  * Update a custom scenario's JSON by ID.
+ *
+ * The backend now streams SSE events (health check progress + final save).
+ * For non-2xx responses (Pydantic validation errors), throws immediately.
  */
+export interface UpdateScenarioCallbacks {
+  onHealthStart?: () => void;
+  onHealthFinding?: (finding: HealthCheckFinding) => void;
+  onHealthComplete?: (report: HealthCheckFullReport) => void;
+  onError?: (message: string) => void;
+}
+
 export async function updateCustomScenario(
   email: string,
   scenarioId: string,
   scenarioJson: Record<string, unknown>,
+  callbacks?: UpdateScenarioCallbacks,
 ): Promise<{ scenario_id: string; name: string; updated_at: string }> {
   const res = await fetch(
     `${API_BASE}/builder/scenarios/${encodeURIComponent(scenarioId)}?email=${encodeURIComponent(email)}`,
@@ -209,12 +220,68 @@ export async function updateCustomScenario(
     },
   );
 
+  // Non-2xx with JSON body = Pydantic validation error
   if (!res.ok) {
     const detail = await extractErrorDetail(res);
     throw new Error(detail);
   }
 
-  return res.json();
+  // SSE stream — parse events
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error("No response body");
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: { scenario_id: string; name: string; updated_at: string } | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // Parse SSE events from buffer
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const jsonStr = line.slice(6).trim();
+      if (!jsonStr) continue;
+
+      try {
+        const event = JSON.parse(jsonStr);
+        const eventType = event.event_type;
+
+        if (eventType === "builder_health_check_start") {
+          callbacks?.onHealthStart?.();
+        } else if (eventType === "builder_health_check_finding") {
+          callbacks?.onHealthFinding?.({
+            check_name: event.check_name,
+            severity: event.severity,
+            agent_role: event.agent_role ?? null,
+            message: event.message,
+          });
+        } else if (eventType === "builder_health_check_complete") {
+          callbacks?.onHealthComplete?.(event.report);
+        } else if (eventType === "builder_error") {
+          callbacks?.onError?.(event.message);
+          throw new Error(event.message);
+        } else if (eventType === "builder_save_complete") {
+          result = {
+            scenario_id: event.scenario_id,
+            name: event.name,
+            updated_at: event.updated_at ?? "",
+          };
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message !== jsonStr) throw e;
+        // Skip unparseable lines
+      }
+    }
+  }
+
+  if (!result) throw new Error("Update stream ended without save confirmation");
+  return result;
 }
 
 /**

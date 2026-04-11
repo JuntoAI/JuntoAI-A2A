@@ -21,7 +21,7 @@ import { NegotiationHistory } from "@/components/arena/NegotiationHistory";
 import { AdvancedConfigModal, type MemoryStrategy } from "@/components/arena/AdvancedConfigModal";
 import { BuilderModal } from "@/components/builder/BuilderModal";
 import { listCustomScenarios, deleteCustomScenario, updateCustomScenario, type CustomScenarioSummary } from "@/lib/builder/api";
-import { ScenarioEditorModal } from "@/components/arena/ScenarioEditorModal";
+import { ScenarioEditorModal, type SaveCallbacks } from "@/components/arena/ScenarioEditorModal";
 import { Spinner } from "@/components/ui/Spinner";
 
 function ArenaPageContent() {
@@ -137,9 +137,14 @@ function ArenaPageContent() {
   );
 
   const handleSaveEditedScenario = useCallback(
-    async (updated: Record<string, unknown>) => {
+    async (updated: Record<string, unknown>, callbacks: SaveCallbacks) => {
       if (!email || !editorScenarioId) return;
-      await updateCustomScenario(email, editorScenarioId, updated);
+      await updateCustomScenario(email, editorScenarioId, updated, {
+        onHealthStart: callbacks.onHealthStart,
+        onHealthFinding: callbacks.onHealthFinding,
+        onHealthComplete: callbacks.onHealthComplete,
+        onError: callbacks.onError,
+      });
       setEditorScenarioId(null);
       await refreshCustomScenarios();
       // Refresh detail if the edited scenario is currently selected
