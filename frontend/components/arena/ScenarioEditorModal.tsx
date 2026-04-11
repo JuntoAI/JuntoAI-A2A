@@ -212,8 +212,9 @@ export function ScenarioEditorModal({
     try {
       await onSave(parsed);
     } catch (err) {
+      // Display backend validation errors inline — split newlines into separate items
       const message = err instanceof Error ? err.message : String(err);
-      setBackendErrors([message]);
+      setBackendErrors(message.split("\n").filter(Boolean));
     } finally {
       setIsSaving(false);
     }
@@ -323,12 +324,17 @@ export function ScenarioEditorModal({
 
           {/* Backend validation errors */}
           {backendErrors.length > 0 && (
-            <div className="mt-1.5 space-y-1" role="alert">
-              {backendErrors.map((err, i) => (
-                <p key={i} className="text-sm text-red-600">
-                  {err}
-                </p>
-              ))}
+            <div className="mt-2 rounded-md border border-red-200 bg-red-50 p-3" role="alert">
+              <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-red-700">
+                Validation errors ({backendErrors.length})
+              </p>
+              <ul className="list-none space-y-1">
+                {backendErrors.map((err, i) => (
+                  <li key={i} className="font-mono text-xs text-red-600">
+                    • {err}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

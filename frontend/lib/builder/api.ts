@@ -19,6 +19,17 @@ const API_BASE = "/api/v1";
 async function extractErrorDetail(res: Response): Promise<string> {
   try {
     const body = await res.json();
+
+    // Pydantic validation errors — format each field error for display
+    if (Array.isArray(body.errors) && body.errors.length > 0) {
+      return body.errors
+        .map((e: { loc?: string[]; msg?: string }) => {
+          const path = Array.isArray(e.loc) ? e.loc.join(" → ") : "unknown";
+          return `${path}: ${e.msg ?? "invalid"}`;
+        })
+        .join("\n");
+    }
+
     return body.detail ?? body.message ?? JSON.stringify(body);
   } catch {
     return res.statusText || `HTTP ${res.status}`;
