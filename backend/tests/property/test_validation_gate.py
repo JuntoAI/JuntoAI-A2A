@@ -13,19 +13,56 @@ characters — names outside this range should be rejected.
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 from hypothesis import given, settings, HealthCheck
 from hypothesis import strategies as st
 
+from app.builder.events import (
+    HealthCheckCompleteEvent,
+    HealthCheckStartEvent,
+)
+from app.builder.health_check import HealthCheckAnalyzer
 from app.builder.scenario_store import SQLiteCustomScenarioStore
 from app.db import get_custom_scenario_store
 from app.main import app
 from app.orchestrator.available_models import VALID_MODEL_IDS
+from app.routers.builder import get_health_check_analyzer
 from app.scenarios.models import ArenaScenario
+
+
+def _make_stub_analyzer() -> HealthCheckAnalyzer:
+    """Create a stub analyzer that yields minimal events without LLM calls."""
+    analyzer = AsyncMock(spec=HealthCheckAnalyzer)
+
+    async def _stub_analyze(scenario, gold):
+        yield HealthCheckStartEvent(event_type="builder_health_check_start")
+        yield HealthCheckCompleteEvent(
+            event_type="builder_health_check_complete",
+            report={"readiness_score": 80, "tier": "Ready", "findings": [], "recommendations": [],
+                    "prompt_quality_scores": [], "tension_score": 0, "budget_overlap_score": 0,
+                    "toggle_effectiveness_score": 0, "turn_sanity_score": 0,
+                    "stall_risk": {"stall_risk_score": 0, "risks": []},
+                    "budget_overlap_detail": {"overlap_zone": None, "overlap_percentage": 0}},
+        )
+
+    analyzer.analyze = _stub_analyze
+    return analyzer
+
+
+def _parse_sse_final_event(text: str) -> dict:
+    """Extract the last SSE data payload from a text/event-stream response."""
+    last_data = None
+    for line in text.split("\n"):
+        if line.startswith("data: "):
+            last_data = line[6:]
+    assert last_data is not None, f"No SSE data found in response: {text!r}"
+    return json.loads(last_data)
 
 # ---------------------------------------------------------------------------
 # Strategies — reuse patterns from test_scenario_update.py
@@ -165,7 +202,9 @@ async def test_valid_scenario_accepted(scenario: dict):
         email = "prop4@test.com"
         scenario_id = await store.save(email, seed_scenario)
 
+        stub_analyzer = _make_stub_analyzer()
         app.dependency_overrides[get_custom_scenario_store] = lambda: store
+        app.dependency_overrides[get_health_check_analyzer] = lambda: stub_analyzer
         try:
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
@@ -179,11 +218,12 @@ async def test_valid_scenario_accepted(scenario: dict):
             assert resp.status_code == 200, (
                 f"Expected 200 for valid scenario, got {resp.status_code}: {resp.text}"
             )
-            body = resp.json()
+            body = _parse_sse_final_event(resp.text)
             assert "scenario_id" in body
             assert "name" in body
         finally:
             app.dependency_overrides.pop(get_custom_scenario_store, None)
+            app.dependency_overrides.pop(get_health_check_analyzer, None)
 
 
 @pytest.mark.property

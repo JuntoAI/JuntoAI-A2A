@@ -12,15 +12,23 @@ Tests cover:
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 
+from app.builder.events import (
+    HealthCheckCompleteEvent,
+    HealthCheckStartEvent,
+)
+from app.builder.health_check import HealthCheckAnalyzer
 from app.builder.scenario_store import SQLiteCustomScenarioStore
 from app.db import get_custom_scenario_store
 from app.main import app
+from app.routers.builder import get_health_check_analyzer
 from app.scenarios.models import ArenaScenario
 
 
@@ -79,6 +87,35 @@ def _valid_scenario_dict() -> dict:
     }
 
 
+def _make_stub_analyzer() -> HealthCheckAnalyzer:
+    """Create a stub analyzer that yields minimal events without LLM calls."""
+    analyzer = AsyncMock(spec=HealthCheckAnalyzer)
+
+    async def _stub_analyze(scenario, gold):
+        yield HealthCheckStartEvent(event_type="builder_health_check_start")
+        yield HealthCheckCompleteEvent(
+            event_type="builder_health_check_complete",
+            report={"readiness_score": 80, "tier": "Ready", "findings": [], "recommendations": [],
+                    "prompt_quality_scores": [], "tension_score": 0, "budget_overlap_score": 0,
+                    "toggle_effectiveness_score": 0, "turn_sanity_score": 0,
+                    "stall_risk": {"stall_risk_score": 0, "risks": []},
+                    "budget_overlap_detail": {"overlap_zone": None, "overlap_percentage": 0}},
+        )
+
+    analyzer.analyze = _stub_analyze
+    return analyzer
+
+
+def _parse_sse_final_event(text: str) -> dict:
+    """Extract the last SSE data payload from a text/event-stream response."""
+    last_data = None
+    for line in text.split("\n"):
+        if line.startswith("data: "):
+            last_data = line[6:]
+    assert last_data is not None, f"No SSE data found in response: {text!r}"
+    return json.loads(last_data)
+
+
 EMAIL = "update-test@example.com"
 
 
@@ -90,7 +127,7 @@ EMAIL = "update-test@example.com"
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_put_valid_update_returns_200():
-    """PUT with valid scenario_json returns 200 with scenario_id, name, updated_at."""
+    """PUT with valid scenario_json returns 200 SSE stream with builder_save_complete event."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = str(Path(tmpdir) / "update.db")
         store = SQLiteCustomScenarioStore(db_path)
@@ -103,7 +140,9 @@ async def test_put_valid_update_returns_200():
         updated = _valid_scenario_dict()
         updated["name"] = "Renamed Scenario"
 
+        stub_analyzer = _make_stub_analyzer()
         app.dependency_overrides[get_custom_scenario_store] = lambda: store
+        app.dependency_overrides[get_health_check_analyzer] = lambda: stub_analyzer
         try:
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=app),
@@ -116,13 +155,14 @@ async def test_put_valid_update_returns_200():
                 )
 
             assert resp.status_code == 200
-            body = resp.json()
+            body = _parse_sse_final_event(resp.text)
             assert body["scenario_id"] == scenario_id
             assert body["name"] == "Renamed Scenario"
             assert "updated_at" in body
             assert body["updated_at"] is not None
         finally:
             app.dependency_overrides.pop(get_custom_scenario_store, None)
+            app.dependency_overrides.pop(get_health_check_analyzer, None)
 
 
 @pytest.mark.unit

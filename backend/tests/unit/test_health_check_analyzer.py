@@ -233,18 +233,23 @@ async def test_analyze_includes_gold_standard_in_prompts():
 async def test_prompt_quality_per_agent_scoring():
     """Verify prompt quality returns per-agent scores."""
     model = _make_mock_model()
-    model.ainvoke = AsyncMock(
-        side_effect=[
-            # Buyer: high quality
-            _mock_llm_response('{"score": 90, "findings": ["Excellent strategy"]}'),
-            # Seller: low quality
-            _mock_llm_response('{"score": 35, "findings": ["Missing constraints"]}'),
-            # Goal tension
-            _mock_llm_response('{"tension_score": 80, "findings": []}'),
-            # Toggle effectiveness
-            _mock_llm_response('{"score": 70, "findings": []}'),
-        ]
-    )
+
+    # With parallelized LLM calls, side_effect order is non-deterministic.
+    # Use a function that inspects the prompt to return the right response.
+    async def _route_invoke(prompt):
+        prompt_str = str(prompt)
+        if "Buyer" in prompt_str and "Evaluate this agent" in prompt_str:
+            return _mock_llm_response('{"score": 90, "findings": ["Excellent strategy"]}')
+        if "Seller" in prompt_str and "Evaluate this agent" in prompt_str:
+            return _mock_llm_response('{"score": 35, "findings": ["Missing constraints"]}')
+        if "tension" in prompt_str.lower() or "opposing" in prompt_str.lower():
+            return _mock_llm_response('{"tension_score": 80, "findings": []}')
+        if "toggle" in prompt_str.lower():
+            return _mock_llm_response('{"score": 70, "findings": []}')
+        # Fallback
+        return _mock_llm_response('{"score": 75, "findings": []}')
+
+    model.ainvoke = AsyncMock(side_effect=_route_invoke)
 
     analyzer = HealthCheckAnalyzer(model=model)
     scenario = _make_scenario()
