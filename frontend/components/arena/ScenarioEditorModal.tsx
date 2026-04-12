@@ -38,6 +38,7 @@ export function ScenarioEditorModal({
   const [parseError, setParseError] = useState<string | null>(null);
   const [backendErrors, setBackendErrors] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [healthChecking, setHealthChecking] = useState(false);
   const [healthFindings, setHealthFindings] = useState<HealthCheckFindingDisplay[]>([]);
   const [healthResult, setHealthResult] = useState<{ readiness_score: number; tier: string } | null>(null);
@@ -54,6 +55,7 @@ export function ScenarioEditorModal({
       setParseError(null);
       setBackendErrors([]);
       setIsSaving(false);
+      setSaveSuccess(false);
       setHealthChecking(false);
       setHealthFindings([]);
       setHealthResult(null);
@@ -185,6 +187,7 @@ export function ScenarioEditorModal({
 
     try {
       await onSave(parsed, callbacks);
+      setSaveSuccess(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setBackendErrors(message.split("\n").filter(Boolean));
@@ -199,7 +202,7 @@ export function ScenarioEditorModal({
   }, [isSaving, onClose]);
 
   const hasParseError = parseError !== null;
-  const isSaveDisabled = hasParseError || isSaving;
+  const isSaveDisabled = hasParseError || isSaving || saveSuccess;
 
   if (!isOpen) return null;
 
@@ -330,23 +333,35 @@ export function ScenarioEditorModal({
 
         {/* Actions */}
         <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={isSaving}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaveDisabled}
-            className="flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isSaving ? "Saving…" : "Save"}
-          </button>
+          {saveSuccess ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
+            >
+              ✓ Done
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={isSaving}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaveDisabled}
+                className="flex items-center gap-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isSaving ? "Saving…" : "Save"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

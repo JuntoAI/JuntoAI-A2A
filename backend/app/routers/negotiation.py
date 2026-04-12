@@ -1033,14 +1033,34 @@ async def stream_negotiation(
     state = NegotiationStateModel(**raw_doc)
 
     # 4. Load scenario config for the orchestrator
+    #    Check built-in registry first, then fall back to custom scenario store.
+    scenario = None
     try:
         scenario = registry.get_scenario(state.scenario_id, email=email)
-        scenario_config = scenario.model_dump()
     except Exception:
+        pass
+
+    if scenario is None:
+        normalized_email = email.strip().lower()
+        custom_store = get_custom_scenario_store()
+        try:
+            custom_doc = await custom_store.get(normalized_email, state.scenario_id)
+            if custom_doc and custom_doc.get("scenario_json"):
+                scenario = load_scenario_from_dict(custom_doc["scenario_json"])
+        except Exception as exc:
+            logger.error(
+                "Custom scenario lookup failed in stream: email=%s scenario_id=%s error=%s",
+                normalized_email, state.scenario_id, exc,
+                exc_info=True,
+            )
+
+    if scenario is None:
         return JSONResponse(
             status_code=404,
             content={"detail": f"Scenario '{state.scenario_id}' not found"},
         )
+
+    scenario_config = scenario.model_dump()
 
     # 5. Acquire connection slot
     # Reconnections (last_event_id present) get a free pass — they replace

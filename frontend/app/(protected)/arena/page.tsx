@@ -145,12 +145,13 @@ function ArenaPageContent() {
         onHealthComplete: callbacks.onHealthComplete,
         onError: callbacks.onError,
       });
-      setEditorScenarioId(null);
       await refreshCustomScenarios();
       // Refresh detail if the edited scenario is currently selected
       if (selectedScenarioId === editorScenarioId) {
         setScenarioDetail({ id: editorScenarioId, ...updated } as ArenaScenario);
       }
+      // Don't close modal here — let the user see health check results.
+      // Modal shows a "Done" button after successful save.
     },
     [email, editorScenarioId, refreshCustomScenarios, selectedScenarioId],
   );
