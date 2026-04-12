@@ -114,13 +114,6 @@ export default function Header() {
           {/* Auth info — email + tokens (desktop) */}
           {showAuth && !isAdmin && (
             <>
-              <Link
-                href="/profile"
-                className="hidden truncate max-w-[160px] text-sm text-gray-600 hover:text-brand-blue hover:underline transition-colors md:inline"
-                title={email ?? ""}
-              >
-                {email}
-              </Link>
               <TokenDisplay />
             </>
           )}

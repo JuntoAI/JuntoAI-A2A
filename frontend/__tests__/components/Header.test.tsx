@@ -138,14 +138,13 @@ describe("Header Component", () => {
 
   // --- Authenticated state ---
 
-  it("shows email, token display, and logout button when authenticated", () => {
+  it("shows token display and logout button when authenticated", () => {
     mockSessionState.email = "test@example.com";
     mockSessionState.tokenBalance = 50;
     mockSessionState.isAuthenticated = true;
     mockSessionState.isHydrated = true;
     render(createElement(Header));
 
-    expect(screen.getByText("test@example.com")).toBeInTheDocument();
     expect(screen.getByTestId("token-display")).toBeInTheDocument();
     expect(screen.getByLabelText("Logout")).toBeInTheDocument();
   });
