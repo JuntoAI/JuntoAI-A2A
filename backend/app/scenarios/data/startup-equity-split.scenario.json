@@ -111,7 +111,7 @@
       "Business Co-Founder",
       "Startup Lawyer"
     ],
-    "value_label": "Technical Co-Founder Equity (%)",
+    "value_label": "Technical Co-Founder Equity",
     "value_format": "percent"
   },
   "outcome_receipt": {

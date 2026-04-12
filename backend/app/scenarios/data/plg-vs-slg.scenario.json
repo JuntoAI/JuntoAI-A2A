@@ -89,7 +89,7 @@
       "CTO",
       "CEO"
     ],
-    "value_label": "PLG Budget Allocation (%)",
+    "value_label": "PLG Budget Allocation",
     "value_format": "percent"
   },
   "outcome_receipt": {

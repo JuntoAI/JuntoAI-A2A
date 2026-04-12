@@ -74,7 +74,7 @@ function SessionRow({ session }: { session: SessionHistoryItem }) {
       <div className="flex items-center gap-3">
         <StatusBadge status={session.deal_status} />
         <Link
-          href={`/arena/session/${session.session_id}?mode=replay`}
+          href={`/arena/session/${session.session_id}?mode=replay&scenario=${encodeURIComponent(session.scenario_id)}`}
           className="text-xs font-medium text-[#007BFF] hover:underline"
         >
           View
