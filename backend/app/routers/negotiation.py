@@ -570,18 +570,28 @@ def _build_block_advice(history: list[dict], blocker: str, agent_states: dict[st
     advice: list[dict] = []
     for role, reasons in by_role.items():
         display_name = _resolve_name(role, role_name_map)
-        # Summarize the pattern from the first two warnings (keeps it concise)
-        issue_summary = reasons[0][:200]
+        # Use the full first warning as the issue summary so the user
+        # understands exactly what the regulator flagged.  Append a count
+        # when the same agent was warned multiple times.
+        issue_summary = reasons[0]
         if len(reasons) > 1:
             issue_summary += f" (repeated {len(reasons)}x)"
 
+        # Build a scenario-specific prompt that references the actual
+        # warnings instead of giving generic "change tactics" boilerplate.
+        warning_bullets = "\n".join(
+            f"  - Warning {i + 1}: {r.strip()}" for i, r in enumerate(reasons)
+        )
         prompt = (
             f"IMPORTANT: The mediator has flagged your approach {len(reasons)} "
-            f"time(s). You MUST change tactics. Rules: "
-            f"1) Never repeat an argument the mediator already warned about. "
-            f"2) Lead with concrete proposals and logistics, not emotions. "
-            f"3) Mention your track record only once, then move on. "
-            f"4) If warned, acknowledge it and immediately offer a new "
+            f"time(s). Below are the specific issues raised:\n"
+            f"{warning_bullets}\n\n"
+            f"You MUST directly address each flagged issue in your next proposal. Rules:\n"
+            f"1) Never repeat an argument the mediator already warned about.\n"
+            f"2) For each warning above, proactively provide what was requested "
+            f"(e.g., documentation, specific clause language, defined penalties).\n"
+            f"3) Lead with concrete proposals and logistics, not emotions.\n"
+            f"4) If warned again, acknowledge it and immediately offer a new "
             f"safety measure or creative compromise instead."
         )
 
