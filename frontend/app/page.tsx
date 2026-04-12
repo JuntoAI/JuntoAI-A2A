@@ -19,11 +19,11 @@ import WaitlistForm from "@/components/WaitlistForm";
 export const metadata: Metadata = {
   title: "AI Deal Rehearsal for Sales Teams | JuntoAI",
   description:
-    "Rehearse high-stakes sales calls with AI agents that push back, stall, and negotiate like real buyers. Practice objection handling, multi-stakeholder navigation, and discovery calls before the real thing.",
+    "Rehearse high-stakes sales calls with AI agents that push back, stall, and negotiate like real buyers. Simulate objection handling, multi-stakeholder navigation, and discovery calls before the real thing.",
   openGraph: {
     title: "JuntoAI | AI Deal Rehearsal for Sales Teams",
     description:
-      "Practice your next sales call against AI agents that push back, stall, and negotiate like real prospects.",
+      "Simulate your next sales call against AI agents that push back, stall, and negotiate like real prospects.",
     url: "/",
     siteName: "JuntoAI",
     type: "website",
@@ -38,7 +38,7 @@ const jsonLd = {
   applicationCategory: "Sales Training",
   operatingSystem: "Web",
   description:
-    "AI-powered sales rehearsal platform where reps practice against autonomous buyer agents. Covers objection handling, multi-stakeholder deals, and discovery calls.",
+    "AI-powered sales rehearsal platform where reps simulate deals against autonomous buyer agents. Covers objection handling, multi-stakeholder deals, and discovery calls.",
   url: "https://app.juntoai.org",
   keywords: "sales rehearsal, deal practice, AI sales training, objection handling, sales enablement",
   author: {
@@ -77,7 +77,7 @@ const SALES_VALUE_PROPS = [
     iconColor: "text-brand-blue",
     title: "Multi-Stakeholder Navigation",
     description:
-      "Practice selling when the champion loves you but procurement is blocking. Navigate buying committees with up to 4 AI agents.",
+      "Simulate selling when the champion loves you but procurement is blocking. Navigate buying committees with up to 4 AI agents.",
   },
 ] as const;
 
@@ -135,7 +135,7 @@ export default function Home() {
               </h1>
 
               <p className="mt-4 max-w-2xl text-base leading-relaxed text-brand-charcoal/70 sm:text-lg">
-                Practice high-stakes sales calls against AI agents that push back,
+                Simulate high-stakes sales calls against AI agents that push back,
                 stall, and negotiate like real buyers. Build objection-handling
                 muscle memory before the call that matters.
               </p>
