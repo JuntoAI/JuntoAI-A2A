@@ -108,12 +108,12 @@ describe("Header Component", () => {
     expect(links.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("contains link to GitHub repo", () => {
+  it("does not contain GitHub link in header nav", () => {
     render(createElement(Header));
-    const links = screen.getAllByRole("link").filter(
+    const links = screen.queryAllByRole("link").filter(
       (el) => el.getAttribute("href") === "https://github.com/JuntoAI/JuntoAI-A2A",
     );
-    expect(links.length).toBeGreaterThanOrEqual(1);
+    expect(links.length).toBe(0);
   });
 
   // --- Positioning ---

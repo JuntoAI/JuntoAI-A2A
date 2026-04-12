@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Github,
   ExternalLink,
   LogOut,
   Swords,
@@ -105,15 +104,6 @@ export default function Header() {
               >
                 JuntoAI
                 <ExternalLink className="h-3 w-3" />
-              </a>
-              <a
-                href="https://github.com/JuntoAI/JuntoAI-A2A"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-sm text-brand-charcoal hover:text-brand-blue transition-colors"
-              >
-                <Github className="h-4 w-4" />
-                GitHub
               </a>
             </>
           )}
@@ -231,15 +221,6 @@ export default function Header() {
                 >
                   JuntoAI
                   <ExternalLink className="h-3 w-3" />
-                </a>
-                <a
-                  href="https://github.com/JuntoAI/JuntoAI-A2A"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-sm text-brand-charcoal hover:text-brand-blue transition-colors"
-                >
-                  <Github className="h-4 w-4" />
-                  GitHub
                 </a>
               </>
             )}
