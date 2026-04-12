@@ -58,9 +58,9 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* Center nav — context-dependent */}
+        {/* Nav — right-aligned */}
         <nav
-          className="hidden items-center gap-4 md:flex"
+          className="hidden items-center gap-4 ml-auto md:flex"
           aria-label="Main navigation"
         >
           {/* Authenticated nav: Arena + Profile */}
