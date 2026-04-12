@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 
 from app.config import settings
-from app.db import get_session_store, get_share_store
+from app.db import get_custom_scenario_store, get_session_store, get_share_store
 from app.exceptions import ShareNotFoundError
 from app.models.share import (
     CreateShareResponse,
@@ -22,6 +22,7 @@ from app.models.share import (
     SocialPostText,
 )
 from app.scenarios.registry import ScenarioRegistry
+from app.scenarios.loader import load_scenario_from_dict
 from app.services.image_generator import generate_share_image
 
 logger = logging.getLogger(__name__)
@@ -67,12 +68,22 @@ async def create_or_get_share(
     if owner_email is not None and owner_email != email:
         raise HTTPException(status_code=403, detail="Email does not match session owner")
 
-    # Load scenario metadata
+    # Load scenario metadata — registry first, then custom store
     scenario_id = raw_doc.get("scenario_id", "")
+    scenario = None
     try:
         scenario = registry.get_scenario(scenario_id, email=email)
     except Exception:
-        scenario = None
+        pass
+
+    if scenario is None:
+        try:
+            custom_store = get_custom_scenario_store()
+            custom_doc = await custom_store.get(email.strip().lower(), scenario_id)
+            if custom_doc and custom_doc.get("scenario_json"):
+                scenario = load_scenario_from_dict(custom_doc["scenario_json"])
+        except Exception:
+            logger.debug("Custom scenario lookup failed for share: %s", scenario_id)
 
     # Generate unique slug
     slug = await _generate_slug()

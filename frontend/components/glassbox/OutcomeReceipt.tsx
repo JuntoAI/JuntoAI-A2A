@@ -154,7 +154,7 @@ export default function OutcomeReceipt({
                     <div key={i} className="mb-3 last:mb-0">
                       <p className="text-xs font-medium text-blue-800 mb-1">
                         Adjust <span className="font-bold">{String(item.agent_role)}</span>
-                        {item.issue ? ` — ${String(item.issue).slice(0, 120)}` : ""}
+                        {item.issue ? ` — ${String(item.issue)}` : ""}
                       </p>
                       {item.suggested_prompt ? (
                         <div className="relative">

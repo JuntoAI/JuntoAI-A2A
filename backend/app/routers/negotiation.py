@@ -1107,7 +1107,16 @@ async def stream_negotiation(
                 sc = registry.get_scenario(state.scenario_id, email=email)
                 replay_scenario_config = sc.model_dump()
             except Exception:
-                replay_scenario_config = None
+                # Fallback: try custom scenario store
+                try:
+                    cs = get_custom_scenario_store()
+                    custom_doc = await cs.get(email.strip().lower(), state.scenario_id)
+                    if custom_doc and custom_doc.get("scenario_json"):
+                        replay_scenario_config = load_scenario_from_dict(
+                            custom_doc["scenario_json"]
+                        ).model_dump()
+                except Exception:
+                    replay_scenario_config = None
         reconstructed = _reconstruct_events_from_session(session_id, raw_doc, replay_scenario_config)
 
         async def history_replay_stream():
