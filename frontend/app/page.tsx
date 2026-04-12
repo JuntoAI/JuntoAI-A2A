@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Shield,
   Target,
@@ -290,12 +291,32 @@ export default function Home() {
         {/* Supported By Section */}
         <section className="w-full bg-brand-gray py-10">
           <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col items-center gap-3 text-center">
+            <div className="flex flex-col items-center gap-6 text-center">
               <p className="text-xs font-medium uppercase tracking-wider text-brand-charcoal/40">
                 Supported By
               </p>
-              <div className="flex items-center gap-2 text-brand-charcoal/60">
-                <span className="text-sm font-medium">Enterprise Ireland</span>
+              <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12">
+                <Image
+                  src="/enterprise-ireland-logo-data.png"
+                  alt="Enterprise Ireland"
+                  width={140}
+                  height={48}
+                  className="h-10 w-auto object-contain opacity-70"
+                />
+                <Image
+                  src="/298-2985895_google-cloud-for-startups-hd-png-download.png"
+                  alt="Google Cloud for Startups"
+                  width={140}
+                  height={48}
+                  className="h-10 w-auto object-contain opacity-70"
+                />
+                <Image
+                  src="/Web_Summit_logo.svg.png"
+                  alt="Web Summit"
+                  width={140}
+                  height={48}
+                  className="h-10 w-auto object-contain opacity-70"
+                />
               </div>
             </div>
           </div>

@@ -67,7 +67,9 @@ describe("Sales-Focused Homepage (page.tsx)", () => {
   it("renders 'Supported By' section", () => {
     render(createElement(Home));
     expect(screen.getByText(/supported by/i)).toBeInTheDocument();
-    expect(screen.getByText("Enterprise Ireland")).toBeInTheDocument();
+    expect(screen.getByAltText("Enterprise Ireland")).toBeInTheDocument();
+    expect(screen.getByAltText("Google Cloud for Startups")).toBeInTheDocument();
+    expect(screen.getByAltText("Web Summit")).toBeInTheDocument();
   });
 
   // --- Requirement 16.6: Demo video placeholder ---
