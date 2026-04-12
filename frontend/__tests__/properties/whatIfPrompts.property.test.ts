@@ -7,6 +7,7 @@ import {
 } from "@/lib/whatIfPrompts";
 import type { ToggleDefinition, AgentDefinition } from "@/lib/api";
 import type { PromptGeneratorInput } from "@/lib/whatIfPrompts";
+import { formatValue } from "@/lib/valueFormat";
 
 // ---------------------------------------------------------------------------
 // Shared arbitraries
@@ -361,7 +362,7 @@ describe("Feature: 260_what-if-prompts", () => {
             );
             const prompts = generateWhatIfPrompts(input);
             expect(prompts).toHaveLength(1);
-            expect(prompts[0].text).toContain(String(offerValue));
+            expect(prompts[0].text).toContain(formatValue(offerValue));
           },
         ),
         { numRuns: FC_NUM_RUNS },
