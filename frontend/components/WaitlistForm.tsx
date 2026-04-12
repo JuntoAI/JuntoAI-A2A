@@ -4,10 +4,7 @@ import { useState, useCallback, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useSession } from "@/context/SessionContext";
-import { joinWaitlist } from "@/lib/waitlist";
-import { needsReset, resetTokens } from "@/lib/tokens";
-import { getProfile } from "@/lib/profile";
-import { checkEmail, loginWithPassword, loginWithGoogle } from "@/lib/auth";
+import { checkEmail, loginWithPassword, loginWithGoogle, joinWaitlist } from "@/lib/auth";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
@@ -47,31 +44,10 @@ export default function WaitlistForm() {
     }
   };
 
-  // --- Shared: complete login with profile tier info ---
-  async function completeLoginWithProfile(
-    userEmail: string,
-    tokenBalance: number,
-    lastResetDate: string,
-  ) {
-    let tier = 1;
-    let dailyLimit = 20;
-
-    try {
-      const profile = await getProfile(userEmail);
-      tier = profile.tier;
-      dailyLimit = profile.daily_limit;
-    } catch {
-      // No profile yet — default Tier 1
-    }
-
-    // Check if tokens need a daily reset
-    if (needsReset(lastResetDate)) {
-      await resetTokens(userEmail, dailyLimit);
-      tokenBalance = dailyLimit;
-      lastResetDate = new Date().toISOString().slice(0, 10);
-    }
-
-    login(userEmail, tokenBalance, lastResetDate, tier, dailyLimit);
+  // --- Shared: complete login from API response ---
+  function completeLogin(result: { email: string; token_balance: number; tier: number; daily_limit: number }) {
+    const lastReset = new Date().toISOString().slice(0, 10);
+    login(result.email, result.token_balance, lastReset, result.tier, result.daily_limit);
     router.push("/arena");
   }
 
@@ -105,9 +81,7 @@ export default function WaitlistForm() {
 
         try {
           const result = await loginWithPassword(trimmed, password);
-          const lastReset = new Date().toISOString().slice(0, 10);
-          login(result.email, result.token_balance, lastReset, result.tier, result.daily_limit);
-          router.push("/arena");
+          completeLogin(result);
           return;
         } catch (err) {
           if (err instanceof Error && err.message === "Invalid password") {
@@ -122,7 +96,7 @@ export default function WaitlistForm() {
 
       // Email-only login flow (no password set)
       const doc = await joinWaitlist(trimmed);
-      await completeLoginWithProfile(doc.email, doc.token_balance, doc.last_reset_date);
+      completeLogin(doc);
     } catch (err) {
       console.error("[WaitlistForm] submission failed:", err);
       setError("Something went wrong. Please try again.");
@@ -159,9 +133,7 @@ export default function WaitlistForm() {
 
         try {
           const result = await loginWithGoogle(response.credential);
-          const lastReset = new Date().toISOString().slice(0, 10);
-          login(result.email, result.token_balance, lastReset, result.tier, result.daily_limit);
-          router.push("/arena");
+          completeLogin(result);
         } catch (err) {
           if (err instanceof Error && err.message.includes("No linked account")) {
             setError("No linked account found for this Google account. Please sign in with email first and link your Google account from the profile page.");

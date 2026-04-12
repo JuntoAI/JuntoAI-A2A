@@ -32,6 +32,12 @@ class ChangePasswordRequest(BaseModel):
         return v
 
 
+class JoinRequest(BaseModel):
+    """Request body for POST /api/v1/auth/join."""
+
+    email: str
+
+
 class LoginRequest(BaseModel):
     """Request body for POST /api/v1/auth/login."""
 

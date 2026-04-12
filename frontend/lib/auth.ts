@@ -13,6 +13,19 @@ export interface LoginResponse {
   token_balance: number;
 }
 
+/** Join waitlist / login with email only (no password). */
+export async function joinWaitlist(email: string): Promise<LoginResponse> {
+  const res = await fetch(`${API_URL}/api/v1/auth/join`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    throw new Error(`join failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 /** Check if an email has a password set. */
 export async function checkEmail(email: string): Promise<CheckEmailResponse> {
   const res = await fetch(`${API_URL}/api/v1/auth/check-email/${encodeURIComponent(email)}`);

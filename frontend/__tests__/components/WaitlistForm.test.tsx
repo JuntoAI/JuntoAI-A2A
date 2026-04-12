@@ -39,6 +39,7 @@ vi.mock("@/lib/auth", () => ({
   checkEmail: (...args: unknown[]) => mockCheckEmail(...args),
   loginWithPassword: (...args: unknown[]) => mockLoginWithPassword(...args),
   loginWithGoogle: (...args: unknown[]) => mockLoginWithGoogle(...args),
+  joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
   setPassword: vi.fn(),
   changePassword: vi.fn(),
   linkGoogle: vi.fn(),
@@ -54,17 +55,6 @@ vi.mock("@/lib/profile", () => ({
 }));
 
 const mockJoinWaitlist = vi.fn();
-
-vi.mock("@/lib/waitlist", () => ({
-  joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
-}));
-
-vi.mock("@/lib/tokens", () => ({
-  needsReset: vi.fn(() => false),
-  resetTokens: vi.fn(),
-  formatTokenDisplay: vi.fn((b: number, l: number) => `Tokens: ${Math.max(0, b)} / ${l}`),
-  getUtcDateString: vi.fn(() => "2025-01-01"),
-}));
 
 // Import component AFTER mocks
 import WaitlistForm from "@/components/WaitlistForm";
@@ -92,10 +82,10 @@ describe("WaitlistForm", () => {
     mockCheckEmail.mockResolvedValue({ has_password: false });
     mockJoinWaitlist.mockResolvedValue({
       email: "valid@example.com",
+      tier: 1,
+      daily_limit: 20,
       token_balance: 20,
-      last_reset_date: "2025-01-01",
     });
-    mockGetProfile.mockResolvedValue({ tier: 1, daily_limit: 20 });
 
     render(<WaitlistForm />);
 
@@ -116,7 +106,7 @@ describe("WaitlistForm", () => {
       expect(mockLogin).toHaveBeenCalledWith(
         "valid@example.com",
         20,
-        "2025-01-01",
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
         1,
         20,
       );

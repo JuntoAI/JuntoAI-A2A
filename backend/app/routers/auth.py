@@ -13,6 +13,7 @@ from app.db import get_profile_client
 from app.models.auth import (
     CheckEmailResponse,
     GoogleTokenRequest,
+    JoinRequest,
     LoginRequest,
     LoginResponse,
     SetPasswordRequest,
@@ -68,6 +69,107 @@ def _build_login_response(
     daily_limit = get_daily_limit(tier)
     return LoginResponse(
         email=email,
+        tier=tier,
+        daily_limit=daily_limit,
+        token_balance=token_balance,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /auth/join
+# ---------------------------------------------------------------------------
+
+
+@router.post("/auth/join")
+async def join_waitlist(
+    body: JoinRequest,
+    profile_client=Depends(get_profile_client),
+):
+    """Create or retrieve a waitlist entry for the given email.
+
+    - New user: creates waitlist doc with 20 tokens (Tier 1 default).
+    - Existing user: returns current token balance, resets if needed.
+    Returns a ``LoginResponse`` so the frontend can log the user in.
+    """
+    email_key = body.email.lower().strip()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    if settings.RUN_MODE == "local":
+        import aiosqlite
+
+        async with aiosqlite.connect(settings.SQLITE_DB_PATH) as conn:
+            cursor = await conn.execute(
+                "SELECT token_balance, last_reset_date FROM waitlist WHERE email = ?",
+                (email_key,),
+            )
+            row = await cursor.fetchone()
+
+            if row is None:
+                # New user — create waitlist entry
+                await conn.execute(
+                    "INSERT INTO waitlist (email, token_balance, last_reset_date) VALUES (?, ?, ?)",
+                    (email_key, 20, today),
+                )
+                await conn.commit()
+                token_balance = 20
+                last_reset = today
+            else:
+                token_balance, last_reset = int(row[0]), row[1]
+                # Daily reset if needed
+                if last_reset < today:
+                    profile = await profile_client.get_profile(email_key)
+                    tier = calculate_tier(
+                        profile.get("profile_completed_at") if profile else None,
+                        profile.get("email_verified", False) if profile else False,
+                    )
+                    daily_limit = get_daily_limit(tier)
+                    await conn.execute(
+                        "UPDATE waitlist SET token_balance = ?, last_reset_date = ? WHERE email = ?",
+                        (daily_limit, today, email_key),
+                    )
+                    await conn.commit()
+                    token_balance = daily_limit
+    else:
+        waitlist_ref = profile_client._db.collection("waitlist").document(email_key)
+        doc = await waitlist_ref.get()
+
+        if not doc.exists:
+            # New user — create waitlist entry
+            await waitlist_ref.set({
+                "email": email_key,
+                "signed_up_at": datetime.now(timezone.utc),
+                "token_balance": 20,
+                "last_reset_date": today,
+            })
+            token_balance = 20
+        else:
+            data = doc.to_dict()
+            token_balance = data.get("token_balance", 20)
+            last_reset = data.get("last_reset_date", "")
+            # Daily reset if needed
+            if last_reset < today:
+                profile = await profile_client.get_profile(email_key)
+                tier = calculate_tier(
+                    profile.get("profile_completed_at") if profile else None,
+                    profile.get("email_verified", False) if profile else False,
+                )
+                daily_limit = get_daily_limit(tier)
+                await waitlist_ref.update({
+                    "token_balance": daily_limit,
+                    "last_reset_date": today,
+                })
+                token_balance = daily_limit
+
+    # Build response with tier info
+    profile = await profile_client.get_profile(email_key)
+    tier = calculate_tier(
+        profile.get("profile_completed_at") if profile else None,
+        profile.get("email_verified", False) if profile else False,
+    )
+    daily_limit = get_daily_limit(tier)
+
+    return LoginResponse(
+        email=email_key,
         tier=tier,
         daily_limit=daily_limit,
         token_balance=token_balance,
