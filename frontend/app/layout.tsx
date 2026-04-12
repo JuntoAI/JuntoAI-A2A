@@ -13,21 +13,20 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL || "https://app.juntoai.org"
   ),
   title: {
-    default: "JuntoAI | AI Agent Negotiation Sandbox | A2A Protocol",
+    default: "JuntoAI | AI Deal Rehearsal for Sales Teams",
     template: "%s | JuntoAI",
   },
   description:
-    "JuntoAI A2A is a protocol-level sandbox where autonomous AI agents negotiate deals in real time. Pick a scenario, inject hidden variables, and watch AI reasoning live.",
+    "Rehearse sales deals against AI buyers that push back, stall, and negotiate like real prospects. AI-powered deal rehearsal and sales training for teams that want to close with confidence.",
   keywords: [
+    "sales training",
+    "deal rehearsal",
+    "objection handling",
+    "sales enablement",
+    "AI sales training",
+    "sales simulation",
     "AI negotiation",
-    "AI agents",
-    "A2A protocol",
-    "autonomous agents",
-    "LLM negotiation",
-    "agent-to-agent",
     "JuntoAI",
-    "AI sandbox",
-    "multi-agent simulation",
   ],
   authors: [{ name: "JuntoAI", url: "https://juntoai.org" }],
   creator: "JuntoAI",
@@ -39,10 +38,10 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
     url: "/",
-    siteName: "JuntoAI A2A Protocol Sandbox",
-    title: "JuntoAI | AI Agent Negotiation Sandbox",
+    siteName: "JuntoAI",
+    title: "JuntoAI | AI Deal Rehearsal for Sales Teams",
     description:
-      "Watch autonomous AI agents negotiate deals in real time. Pick a scenario, flip hidden variables, and see how information asymmetry changes the outcome.",
+      "Rehearse sales deals against AI buyers that push back, stall, and negotiate like real prospects. AI-powered deal rehearsal and sales training for closing confidence.",
     images: [
       {
         url: "/og-image.png",
@@ -56,9 +55,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@JuntoAI",
     creator: "@JuntoAI",
-    title: "JuntoAI | AI Agent Negotiation Sandbox",
+    title: "JuntoAI | AI Deal Rehearsal for Sales Teams",
     description:
-      "Watch autonomous AI agents negotiate deals in real time. Config-driven scenarios with hidden variables that visibly alter outcomes.",
+      "Rehearse sales deals against AI buyers that push back, stall, and negotiate like real prospects. AI-powered deal rehearsal and sales training for closing confidence.",
     images: ["/og-image.png"],
   },
   robots: {

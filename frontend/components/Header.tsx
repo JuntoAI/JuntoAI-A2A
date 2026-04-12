@@ -17,7 +17,7 @@ export default function Header() {
   const showAuth = isHydrated && isAuthenticated;
   const isLanding = pathname === "/";
   const isAdmin = pathname.startsWith("/admin") && !pathname.startsWith("/admin/login");
-  const showNavLinks = isLanding;
+  const showNavLinks = pathname === "/" || pathname === "/open-source";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-brand-offwhite">
@@ -39,6 +39,12 @@ export default function Header() {
         {/* Nav links — only on landing page */}
         {showNavLinks && (
           <nav className="hidden items-center gap-4 md:flex" aria-label="Main navigation">
+            <Link
+              href="/open-source"
+              className="text-sm text-brand-charcoal hover:text-brand-blue transition-colors"
+            >
+              Open Source
+            </Link>
             <a
               href="https://juntoai.org"
               target="_blank"
@@ -65,6 +71,12 @@ export default function Header() {
           {/* Compact nav links on mobile — only on landing page */}
           {showNavLinks && (
             <div className="flex items-center gap-2 md:hidden">
+              <Link
+                href="/open-source"
+                className="text-sm text-brand-charcoal hover:text-brand-blue transition-colors"
+              >
+                Open Source
+              </Link>
               <a
                 href="https://juntoai.org"
                 target="_blank"

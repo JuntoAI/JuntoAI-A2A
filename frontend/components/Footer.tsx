@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="w-full border-t border-gray-200 bg-brand-offwhite px-4 py-4 text-xs text-gray-500">
@@ -10,6 +12,8 @@ export default function Footer() {
           <a href="https://juntoai.org/terms-of-service.html" target="_blank" rel="noopener noreferrer" className="hover:text-brand-blue transition-colors">Terms of Service</a>
           <span className="hidden sm:inline">·</span>
           <a href="/release-notes" className="hover:text-brand-blue transition-colors">Release Notes</a>
+          <span className="hidden sm:inline">·</span>
+          <Link href="/open-source" className="hover:text-brand-blue transition-colors">Open Source</Link>
         </div>
 
         <div className="flex items-center gap-3">
