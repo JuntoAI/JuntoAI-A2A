@@ -210,22 +210,36 @@ async def start_negotiation(
                 return JSONResponse(status_code=403, content={"detail": "Account banned"})
 
     # 1. Validate scenario exists — check built-in registry first, then custom store
+    normalized_email = body.email.lower().strip()
     scenario = None
     try:
-        scenario = registry.get_scenario(body.scenario_id, email=body.email)
+        scenario = registry.get_scenario(body.scenario_id, email=normalized_email)
     except Exception:
         pass
 
     if scenario is None:
         # Fallback: look up in user's custom scenarios
         try:
-            custom_doc = await custom_store.get(body.email, body.scenario_id)
+            custom_doc = await custom_store.get(normalized_email, body.scenario_id)
             if custom_doc and custom_doc.get("scenario_json"):
                 scenario = load_scenario_from_dict(custom_doc["scenario_json"])
-        except Exception:
-            pass
+            else:
+                logger.warning(
+                    "Custom scenario lookup returned no data: email=%s scenario_id=%s doc=%s",
+                    normalized_email, body.scenario_id, custom_doc,
+                )
+        except Exception as exc:
+            logger.error(
+                "Custom scenario lookup failed: email=%s scenario_id=%s error=%s",
+                normalized_email, body.scenario_id, exc,
+                exc_info=True,
+            )
 
     if scenario is None:
+        logger.warning(
+            "Scenario not found in registry or custom store: scenario_id=%s email=%s",
+            body.scenario_id, normalized_email,
+        )
         return JSONResponse(
             status_code=404,
             content={"detail": f"Scenario '{body.scenario_id}' not found"},

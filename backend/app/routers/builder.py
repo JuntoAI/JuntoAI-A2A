@@ -143,7 +143,7 @@ async def builder_chat(
 ):
     """Stream a builder chatbot response via SSE."""
     # 1. Validate email
-    email = body.email.strip()
+    email = body.email.strip().lower()
     if not email:
         return JSONResponse(status_code=401, content={"detail": "Valid email required"})
 
@@ -244,7 +244,7 @@ async def builder_save(
 ):
     """Validate scenario, run health check, persist, return summary."""
     # 1. Validate email
-    email = body.email.strip()
+    email = body.email.strip().lower()
     if not email:
         return JSONResponse(status_code=401, content={"detail": "Valid email required"})
 
@@ -358,7 +358,7 @@ async def list_scenarios(
     if not email or not email.strip():
         return JSONResponse(status_code=401, content={"detail": "Valid email required"})
 
-    scenarios = await store.list_by_email(email.strip())
+    scenarios = await store.list_by_email(email.strip().lower())
     return scenarios
 
 
@@ -378,7 +378,7 @@ async def delete_scenario(
     if not email or not email.strip():
         return JSONResponse(status_code=401, content={"detail": "Valid email required"})
 
-    email = email.strip()
+    email = email.strip().lower()
 
     # 1. Verify scenario exists and is owned by email
     scenario = await store.get(email, scenario_id)
@@ -439,7 +439,7 @@ async def get_scenario_session_count(
     if not email or not email.strip():
         return JSONResponse(status_code=401, content={"detail": "Valid email required"})
 
-    email = email.strip()
+    email = email.strip().lower()
 
     # Verify scenario exists and is owned by email
     scenario = await store.get(email, scenario_id)
@@ -475,7 +475,7 @@ async def update_scenario(
     if not email or not email.strip():
         return JSONResponse(status_code=401, content={"detail": "Valid email required"})
 
-    email = email.strip()
+    email = email.strip().lower()
 
     # 2. Validate scenario_json against ArenaScenario
     try:
