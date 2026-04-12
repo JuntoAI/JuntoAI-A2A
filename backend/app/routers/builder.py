@@ -238,6 +238,7 @@ async def builder_chat(
 @router.post("/save", response_model=BuilderSaveResponse)
 async def builder_save(
     body: BuilderSaveRequest,
+    request: Request,
     profile_client=Depends(get_profile_client),
     store=Depends(get_custom_scenario_store),
     analyzer: HealthCheckAnalyzer = Depends(get_health_check_analyzer),
@@ -260,16 +261,60 @@ async def builder_save(
     try:
         scenario = ArenaScenario.model_validate(body.scenario_json)
     except ValidationError as e:
-        errors = [
-            {"loc": list(err["loc"]), "msg": err["msg"], "type": err["type"]}
-            for err in e.errors()
-        ]
+        # Enhance model_id errors to show only runtime-available models
+        allowed_models_state = getattr(request.app.state, "allowed_models", None)
+        available_ids = sorted(allowed_models_state.model_ids) if allowed_models_state else None
+
+        errors = []
+        for err in e.errors():
+            msg = err["msg"]
+            if available_ids and "model_id" in str(err.get("loc", [])) and "Unknown model_id" in msg:
+                # Replace the static model list with only available models
+                bad_model = msg.split("'")[1] if "'" in msg else "unknown"
+                msg = (
+                    f"Value error, Model '{bad_model}' is not available. "
+                    f"Currently available: {', '.join(available_ids)}"
+                )
+            errors.append({"loc": list(err["loc"]), "msg": msg, "type": err["type"]})
+
         return JSONResponse(
             status_code=422,
             content={"detail": "Validation failed", "errors": errors},
         )
 
-    # 4. Round-trip validation: pretty_print → parse → re-validate
+    # 4. Check agent models against runtime-allowed models (probe results)
+    allowed_models = getattr(request.app.state, "allowed_models", None)
+    if allowed_models is not None:
+        allowed_ids = allowed_models.model_ids
+        for agent in scenario.agents:
+            if agent.model_id not in allowed_ids:
+                return JSONResponse(
+                    status_code=422,
+                    content={
+                        "detail": "Validation failed",
+                        "errors": [{
+                            "loc": ["agents", agent.role, "model_id"],
+                            "msg": f"Model '{agent.model_id}' is not currently available. "
+                                   f"Available models: {', '.join(sorted(allowed_ids))}",
+                            "type": "value_error",
+                        }],
+                    },
+                )
+            if agent.fallback_model_id and agent.fallback_model_id not in allowed_ids:
+                return JSONResponse(
+                    status_code=422,
+                    content={
+                        "detail": "Validation failed",
+                        "errors": [{
+                            "loc": ["agents", agent.role, "fallback_model_id"],
+                            "msg": f"Fallback model '{agent.fallback_model_id}' is not currently available. "
+                                   f"Available models: {', '.join(sorted(allowed_ids))}",
+                            "type": "value_error",
+                        }],
+                    },
+                )
+
+    # 5. Round-trip validation: pretty_print → parse → re-validate
     try:
         serialized = pretty_print(scenario)
         reparsed_data = json.loads(serialized)
@@ -462,6 +507,7 @@ async def get_scenario_session_count(
 async def update_scenario(
     scenario_id: str,
     body: UpdateScenarioRequest,
+    request: Request,
     email: str = Query(default=""),
     store=Depends(get_custom_scenario_store),
     analyzer: HealthCheckAnalyzer = Depends(get_health_check_analyzer),
@@ -481,16 +527,58 @@ async def update_scenario(
     try:
         validated = ArenaScenario.model_validate(body.scenario_json)
     except ValidationError as e:
-        errors = [
-            {"loc": list(err["loc"]), "msg": err["msg"], "type": err["type"]}
-            for err in e.errors()
-        ]
+        allowed_models_state = getattr(request.app.state, "allowed_models", None)
+        available_ids = sorted(allowed_models_state.model_ids) if allowed_models_state else None
+
+        errors = []
+        for err in e.errors():
+            msg = err["msg"]
+            if available_ids and "model_id" in str(err.get("loc", [])) and "Unknown model_id" in msg:
+                bad_model = msg.split("'")[1] if "'" in msg else "unknown"
+                msg = (
+                    f"Value error, Model '{bad_model}' is not available. "
+                    f"Currently available: {', '.join(available_ids)}"
+                )
+            errors.append({"loc": list(err["loc"]), "msg": msg, "type": err["type"]})
+
         return JSONResponse(
             status_code=422,
             content={"detail": "Validation failed", "errors": errors},
         )
 
-    # 3. Round-trip validation
+    # 3. Check agent models against runtime-allowed models (probe results)
+    allowed_models = getattr(request.app.state, "allowed_models", None)
+    if allowed_models is not None:
+        allowed_ids = allowed_models.model_ids
+        for agent in validated.agents:
+            if agent.model_id not in allowed_ids:
+                return JSONResponse(
+                    status_code=422,
+                    content={
+                        "detail": "Validation failed",
+                        "errors": [{
+                            "loc": ["agents", agent.role, "model_id"],
+                            "msg": f"Model '{agent.model_id}' is not currently available. "
+                                   f"Available models: {', '.join(sorted(allowed_ids))}",
+                            "type": "value_error",
+                        }],
+                    },
+                )
+            if agent.fallback_model_id and agent.fallback_model_id not in allowed_ids:
+                return JSONResponse(
+                    status_code=422,
+                    content={
+                        "detail": "Validation failed",
+                        "errors": [{
+                            "loc": ["agents", agent.role, "fallback_model_id"],
+                            "msg": f"Fallback model '{agent.fallback_model_id}' is not currently available. "
+                                   f"Available models: {', '.join(sorted(allowed_ids))}",
+                            "type": "value_error",
+                        }],
+                    },
+                )
+
+    # 4. Round-trip validation
     try:
         serialized = pretty_print(validated)
         reparsed_data = json.loads(serialized)
@@ -554,13 +642,17 @@ async def update_scenario(
 
         # 6. Emit update response as final SSE event
         record = await store.get(email, scenario_id)
+        raw_ts = record["updated_at"] if record else None
+        # Firestore returns DatetimeWithNanoseconds which isn't JSON-serializable
+        if hasattr(raw_ts, "isoformat"):
+            raw_ts = raw_ts.isoformat()
         update_response = {
             "event_type": "builder_save_complete",
             "scenario_id": scenario_id,
             "name": validated.name,
             "readiness_score": readiness_score,
             "tier": tier_label,
-            "updated_at": record["updated_at"] if record else None,
+            "updated_at": raw_ts,
         }
         event_id += 1
         yield f"id: {event_id}\ndata: {json.dumps(update_response)}\n\n"
