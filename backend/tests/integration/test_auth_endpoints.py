@@ -5,7 +5,7 @@ Validates: Requirements 3.1, 9.7, 9.8, 9.9, 9.10, 9.11, 9.12,
            13.3, 13.4, 13.5, 13.7, 13.8, 13.9, 13.10
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -18,6 +18,117 @@ def _force_cloud_mode():
     with patch("app.routers.auth.settings") as mock_settings:
         mock_settings.RUN_MODE = "cloud"
         yield mock_settings
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/auth/join
+# ---------------------------------------------------------------------------
+
+
+class TestJoinWaitlist:
+    """POST /api/v1/auth/join — email-only login (create or retrieve)."""
+
+    async def test_existing_user_returns_balance(
+        self, test_client, mock_profile_client
+    ):
+        """Existing waitlist user returns current token balance and tier."""
+        mock_profile_client.get_profile = AsyncMock(
+            return_value={
+                "email_verified": False,
+                "profile_completed_at": None,
+            }
+        )
+
+        resp = await test_client.post(
+            "/api/v1/auth/join",
+            json={"email": "returning@example.com"},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["email"] == "returning@example.com"
+        assert body["token_balance"] == 100
+        assert body["tier"] == 1
+        assert body["daily_limit"] == 20
+
+    async def test_new_user_creates_waitlist_doc(
+        self, test_client, mock_profile_client
+    ):
+        """New user (no waitlist doc) gets created with 20 tokens."""
+        # Make the waitlist doc not exist
+        waitlist_doc = MagicMock()
+        waitlist_doc.exists = False
+        waitlist_ref = MagicMock()
+        waitlist_ref.get = AsyncMock(return_value=waitlist_doc)
+        waitlist_ref.set = AsyncMock()
+        mock_profile_client._db.collection.return_value.document.return_value = (
+            waitlist_ref
+        )
+        mock_profile_client.get_profile = AsyncMock(return_value=None)
+
+        resp = await test_client.post(
+            "/api/v1/auth/join",
+            json={"email": "NewUser@Example.com"},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["email"] == "newuser@example.com"  # normalized
+        assert body["token_balance"] == 20
+        assert body["tier"] == 1
+        assert body["daily_limit"] == 20
+        waitlist_ref.set.assert_awaited_once()
+
+    async def test_existing_user_with_stale_reset_gets_refreshed(
+        self, test_client, mock_profile_client
+    ):
+        """Existing user whose last_reset_date is yesterday gets tokens refreshed."""
+        waitlist_doc = MagicMock()
+        waitlist_doc.exists = True
+        waitlist_doc.to_dict.return_value = {
+            "token_balance": 3,
+            "last_reset_date": "2020-01-01",  # stale
+        }
+        waitlist_ref = MagicMock()
+        waitlist_ref.get = AsyncMock(return_value=waitlist_doc)
+        waitlist_ref.update = AsyncMock()
+        mock_profile_client._db.collection.return_value.document.return_value = (
+            waitlist_ref
+        )
+        mock_profile_client.get_profile = AsyncMock(
+            return_value={
+                "email_verified": True,
+                "profile_completed_at": "2024-01-01T00:00:00Z",
+            }
+        )
+
+        resp = await test_client.post(
+            "/api/v1/auth/join",
+            json={"email": "stale@example.com"},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        # Tier 3 (email verified + profile completed) → daily_limit = 100
+        assert body["token_balance"] == 100
+        assert body["tier"] == 3
+        assert body["daily_limit"] == 100
+        waitlist_ref.update.assert_awaited_once()
+
+    async def test_returns_login_response_shape(
+        self, test_client, mock_profile_client
+    ):
+        """Response matches LoginResponse schema."""
+        mock_profile_client.get_profile = AsyncMock(return_value=None)
+
+        resp = await test_client.post(
+            "/api/v1/auth/join",
+            json={"email": "shape@example.com"},
+        )
+
+        assert resp.status_code == 200
+        body = resp.json()
+        assert set(body.keys()) == {"email", "tier", "daily_limit", "token_balance"}
 
 
 # ---------------------------------------------------------------------------
