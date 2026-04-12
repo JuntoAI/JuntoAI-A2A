@@ -62,17 +62,7 @@ vi.mock("@/lib/auth", () => ({
   checkEmail: vi.fn(),
   loginWithPassword: vi.fn(),
   loginWithGoogle: vi.fn(),
-}));
-
-vi.mock("@/lib/waitlist", () => ({
   joinWaitlist: vi.fn(),
-}));
-
-vi.mock("@/lib/tokens", () => ({
-  needsReset: vi.fn(() => false),
-  resetTokens: vi.fn(),
-  formatTokenDisplay: vi.fn((b: number, l: number) => `Tokens: ${Math.max(0, b)} / ${l}`),
-  getUtcDateString: vi.fn(() => "2025-01-01"),
 }));
 
 // Import component AFTER mocks

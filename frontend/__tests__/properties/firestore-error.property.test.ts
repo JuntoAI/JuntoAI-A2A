@@ -27,21 +27,13 @@ vi.mock("next/navigation", () => ({
 
 // Mock waitlist module — joinWaitlist will reject with various error types
 const mockJoinWaitlist = vi.fn();
-vi.mock("../../lib/waitlist", () => ({
-  joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
-}));
 
-// Mock tokens module
-vi.mock("../../lib/tokens", () => ({
-  needsReset: vi.fn(() => false),
-  resetTokens: vi.fn(),
-}));
-
-// Mock auth module — checkEmail returns no password by default
+// Mock auth module — checkEmail returns no password by default, joinWaitlist is injected
 vi.mock("../../lib/auth", () => ({
   checkEmail: vi.fn(() => Promise.resolve({ has_password: false })),
   loginWithPassword: vi.fn(),
   loginWithGoogle: vi.fn(),
+  joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
 }));
 
 // Mock profile module

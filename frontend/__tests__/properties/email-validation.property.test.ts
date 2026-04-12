@@ -27,16 +27,15 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-// Mock waitlist module — joinWaitlist should never be called for invalid emails
+// Mock waitlist/auth — joinWaitlist should never be called for invalid emails
 const mockJoinWaitlist = vi.fn();
-vi.mock("../../lib/waitlist", () => ({
-  joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
-}));
 
-// Mock tokens module
-vi.mock("../../lib/tokens", () => ({
-  needsReset: vi.fn(() => false),
-  resetTokens: vi.fn(),
+// Mock auth module with joinWaitlist included
+vi.mock("../../lib/auth", () => ({
+  checkEmail: vi.fn(() => Promise.resolve({ has_password: false })),
+  loginWithPassword: vi.fn(),
+  loginWithGoogle: vi.fn(),
+  joinWaitlist: (...args: unknown[]) => mockJoinWaitlist(...args),
 }));
 
 import { SessionProvider } from "../../context/SessionContext";
