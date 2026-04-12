@@ -13,7 +13,7 @@ def _make_record(**overrides):
     defaults = {
         "agent_role": "Buyer",
         "agent_type": "negotiator",
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-3-flash-preview",
         "latency_ms": 200,
         "input_tokens": 100,
         "output_tokens": 50,

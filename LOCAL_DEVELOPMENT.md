@@ -78,7 +78,7 @@ Local mode uses [LiteLLM](https://docs.litellm.ai/) to route `model_id` values f
 |----------|---------|---------|
 | `LLM_PROVIDER` | Which provider to route to | `openai`, `anthropic`, `ollama` |
 | `LLM_MODEL_OVERRIDE` | Force all agents to use one model | `gpt-4o-mini` |
-| `MODEL_MAP` | JSON mapping of scenario `model_id` → local model | `{"gemini-2.5-flash": "gpt-4o-mini"}` |
+| `MODEL_MAP` | JSON mapping of scenario `model_id` → local model | `{"gemini-3-flash-preview": "gpt-4o-mini"}` |
 | `OLLAMA_MODEL` | Which Ollama model to pull and use | `llama3.1`, `mistral` |
 | `OLLAMA_BASE_URL` | Ollama API endpoint | `http://ollama:11434` (default) |
 
@@ -92,8 +92,9 @@ Local mode uses [LiteLLM](https://docs.litellm.ai/) to route `model_id` values f
 
 | Scenario `model_id` | OpenAI | Anthropic | Ollama |
 |---------------------|--------|-----------|--------|
-| `gemini-2.5-flash` | `gpt-4o-mini` | `claude-3-5-haiku-20241022` | `ollama/{OLLAMA_MODEL}` |
-| `gemini-2.5-pro` | `gpt-4o` | `claude-sonnet-4-20250514` | `ollama/{OLLAMA_MODEL}` |
+| `gemini-3-flash-preview` | `gpt-4o-mini` | `claude-3-5-haiku-20241022` | `ollama/{OLLAMA_MODEL}` |
+| `gemini-3.1-flash-lite-preview` | `gpt-4o-mini` | `claude-3-5-haiku-20241022` | `ollama/{OLLAMA_MODEL}` |
+| `gemini-3.1-pro-preview` | `gpt-4o` | `claude-sonnet-4-20250514` | `ollama/{OLLAMA_MODEL}` |
 
 ---
 

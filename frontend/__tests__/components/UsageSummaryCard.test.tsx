@@ -15,7 +15,7 @@ const sampleSummary: UsageSummary = {
     {
       agent_role: "Buyer",
       agent_type: "negotiator",
-      model_id: "gemini-2.5-flash",
+      model_id: "gemini-3-flash-preview",
       total_input_tokens: 100,
       total_output_tokens: 50,
       total_tokens: 150,
@@ -27,7 +27,7 @@ const sampleSummary: UsageSummary = {
   ],
   per_model: [
     {
-      model_id: "gemini-2.5-flash",
+      model_id: "gemini-3-flash-preview",
       total_input_tokens: 100,
       total_output_tokens: 50,
       total_tokens: 150,

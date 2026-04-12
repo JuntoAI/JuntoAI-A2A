@@ -99,7 +99,7 @@ class TestGetModelValid:
         fam = _mock_families()
         with patch.dict(_FAMILIES_PATH, fam), \
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
-            model = get_model("gemini-2.5-pro", project="proj", location="eu")
+            model = get_model("gemini-3.1-pro-preview", project="proj", location="eu")
         assert isinstance(model, BaseChatModel)
 
     def test_claude_sonnet_v2(self) -> None:
@@ -257,7 +257,7 @@ class TestTimeoutConfig:
 # -------------------------------------------------------------------
 _VALID_MODEL_IDS = [
     "gemini-3-flash-preview",
-    "gemini-2.5-pro",
+    "gemini-3.1-pro-preview",
     "claude-3-5-sonnet-v2",
     "claude-sonnet-4-6",
 ]

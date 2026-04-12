@@ -114,7 +114,7 @@ def test_usage_summary_round_trip(summary: UsageSummary):
 # ---------------------------------------------------------------------------
 
 _agent_roles = st.sampled_from(["Buyer", "Seller", "Regulator"])
-_model_ids = st.sampled_from(["gemini-2.5-flash", "claude-3.5-sonnet", "gpt-4o"])
+_model_ids = st.sampled_from(["gemini-3-flash-preview", "claude-3.5-sonnet", "gpt-4o"])
 
 
 @st.composite

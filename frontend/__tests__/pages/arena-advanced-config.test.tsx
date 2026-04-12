@@ -93,7 +93,7 @@ const mockDetailMA: api.ArenaScenario = {
       name: "Buyer CEO",
       role: "buyer",
       goals: ["Acquire company"],
-      model_id: "gemini-2.5-pro",
+      model_id: "gemini-3.1-pro-preview",
       type: "negotiator",
     },
   ],
@@ -108,7 +108,7 @@ const mockDetailMA: api.ArenaScenario = {
 const mockModels: api.ModelInfo[] = [
   { model_id: "gemini-3-flash-preview", family: "gemini", label: "Gemini 3 Flash" },
   { model_id: "claude-3-5-sonnet", family: "claude", label: "Claude 3.5 Sonnet" },
-  { model_id: "gemini-2.5-pro", family: "gemini", label: "Gemini 2.5 Pro" },
+  { model_id: "gemini-3.1-pro-preview", family: "gemini", label: "Gemini 2.5 Pro" },
 ];
 
 // ---------------------------------------------------------------------------

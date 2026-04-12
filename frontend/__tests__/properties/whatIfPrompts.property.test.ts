@@ -32,7 +32,7 @@ function agentDefForRole(role: string): AgentDefinition {
     name: role.charAt(0).toUpperCase() + role.slice(1),
     role,
     goals: ["goal"],
-    model_id: "gemini-2.5-flash",
+    model_id: "gemini-3-flash-preview",
     type: "negotiator",
   };
 }

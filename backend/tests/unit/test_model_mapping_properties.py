@@ -17,7 +17,7 @@ from app.orchestrator.exceptions import ModelNotAvailableError
 from app.orchestrator.model_mapping import DEFAULT_MODEL_MAP, resolve_model_id
 
 # Known scenario model_ids used in shipped configs
-_SCENARIO_MODEL_IDS = ["gemini-2.5-flash", "gemini-2.5-pro"]
+_SCENARIO_MODEL_IDS = ["gemini-3-flash-preview", "gemini-3.1-pro-preview"]
 
 # Supported providers
 _SUPPORTED_PROVIDERS = ["openai", "anthropic", "ollama"]
@@ -81,7 +81,7 @@ class TestProperty5OverridePrecedence:
             model_id=model_id,
             provider=provider,
             model_override=override,
-            model_map_json='{"gemini-2.5-flash": "should-not-use"}',
+            model_map_json='{"gemini-3-flash-preview": "should-not-use"}',
         )
         assert result == override
 

@@ -18,7 +18,7 @@ from app.orchestrator.state import create_initial_state
 st_role = st.text(min_size=1, max_size=20, alphabet=st.characters(categories=("L", "N")))
 st_agent_type = st.sampled_from(["negotiator", "regulator", "observer"])
 st_model_id = st.sampled_from([
-    "gemini-3-flash-preview", "gemini-2.5-pro",
+    "gemini-3-flash-preview", "gemini-3.1-pro-preview",
     "claude-3-5-sonnet-v2", "claude-sonnet-4-6",
 ])
 

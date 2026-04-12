@@ -20,7 +20,7 @@ const makeAgent = (name: string, role: string): AgentDefinition => ({
   name,
   role,
   goals: [],
-  model_id: "gemini-2.5-flash",
+  model_id: "gemini-3-flash-preview",
   type: "negotiator",
 });
 

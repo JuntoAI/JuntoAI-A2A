@@ -40,7 +40,7 @@ def _valid_scenario_dict():
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "assertive",
                 "output_fields": ["proposed_price"],
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
             },
             {
                 "role": "Seller",
@@ -51,7 +51,7 @@ def _valid_scenario_dict():
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "firm",
                 "output_fields": ["proposed_price"],
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
             },
         ],
         "toggles": [

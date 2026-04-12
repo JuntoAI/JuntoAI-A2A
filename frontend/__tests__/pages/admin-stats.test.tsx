@@ -40,11 +40,11 @@ const mockStatsData = {
   total_tokens_today: 245000,
   total_tokens_7d: 1890000,
   model_tokens: [
-    { model_id: "gemini-2.5-flash", tokens_today: 150000, tokens_7d: 1200000 },
+    { model_id: "gemini-3-flash-preview", tokens_today: 150000, tokens_7d: 1200000 },
     { model_id: "claude-sonnet-4", tokens_today: 95000, tokens_7d: 690000 },
   ],
   model_performance: [
-    { model_id: "gemini-2.5-flash", avg_response_time_today: 423.5, avg_response_time_7d: 445.2 },
+    { model_id: "gemini-3-flash-preview", avg_response_time_today: 423.5, avg_response_time_7d: 445.2 },
     { model_id: "claude-sonnet-4", avg_response_time_today: 612.8, avg_response_time_7d: null },
   ],
   scenario_popularity: [
@@ -171,7 +171,7 @@ describe("AdminStatsPage", () => {
 
     expect(screen.getByText("Token Usage by Model")).toBeInTheDocument();
     // Model IDs appear in both token and performance tables
-    expect(screen.getAllByText("gemini-2.5-flash").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("gemini-3-flash-preview").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("claude-sonnet-4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("150,000")).toBeInTheDocument();
   });

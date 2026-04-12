@@ -60,7 +60,7 @@ def _make_allowed_models(
     """Build an AllowedModels instance from probe results."""
     if probe_results is None:
         probe_results = [
-            ProbeResult("gemini-2.5-flash", "gemini", True, None, 234.5),
+            ProbeResult("gemini-3-flash-preview", "gemini", True, None, 234.5),
             ProbeResult("claude-sonnet-4", "claude", False, "TimeoutError: probe exceeded 15s", 15000.0),
         ]
     passing_ids = frozenset(r.model_id for r in probe_results if r.available)
@@ -171,8 +171,8 @@ class TestAdminModelsResponseShape:
     async def test_response_contains_summary_counts(self, app_instance):
         """Req 9.3: Response includes total_registered, total_available, total_unavailable."""
         probes = [
-            ProbeResult("gemini-2.5-flash", "gemini", True, None, 200.0),
-            ProbeResult("gemini-2.5-pro", "gemini", True, None, 350.0),
+            ProbeResult("gemini-3-flash-preview", "gemini", True, None, 200.0),
+            ProbeResult("gemini-3.1-pro-preview", "gemini", True, None, 350.0),
             ProbeResult("claude-sonnet-4", "claude", False, "ConnectionError: refused", 100.0),
         ]
         app_instance.state.allowed_models = _make_allowed_models(probes)
@@ -196,7 +196,7 @@ class TestAdminModelsResponseShape:
     async def test_response_model_entries_shape(self, app_instance):
         """Req 9.1, 9.2: Each model entry has model_id, family, label, status, error, latency_ms."""
         probes = [
-            ProbeResult("gemini-2.5-flash", "gemini", True, None, 234.5),
+            ProbeResult("gemini-3-flash-preview", "gemini", True, None, 234.5),
             ProbeResult("claude-sonnet-4", "claude", False, "TimeoutError: probe exceeded 15s", 15000.0),
         ]
         app_instance.state.allowed_models = _make_allowed_models(probes)
@@ -214,7 +214,7 @@ class TestAdminModelsResponseShape:
         models = data["models"]
         assert len(models) == 2
 
-        available_model = next(m for m in models if m["model_id"] == "gemini-2.5-flash")
+        available_model = next(m for m in models if m["model_id"] == "gemini-3-flash-preview")
         assert available_model["family"] == "gemini"
         assert available_model["status"] == "available"
         assert available_model["error"] is None
@@ -230,7 +230,7 @@ class TestAdminModelsResponseShape:
     async def test_all_models_unavailable_degraded(self, app_instance):
         """Req 9.6: When all probes fail, all models shown as unavailable."""
         probes = [
-            ProbeResult("gemini-2.5-flash", "gemini", False, "ConnectionError", 50.0),
+            ProbeResult("gemini-3-flash-preview", "gemini", False, "ConnectionError", 50.0),
             ProbeResult("claude-sonnet-4", "claude", False, "TimeoutError", 15000.0),
         ]
         app_instance.state.allowed_models = _make_allowed_models(probes)

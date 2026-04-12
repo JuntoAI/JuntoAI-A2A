@@ -29,7 +29,7 @@ Community-contributed negotiation scenarios for the JuntoAI A2A Battle Arena.
       "budget": { "min": 0, "max": 100, "target": 50 },
       "tone": "descriptive tone",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-2.5-flash"
+      "model_id": "gemini-3-flash-preview"
     }
   ],
   "toggles": [
@@ -66,9 +66,7 @@ Community-contributed negotiation scenarios for the JuntoAI A2A Battle Arena.
 
 Use any of these in `model_id`:
 
-- `gemini-2.5-flash` — fast, good for buyers/simpler roles
-- `gemini-2.5-pro` — stronger reasoning, good for sellers/regulators
-- `gemini-3-flash-preview` — latest fast model
+- `gemini-3-flash-preview` — fast, good for buyers/simpler roles
 - `gemini-3.1-flash-lite-preview` — lightweight, good for straightforward roles
 - `gemini-3.1-pro-preview` — strongest reasoning
 

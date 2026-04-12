@@ -7,7 +7,7 @@ import {
 const defaultModels = [
   { model_id: "gemini-3-flash-preview", family: "gemini" },
   { model_id: "claude-3-5-sonnet", family: "claude" },
-  { model_id: "gemini-2.5-pro", family: "gemini" },
+  { model_id: "gemini-3.1-pro-preview", family: "gemini" },
 ];
 
 const baseProps: AdvancedConfigModalProps = {

@@ -352,7 +352,7 @@ def test_scenario_analytics_aggregation_correctness(sessions: list[dict]):
 
 from app.routers.admin import _compute_model_performance
 
-_model_id = st.sampled_from(["gemini-2.5-flash", "claude-sonnet-4", "claude-3.5-sonnet", "gemini-2.5-pro"])
+_model_id = st.sampled_from(["gemini-3-flash-preview", "claude-sonnet-4", "claude-3.5-sonnet", "gemini-3.1-pro-preview"])
 
 _agent_call = st.fixed_dictionaries(
     {

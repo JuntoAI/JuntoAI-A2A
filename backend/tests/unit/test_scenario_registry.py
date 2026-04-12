@@ -379,14 +379,14 @@ class TestAllowedModelIds:
     def test_fallback_model_makes_available(self, tmp_path):
         """Scenario is available if agent's fallback_model_id is in the allowed set."""
         agents = [
-            _agent(role="Buyer", model_id="gemini-3-flash-preview", fallback_model_id="gemini-2.5-flash"),
+            _agent(role="Buyer", model_id="gemini-3-flash-preview", fallback_model_id="gemini-3-flash-preview"),
             _agent(role="Seller", model_id="gemini-3-flash-preview", type="negotiator"),
         ]
         _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s", agents=agents))
         # Only fallback is allowed for Buyer, primary is allowed for Seller
         registry = ScenarioRegistry(
             scenarios_dir=str(tmp_path),
-            allowed_model_ids=frozenset({"gemini-2.5-flash", "gemini-3-flash-preview"}),
+            allowed_model_ids=frozenset({"gemini-3-flash-preview", "gemini-3-flash-preview"}),
         )
 
         result = registry.list_scenarios()
@@ -395,7 +395,7 @@ class TestAllowedModelIds:
     def test_fallback_only_allowed_still_available(self, tmp_path):
         """Agent with unavailable primary but available fallback → scenario available."""
         agents = [
-            _agent(role="Buyer", model_id="gemini-2.5-pro", fallback_model_id="gemini-3-flash-preview"),
+            _agent(role="Buyer", model_id="gemini-3.1-pro-preview", fallback_model_id="gemini-3-flash-preview"),
             _agent(role="Seller", model_id="gemini-3-flash-preview", type="negotiator"),
         ]
         _write_scenario(tmp_path, "s.scenario.json", _scenario(id="s", agents=agents))

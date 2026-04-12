@@ -513,8 +513,8 @@ describe("OutcomeReceipt", () => {
     ];
 
     const agents = [
-      { name: "Alex", role: "candidate", goals: [], model_id: "gemini-2.5-flash", type: "negotiator" as const },
-      { name: "Jordan", role: "recruiter", goals: [], model_id: "gemini-2.5-flash", type: "negotiator" as const },
+      { name: "Alex", role: "candidate", goals: [], model_id: "gemini-3-flash-preview", type: "negotiator" as const },
+      { name: "Jordan", role: "recruiter", goals: [], model_id: "gemini-3-flash-preview", type: "negotiator" as const },
     ];
 
     it("renders prompt cards when toggles + activeToggleIds + agents provided", () => {

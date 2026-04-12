@@ -25,7 +25,7 @@ def _agent_strategy(role: str, agent_type: str) -> st.SearchStrategy[dict]:
             "role": st.just(role),
             "name": st.text(min_size=1, max_size=20),
             "type": st.just(agent_type),
-            "model_id": st.sampled_from(["gemini-2.5-flash", "gemini-2.5-pro"]),
+            "model_id": st.sampled_from(["gemini-3-flash-preview", "gemini-3.1-pro-preview"]),
         }
     )
 

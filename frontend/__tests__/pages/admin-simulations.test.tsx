@@ -32,7 +32,7 @@ const mockSimulationsResponse = {
       max_turns: 15,
       total_tokens_used: 1200,
       active_toggles: ["competing-offer"],
-      model_overrides: { Buyer: "gemini-2.5-flash" },
+      model_overrides: { Buyer: "gemini-3-flash-preview" },
       created_at: "2025-01-15T10:30:00Z",
     },
     {

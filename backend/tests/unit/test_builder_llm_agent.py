@@ -389,11 +389,11 @@ class TestFilterModelsPromptBlock:
     """Tests for filter_models_prompt_block and build_system_prompt."""
 
     def test_filter_returns_only_allowed_models(self):
-        allowed = frozenset({"gemini-2.5-flash", "claude-sonnet-4"})
+        allowed = frozenset({"gemini-3-flash-preview", "claude-sonnet-4"})
         result = filter_models_prompt_block(allowed)
-        assert "`gemini-2.5-flash`" in result
+        assert "`gemini-3-flash-preview`" in result
         assert "`claude-sonnet-4`" in result
-        assert "`gemini-2.5-pro`" not in result
+        assert "`gemini-3.1-pro-preview`" not in result
         assert "`claude-3-5-sonnet`" not in result
 
     def test_filter_empty_allowed_returns_empty(self):
@@ -411,10 +411,10 @@ class TestFilterModelsPromptBlock:
             assert f"`{m.model_id}`" in prompt
 
     def test_build_system_prompt_filters_models(self):
-        allowed = frozenset({"gemini-2.5-flash"})
+        allowed = frozenset({"gemini-3-flash-preview"})
         prompt = build_system_prompt(allowed)
-        assert "`gemini-2.5-flash`" in prompt
-        assert "`gemini-2.5-pro`" not in prompt
+        assert "`gemini-3-flash-preview`" in prompt
+        assert "`gemini-3.1-pro-preview`" not in prompt
         assert "`claude-sonnet-4`" not in prompt
 
 
@@ -425,17 +425,17 @@ async def test_stream_response_with_allowed_model_ids_filters_prompt():
     model = _make_mock_model(["OK"])
     agent = BuilderLLMAgent(model=model)
 
-    allowed = frozenset({"gemini-2.5-flash", "claude-sonnet-4"})
+    allowed = frozenset({"gemini-3-flash-preview", "claude-sonnet-4"})
     events = []
     async for event in agent.stream_response([], {}, allowed_model_ids=allowed):
         events.append(event)
 
     call_args = model.astream.call_args[0][0]
     system_msg = call_args[0]
-    assert "`gemini-2.5-flash`" in system_msg.content
+    assert "`gemini-3-flash-preview`" in system_msg.content
     assert "`claude-sonnet-4`" in system_msg.content
     # These should be filtered out
-    assert "`gemini-2.5-pro`" not in system_msg.content
+    assert "`gemini-3.1-pro-preview`" not in system_msg.content
     assert "`claude-3-5-sonnet`" not in system_msg.content
 
 

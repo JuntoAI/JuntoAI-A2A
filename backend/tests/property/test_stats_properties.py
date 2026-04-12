@@ -58,7 +58,7 @@ def _created_at_strategy():
     )
 
 
-_model_ids = st.sampled_from(["gemini-2.5-flash", "claude-sonnet-4", "claude-3.5-sonnet", "llama-3.1"])
+_model_ids = st.sampled_from(["gemini-3-flash-preview", "claude-sonnet-4", "claude-3.5-sonnet", "llama-3.1"])
 
 _agent_call = st.fixed_dictionaries({
     "model_id": _model_ids,

@@ -27,7 +27,7 @@ _safe_text = st.text(
 
 _deal_statuses = st.sampled_from(["Negotiating", "Agreed", "Blocked", "Failed", "Confirming"])
 
-_model_ids = st.sampled_from(["gemini-2.5-flash", "claude-sonnet-4", "claude-3.5-sonnet"])
+_model_ids = st.sampled_from(["gemini-3-flash-preview", "claude-sonnet-4", "claude-3.5-sonnet"])
 
 _agent_call = st.fixed_dictionaries({
     "model_id": _model_ids,

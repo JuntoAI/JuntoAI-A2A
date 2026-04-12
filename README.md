@@ -339,7 +339,7 @@ Scenario configs use generic `model_id` values like `gemini-3-flash-preview`. In
 1. If `LLM_MODEL_OVERRIDE` is set, **all** agents use that single model (ignores `model_id`).
 2. If `MODEL_MAP` is set, each `model_id` is looked up in the JSON mapping. Example:
    ```bash
-   MODEL_MAP='{"gemini-3-flash-preview": "gpt-4o", "gemini-2.5-pro": "gpt-4o"}'
+   MODEL_MAP='{"gemini-3-flash-preview": "gpt-4o", "gemini-3.1-pro-preview": "gpt-4o"}'
    ```
 3. If neither is set, LiteLLM attempts to route the `model_id` string directly to the configured provider.
 

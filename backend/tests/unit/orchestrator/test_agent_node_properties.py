@@ -35,7 +35,7 @@ st_role = st.text(min_size=1, max_size=20, alphabet=st.characters(categories=("L
 st_text = st.text(min_size=1, max_size=80, alphabet=st.characters(categories=("L", "N", "P")))
 st_price = st.floats(min_value=0.01, max_value=1e9, allow_nan=False, allow_infinity=False)
 st_agent_type = st.sampled_from(["negotiator", "regulator", "observer"])
-st_model_id = st.sampled_from(["gemini-3-flash-preview", "gemini-2.5-pro", "claude-3-5-sonnet-v2", "claude-sonnet-4-6"])
+st_model_id = st.sampled_from(["gemini-3-flash-preview", "gemini-3.1-pro-preview", "claude-3-5-sonnet-v2", "claude-sonnet-4-6"])
 st_status = st.sampled_from(["CLEAR", "WARNING", "BLOCKED"])
 
 
@@ -1058,7 +1058,7 @@ def st_memory_enabled_prompt_scenario(
         "role": role,
         "name": "Buyer Agent",
         "type": "negotiator",
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-3-flash-preview",
         "persona_prompt": "You are a buyer.",
     }
 
@@ -1076,7 +1076,7 @@ def st_memory_enabled_prompt_scenario(
         "id": "test",
         "agents": [
             agent_config,
-            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
         ],
         "negotiation_params": {"max_turns": 15},
     }
@@ -1239,7 +1239,7 @@ def st_disabled_memory_prompt_scenario(
         "role": role,
         "name": "Buyer Agent",
         "type": "negotiator",
-        "model_id": "gemini-2.5-flash",
+        "model_id": "gemini-3-flash-preview",
         "persona_prompt": "You are a buyer.",
     }
 
@@ -1256,7 +1256,7 @@ def st_disabled_memory_prompt_scenario(
         "id": "test",
         "agents": [
             agent_config,
-            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
         ],
         "negotiation_params": {"max_turns": 15},
     }
@@ -1385,8 +1385,8 @@ def st_memory_extractor_update_scenario(
     scenario_config: dict[str, Any] = {
         "id": "test",
         "agents": [
-            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-2.5-flash"},
-            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
         ],
         "negotiation_params": {"max_turns": 15},
     }
@@ -1503,8 +1503,8 @@ def st_opposing_offer_scenario(
     scenario_config: dict[str, Any] = {
         "id": "test",
         "agents": [
-            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-2.5-flash"},
-            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
         ],
         "negotiation_params": {"max_turns": 15},
     }
@@ -1638,8 +1638,8 @@ def st_disabled_memory_update_scenario(
     scenario_config: dict[str, Any] = {
         "id": "test",
         "agents": [
-            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-2.5-flash"},
-            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-2.5-flash"},
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
         ],
         "negotiation_params": {"max_turns": 15},
     }

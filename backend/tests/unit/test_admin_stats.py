@@ -71,7 +71,7 @@ class TestStatsEndpointLogic:
             _make_session_doc("s2", deal_status="Negotiating", total_tokens_used=300),
             _make_session_doc(
                 "s3", deal_status="Failed", total_tokens_used=200,
-                agent_calls=[{"model_id": "gemini-2.5-flash", "input_tokens": 100, "output_tokens": 50, "latency_ms": 400}],
+                agent_calls=[{"model_id": "gemini-3-flash-preview", "input_tokens": 100, "output_tokens": 50, "latency_ms": 400}],
             ),
         ]
 
@@ -136,13 +136,13 @@ class TestStatsEndpointLogic:
         sessions = [
             _make_session_doc(
                 "s1", agent_calls=[
-                    {"model_id": "gemini-2.5-flash", "input_tokens": 100, "output_tokens": 200, "latency_ms": 500},
+                    {"model_id": "gemini-3-flash-preview", "input_tokens": 100, "output_tokens": 200, "latency_ms": 500},
                     {"model_id": "claude-sonnet-4", "input_tokens": 150, "output_tokens": 250, "latency_ms": 800},
                 ],
             ),
             _make_session_doc(
                 "s2", agent_calls=[
-                    {"model_id": "gemini-2.5-flash", "input_tokens": 80, "output_tokens": 120, "latency_ms": 450},
+                    {"model_id": "gemini-3-flash-preview", "input_tokens": 80, "output_tokens": 120, "latency_ms": 450},
                 ],
             ),
         ]
@@ -150,13 +150,13 @@ class TestStatsEndpointLogic:
         result = compute_stats(sessions)
 
         token_map = {m.model_id: m for m in result.model_tokens}
-        assert "gemini-2.5-flash" in token_map
+        assert "gemini-3-flash-preview" in token_map
         assert "claude-sonnet-4" in token_map
-        assert token_map["gemini-2.5-flash"].tokens_today == 500  # (100+200) + (80+120)
+        assert token_map["gemini-3-flash-preview"].tokens_today == 500  # (100+200) + (80+120)
         assert token_map["claude-sonnet-4"].tokens_today == 400  # 150+250
 
         perf_map = {m.model_id: m for m in result.model_performance}
-        assert perf_map["gemini-2.5-flash"].avg_response_time_today == pytest.approx(475.0)  # (500+450)/2
+        assert perf_map["gemini-3-flash-preview"].avg_response_time_today == pytest.approx(475.0)  # (500+450)/2
         assert perf_map["claude-sonnet-4"].avg_response_time_today == pytest.approx(800.0)
 
     @pytest.mark.integration

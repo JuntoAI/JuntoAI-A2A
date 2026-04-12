@@ -27,8 +27,6 @@ class ModelEntry:
 # Keep sorted by family then capability tier (flash < pro).
 
 AVAILABLE_MODELS: tuple[ModelEntry, ...] = (
-    ModelEntry("gemini-2.5-flash", "gemini", "Gemini 2.5 Flash"),
-    ModelEntry("gemini-2.5-pro", "gemini", "Gemini 2.5 Pro"),
     ModelEntry("gemini-3-flash-preview", "gemini", "Gemini 3 Flash (Preview)"),
     ModelEntry("gemini-3.1-flash-lite-preview", "gemini", "Gemini 3.1 Flash Lite (Preview)"),
     ModelEntry("gemini-3.1-pro-preview", "gemini", "Gemini 3.1 Pro (Preview)"),

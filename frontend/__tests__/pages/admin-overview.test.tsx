@@ -34,7 +34,7 @@ const mockOverviewData = {
   ],
   model_performance: [
     {
-      model_id: "gemini-2.5-flash",
+      model_id: "gemini-3-flash-preview",
       avg_latency_ms: 450.2,
       avg_input_tokens: 800.0,
       avg_output_tokens: 200.0,
@@ -136,7 +136,7 @@ describe("AdminOverviewPage", () => {
 
     // Validates: Req 3.6
     expect(screen.getByText("Model Performance")).toBeInTheDocument();
-    expect(screen.getByText("gemini-2.5-flash")).toBeInTheDocument();
+    expect(screen.getByText("gemini-3-flash-preview")).toBeInTheDocument();
     expect(screen.getByText("claude-sonnet-4")).toBeInTheDocument();
     expect(screen.getByText("150")).toBeInTheDocument();
     expect(screen.getByText("100")).toBeInTheDocument();

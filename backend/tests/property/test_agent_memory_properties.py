@@ -133,7 +133,7 @@ def scenario_config_strategy(draw):
             {
                 "role": role,
                 "name": draw(_safe_text.filter(lambda x: len(x) > 0)),
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
                 "type": draw(_agent_type),
             }
         )

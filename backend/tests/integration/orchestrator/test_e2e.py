@@ -215,7 +215,7 @@ class TestFourAgentE2E:
                 _agent_def(
                     "Analyst", "WatchBot",
                     agent_type="observer",
-                    model_id="gemini-2.5-pro",
+                    model_id="gemini-3.1-pro-preview",
                 ),
             ],
             "negotiation_params": {

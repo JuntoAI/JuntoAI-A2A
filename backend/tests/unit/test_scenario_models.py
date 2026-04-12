@@ -128,8 +128,8 @@ class TestAgentDefinition:
         assert agent.fallback_model_id is None
 
     def test_with_fallback_model(self):
-        agent = AgentDefinition(**_agent(fallback_model_id="gemini-2.5-pro"))
-        assert agent.fallback_model_id == "gemini-2.5-pro"
+        agent = AgentDefinition(**_agent(fallback_model_id="gemini-3.1-pro-preview"))
+        assert agent.fallback_model_id == "gemini-3.1-pro-preview"
 
     def test_missing_role_rejected(self):
         data = _agent()

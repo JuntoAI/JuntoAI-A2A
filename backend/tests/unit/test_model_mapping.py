@@ -13,7 +13,7 @@ pytestmark = pytest.mark.unit
 
 def test_model_override_returns_override():
     result = resolve_model_id(
-        model_id="gemini-2.5-flash",
+        model_id="gemini-3-flash-preview",
         provider="openai",
         model_override="my-custom-model",
     )
@@ -22,10 +22,10 @@ def test_model_override_returns_override():
 
 def test_model_override_ignores_model_map_json():
     result = resolve_model_id(
-        model_id="gemini-2.5-flash",
+        model_id="gemini-3-flash-preview",
         provider="openai",
         model_override="forced-model",
-        model_map_json='{"gemini-2.5-flash": "should-not-use-this"}',
+        model_map_json='{"gemini-3-flash-preview": "should-not-use-this"}',
     )
     assert result == "forced-model"
 
@@ -35,9 +35,9 @@ def test_model_override_ignores_model_map_json():
 
 def test_model_map_json_valid_returns_mapped_value():
     result = resolve_model_id(
-        model_id="gemini-2.5-flash",
+        model_id="gemini-3-flash-preview",
         provider="openai",
-        model_map_json='{"gemini-2.5-flash": "custom-mapped-model"}',
+        model_map_json='{"gemini-3-flash-preview": "custom-mapped-model"}',
     )
     assert result == "custom-mapped-model"
 
@@ -45,7 +45,7 @@ def test_model_map_json_valid_returns_mapped_value():
 def test_model_map_json_missing_key_falls_through():
     """JSON is valid but doesn't contain the model_id — falls to defaults."""
     result = resolve_model_id(
-        model_id="gemini-2.5-flash",
+        model_id="gemini-3-flash-preview",
         provider="openai",
         model_map_json='{"some-other-model": "irrelevant"}',
     )
@@ -57,7 +57,7 @@ def test_model_map_json_missing_key_falls_through():
 
 def test_model_map_json_invalid_falls_through_to_defaults():
     result = resolve_model_id(
-        model_id="gemini-2.5-flash",
+        model_id="gemini-3-flash-preview",
         provider="openai",
         model_map_json="not-valid-json{{{",
     )
@@ -68,32 +68,32 @@ def test_model_map_json_invalid_falls_through_to_defaults():
 
 
 def test_default_openai_gemini_flash():
-    result = resolve_model_id(model_id="gemini-2.5-flash", provider="openai")
+    result = resolve_model_id(model_id="gemini-3-flash-preview", provider="openai")
     assert result == "gpt-4o-mini"
 
 
 def test_default_openai_gemini_pro():
-    result = resolve_model_id(model_id="gemini-2.5-pro", provider="openai")
+    result = resolve_model_id(model_id="gemini-3.1-pro-preview", provider="openai")
     assert result == "gpt-4o"
 
 
 def test_default_anthropic_gemini_flash():
-    result = resolve_model_id(model_id="gemini-2.5-flash", provider="anthropic")
+    result = resolve_model_id(model_id="gemini-3-flash-preview", provider="anthropic")
     assert result == "claude-3-5-haiku-20241022"
 
 
 def test_default_anthropic_gemini_pro():
-    result = resolve_model_id(model_id="gemini-2.5-pro", provider="anthropic")
+    result = resolve_model_id(model_id="gemini-3.1-pro-preview", provider="anthropic")
     assert result == "claude-sonnet-4-20250514"
 
 
 def test_default_ollama_gemini_flash():
-    result = resolve_model_id(model_id="gemini-2.5-flash", provider="ollama")
+    result = resolve_model_id(model_id="gemini-3-flash-preview", provider="ollama")
     assert result.startswith("ollama/")
 
 
 def test_default_ollama_gemini_pro():
-    result = resolve_model_id(model_id="gemini-2.5-pro", provider="ollama")
+    result = resolve_model_id(model_id="gemini-3.1-pro-preview", provider="ollama")
     assert result.startswith("ollama/")
 
 
@@ -123,7 +123,7 @@ def test_unknown_provider_returns_model_id():
 
 def test_ollama_model_override_known_model_id():
     result = resolve_model_id(
-        model_id="gemini-2.5-flash",
+        model_id="gemini-3-flash-preview",
         provider="ollama",
         ollama_model="mistral",
     )

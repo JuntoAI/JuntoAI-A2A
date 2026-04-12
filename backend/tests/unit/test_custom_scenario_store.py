@@ -36,14 +36,14 @@ def _valid_scenario_dict() -> dict:
                 "persona_prompt": "You are a buyer.", "goals": ["Buy low"],
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "assertive", "output_fields": ["proposed_price"],
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
             },
             {
                 "role": "Seller", "name": "Bob", "type": "negotiator",
                 "persona_prompt": "You are a seller.", "goals": ["Sell high"],
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "firm", "output_fields": ["proposed_price"],
-                "model_id": "gemini-2.5-flash",
+                "model_id": "gemini-3-flash-preview",
             },
         ],
         "toggles": [{

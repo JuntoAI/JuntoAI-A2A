@@ -28,10 +28,10 @@ const AGENT_ROLES = [
 const AGENT_TYPES = ["negotiator", "regulator", "observer"] as const;
 
 const MODEL_IDS = [
-  "gemini-2.5-flash",
+  "gemini-3-flash-preview",
   "claude-3.5-sonnet",
   "claude-sonnet-4",
-  "gemini-2.5-pro",
+  "gemini-3.1-pro-preview",
   "gpt-4o",
 ] as const;
 
