@@ -12,6 +12,10 @@ vi.mock("@/components/ScenarioBanner", () => ({
   default: () => createElement("div", { "data-testid": "scenario-banner" }, "ScenarioBanner"),
 }));
 
+vi.mock("@/components/WaitlistForm", () => ({
+  default: () => createElement("div", { "data-testid": "waitlist-form" }, "WaitlistForm"),
+}));
+
 vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
   useRouter: () => ({ push: vi.fn() }),
@@ -56,10 +60,10 @@ describe("Open Source Page (open-source/page.tsx)", () => {
     expect(githubLink).toHaveAttribute("href", "https://github.com/JuntoAI/a2a");
   });
 
-  // --- Requirement 17.6: WaitlistForm is NOT rendered ---
+  // --- WaitlistForm is rendered for testing access ---
 
-  it("does not render WaitlistForm", () => {
+  it("renders WaitlistForm", () => {
     render(createElement(OpenSourcePage));
-    expect(screen.queryByTestId("waitlist-form")).not.toBeInTheDocument();
+    expect(screen.getByTestId("waitlist-form")).toBeInTheDocument();
   });
 });

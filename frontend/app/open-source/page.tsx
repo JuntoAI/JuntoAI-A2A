@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { isLocalMode } from "@/lib/runMode";
 import ScenarioBanner from "@/components/ScenarioBanner";
+import WaitlistForm from "@/components/WaitlistForm";
 
 export const metadata: Metadata = {
   title: "Open Source AI Negotiation Sandbox | JuntoAI",
@@ -74,6 +75,10 @@ export default function OpenSourcePage() {
               time. Config-driven scenarios, transparent reasoning, and a
               protocol that rewards creative trade-offs.
             </p>
+
+            <div id="waitlist" className="mt-8 w-full max-w-md">
+              <WaitlistForm />
+            </div>
           </div>
         </div>
       </section>

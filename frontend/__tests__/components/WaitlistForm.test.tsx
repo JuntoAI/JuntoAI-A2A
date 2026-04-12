@@ -84,7 +84,7 @@ describe("WaitlistForm", () => {
 
     expect(screen.getByLabelText("Email address")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /start the ai 2 ai negotiation/i }),
+      screen.getByRole("button", { name: /try a free simulation/i }),
     ).toBeInTheDocument();
   });
 

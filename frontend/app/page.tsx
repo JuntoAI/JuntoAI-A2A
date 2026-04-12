@@ -146,16 +146,6 @@ export default function Home() {
                 a competing offer you don&apos;t know about.
               </p>
 
-              <div className="mt-6">
-                <Link
-                  href="/arena"
-                  className="inline-flex items-center gap-2 rounded-lg bg-brand-blue px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                >
-                  Try a Free Simulation
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-
               <div id="waitlist" className="mt-8 w-full max-w-md">
                 <WaitlistForm />
               </div>

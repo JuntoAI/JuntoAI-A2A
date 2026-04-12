@@ -229,7 +229,7 @@ export default function WaitlistForm() {
           ? "Starting..."
           : hasPassword
             ? "Sign In"
-            : "Start the AI 2 AI Negotiation"}
+            : "Try a Free Simulation"}
       </button>
 
       {GOOGLE_CLIENT_ID && (
