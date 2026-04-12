@@ -145,7 +145,7 @@ export default function OpenSourcePage() {
               </p>
 
               <Link
-                href="https://github.com/JuntoAI/a2a"
+                href="https://github.com/JuntoAI/JuntoAI-A2A"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-charcoal px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"

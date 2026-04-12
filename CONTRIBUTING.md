@@ -16,7 +16,7 @@ We use a standard fork-and-PR workflow:
    ```
 3. **Add the upstream remote**:
    ```bash
-   git remote add upstream https://github.com/JuntoAI/a2a.git
+   git remote add upstream https://github.com/JuntoAI/JuntoAI-A2A.git
    ```
 4. **Create a feature branch** from `main`:
    ```bash

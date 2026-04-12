@@ -57,7 +57,7 @@ describe("Open Source Page (open-source/page.tsx)", () => {
     render(createElement(OpenSourcePage));
     expect(screen.getByText(/built in public/i)).toBeInTheDocument();
     const githubLink = screen.getByRole("link", { name: /view on github/i });
-    expect(githubLink).toHaveAttribute("href", "https://github.com/JuntoAI/a2a");
+    expect(githubLink).toHaveAttribute("href", "https://github.com/JuntoAI/JuntoAI-A2A");
   });
 
   // --- WaitlistForm is rendered for testing access ---
