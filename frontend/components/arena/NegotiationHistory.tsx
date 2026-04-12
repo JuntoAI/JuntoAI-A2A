@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
@@ -61,6 +61,14 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function SessionRow({ session }: { session: SessionHistoryItem }) {
+  const replayHref = useMemo(() => {
+    let url = `/arena/session/${session.session_id}?mode=replay&scenario=${encodeURIComponent(session.scenario_id)}`;
+    if ((session.active_toggles ?? []).length > 0) {
+      url += `&toggles=${session.active_toggles.map(encodeURIComponent).join(",")}`;
+    }
+    return url;
+  }, [session]);
+
   return (
     <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-3">
       <div className="min-w-0 flex-1">
@@ -74,7 +82,7 @@ function SessionRow({ session }: { session: SessionHistoryItem }) {
       <div className="flex items-center gap-3">
         <StatusBadge status={session.deal_status} />
         <Link
-          href={`/arena/session/${session.session_id}?mode=replay&scenario=${encodeURIComponent(session.scenario_id)}`}
+          href={replayHref}
           className="text-xs font-medium text-[#007BFF] hover:underline"
         >
           View

@@ -21,6 +21,7 @@ export interface SessionHistoryItem {
   token_cost: number;
   created_at: string;
   completed_at: string | null;
+  active_toggles: string[];
 }
 
 export interface DayGroup {

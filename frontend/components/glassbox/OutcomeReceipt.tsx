@@ -81,8 +81,9 @@ export default function OutcomeReceipt({
       dealStatus,
       finalSummary,
       scenarioId,
+      valueFormat,
     });
-  }, [toggles, activeToggleIds, agents, scenarioId, dealStatus, finalSummary]);
+  }, [toggles, activeToggleIds, agents, scenarioId, dealStatus, finalSummary, valueFormat]);
 
   return (
     <div

@@ -49,7 +49,7 @@ describe("generateWhatIfPrompts", () => {
 
     expect(prompts).toHaveLength(2);
     for (const p of prompts) {
-      expect(p.text).toContain("125000");
+      expect(p.text).toContain("€125,000");
     }
   });
 

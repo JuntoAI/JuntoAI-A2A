@@ -21,6 +21,7 @@ class SessionHistoryItem(BaseModel):
     token_cost: int = Field(ge=1)
     created_at: str
     completed_at: str | None = None
+    active_toggles: list[str] = Field(default_factory=list)
 
 
 class DayGroup(BaseModel):

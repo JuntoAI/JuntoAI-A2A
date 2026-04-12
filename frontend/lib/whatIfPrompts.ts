@@ -1,4 +1,5 @@
 import type { ToggleDefinition, AgentDefinition } from "./api";
+import { formatValue, type ValueFormat } from "./valueFormat";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,6 +19,7 @@ export interface PromptGeneratorInput {
   dealStatus: "Agreed" | "Blocked" | "Failed";
   finalSummary: Record<string, unknown>;
   scenarioId: string;
+  valueFormat?: ValueFormat;
 }
 
 // ---------------------------------------------------------------------------
@@ -40,6 +42,7 @@ function buildPromptText(
   agentName: string,
   dealStatus: "Agreed" | "Blocked" | "Failed",
   finalSummary: Record<string, unknown>,
+  valueFormat: ValueFormat = "currency",
 ): string {
   const label = toggle.label;
 
@@ -47,7 +50,7 @@ function buildPromptText(
     case "Agreed": {
       const offer = finalSummary.current_offer;
       if (offer != null && offer !== 0) {
-        return `This deal closed at €${offer}. Toggle ${label} and see what changes.`;
+        return `This deal closed at ${formatValue(Number(offer), valueFormat)}. Toggle ${label} and see what changes.`;
       }
       return `This deal closed. Toggle ${label} and see what changes.`;
     }
@@ -111,7 +114,7 @@ function selectDiverse(prompts: WhatIfPrompt[], toggles: ToggleDefinition[]): Wh
 // ---------------------------------------------------------------------------
 
 export function generateWhatIfPrompts(input: PromptGeneratorInput): WhatIfPrompt[] {
-  const { toggles, activeToggleIds, agents, dealStatus, finalSummary } = input;
+  const { toggles, activeToggleIds, agents, dealStatus, finalSummary, valueFormat } = input;
 
   // All toggles active → baseline prompt
   if (toggles.length > 0 && toggles.every((t) => activeToggleIds.includes(t.id))) {
@@ -135,7 +138,7 @@ export function generateWhatIfPrompts(input: PromptGeneratorInput): WhatIfPrompt
     if (!agentName) continue; // skip unresolvable
 
     prompts.push({
-      text: buildPromptText(toggle, agentName, dealStatus, finalSummary),
+      text: buildPromptText(toggle, agentName, dealStatus, finalSummary, valueFormat),
       toggleIds: [toggle.id],
       targetAgentName: agentName,
       toggleLabel: toggle.label,

@@ -140,6 +140,7 @@ async def get_negotiation_history(
                 token_cost=compute_token_cost(total_tokens_used),
                 created_at=doc.get("created_at", ""),
                 completed_at=doc.get("completed_at"),
+                active_toggles=doc.get("active_toggles", []) or [],
             )
         )
 
