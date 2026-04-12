@@ -3,15 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { createElement } from "react";
 
 // ---------------------------------------------------------------------------
-// Mocks — declared before imports
+// Mocks
 // ---------------------------------------------------------------------------
 
 vi.mock("@/components/WaitlistForm", () => ({
   default: () => createElement("div", { "data-testid": "waitlist-form" }, "WaitlistForm"),
-}));
-
-vi.mock("@/components/ScenarioBanner", () => ({
-  default: () => createElement("div", { "data-testid": "scenario-banner" }, "ScenarioBanner"),
 }));
 
 vi.mock("@/lib/runMode", () => ({ isLocalMode: false }));
@@ -24,124 +20,88 @@ vi.mock("next/navigation", () => ({
 import Home from "@/app/page";
 
 // ---------------------------------------------------------------------------
-// Tests
+// Tests — Sales-Focused Homepage
 // ---------------------------------------------------------------------------
 
-describe("Landing Page (page.tsx)", () => {
-  // --- Hero section ---
+describe("Sales-Focused Homepage (page.tsx)", () => {
+  // --- Requirement 16.1: Sales hero heading ---
 
-  it("renders hero section with headline", () => {
+  it("renders hero heading with 'Rehearse Your Next Deal'", () => {
     render(createElement(Home));
-    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+    expect(screen.getByText(/rehearse your next deal/i)).toBeInTheDocument();
   });
 
-  it("renders WaitlistForm in hero section", () => {
+  it("renders hero heading with 'Close with Confidence'", () => {
+    render(createElement(Home));
+    expect(screen.getByText(/close with confidence/i)).toBeInTheDocument();
+  });
+
+  // --- Requirement 16.2: 4 scenario showcase cards ---
+
+  it("renders 4 scenario showcase cards", () => {
+    render(createElement(Home));
+    expect(screen.getByText("SaaS Contract Negotiation")).toBeInTheDocument();
+    expect(screen.getByText("Renewal / Churn Save")).toBeInTheDocument();
+    expect(screen.getByText("Enterprise Multi-Stakeholder")).toBeInTheDocument();
+    expect(screen.getByText("Discovery / Qualification")).toBeInTheDocument();
+  });
+
+  // --- Requirement 16.3: 3 sales value prop cards ---
+
+  it("renders 3 sales value proposition cards", () => {
+    render(createElement(Home));
+    expect(screen.getByText("Objection Handling")).toBeInTheDocument();
+    expect(screen.getByText("Hidden Variables")).toBeInTheDocument();
+    expect(screen.getByText("Multi-Stakeholder Navigation")).toBeInTheDocument();
+  });
+
+  // --- Requirement 16.4: Pricing signal ---
+
+  it("renders pricing signal text", () => {
+    render(createElement(Home));
+    expect(screen.getByText("Starting at $500/month for teams")).toBeInTheDocument();
+  });
+
+  // --- Requirement 16.5: Supported By section ---
+
+  it("renders 'Supported By' section", () => {
+    render(createElement(Home));
+    expect(screen.getByText(/supported by/i)).toBeInTheDocument();
+    expect(screen.getByText("Enterprise Ireland")).toBeInTheDocument();
+  });
+
+  // --- Requirement 16.6: Demo video placeholder ---
+
+  it("renders demo video placeholder", () => {
+    render(createElement(Home));
+    expect(screen.getByText("Demo coming soon")).toBeInTheDocument();
+  });
+
+  // --- CTA link to /arena ---
+
+  it("renders 'Try a Free Simulation' CTA linking to /arena", () => {
+    render(createElement(Home));
+    const ctaLinks = screen.getAllByRole("link", { name: /try a free simulation/i });
+    expect(ctaLinks.length).toBeGreaterThanOrEqual(1);
+    expect(ctaLinks[0]).toHaveAttribute("href", "/arena");
+  });
+
+  // --- WaitlistForm ---
+
+  it("renders WaitlistForm", () => {
     render(createElement(Home));
     expect(screen.getByTestId("waitlist-form")).toBeInTheDocument();
   });
 
-  // --- ScenarioBanner ---
+  // --- Old developer content NOT present ---
 
-  it("renders ScenarioBanner", () => {
+  it("does not render old developer heading 'AI Negotiation Sandbox'", () => {
     render(createElement(Home));
-    expect(screen.getByTestId("scenario-banner")).toBeInTheDocument();
+    expect(screen.queryByText(/ai negotiation sandbox/i)).not.toBeInTheDocument();
   });
 
-  // --- Value proposition cards ---
-
-  it("renders exactly 3 value proposition cards", () => {
-    const { container } = render(createElement(Home));
-    // Cards are identified by the sm:grid-cols-3 grid container's direct children
-    const grid = container.querySelector(".sm\\:grid-cols-3");
-    expect(grid).not.toBeNull();
-    const cards = grid!.children;
-    expect(cards.length).toBe(3);
-  });
-
-  it("each value proposition card has an icon, title, and description", () => {
-    const { container } = render(createElement(Home));
-    const grid = container.querySelector(".sm\\:grid-cols-3");
-    expect(grid).not.toBeNull();
-
-    Array.from(grid!.children).forEach((card) => {
-      // Icon: SVG inside a rounded-full container
-      const iconContainer = card.querySelector("svg");
-      expect(iconContainer).not.toBeNull();
-
-      // Title: h3 element
-      const title = card.querySelector("h3");
-      expect(title).not.toBeNull();
-      expect(title!.textContent!.trim().length).toBeGreaterThan(0);
-
-      // Description: p element
-      const desc = card.querySelector("p");
-      expect(desc).not.toBeNull();
-      expect(desc!.textContent!.trim().length).toBeGreaterThan(0);
-    });
-  });
-
-  it("value proposition cards have responsive grid classes", () => {
-    const { container } = render(createElement(Home));
-    const grid = container.querySelector(".sm\\:grid-cols-3");
-    expect(grid).not.toBeNull();
-    expect(grid!.className).toContain("grid");
-  });
-
-  // --- GitHub CTA section ---
-
-  it("renders GitHub CTA section with heading", () => {
+  it("does not render old 'Built in Public' section", () => {
     render(createElement(Home));
-    const heading = screen.getByText(/built in public/i);
-    expect(heading).toBeInTheDocument();
-  });
-
-  it("GitHub CTA has a button linking to the correct repo URL", () => {
-    render(createElement(Home));
-    const link = screen.getByRole("link", { name: /view on github/i });
-    expect(link).toHaveAttribute("href", "https://github.com/JuntoAI/JuntoAI-A2A");
-    expect(link).toHaveAttribute("target", "_blank");
-  });
-
-  it("GitHub CTA includes a GitHub icon (SVG)", () => {
-    render(createElement(Home));
-    const heading = screen.getByText(/built in public/i);
-    const section = heading.closest("section");
-    expect(section).not.toBeNull();
-    const svgs = section!.querySelectorAll("svg");
-    expect(svgs.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("GitHub CTA includes supporting text about contributing", () => {
-    render(createElement(Home));
-    expect(screen.getByText(/clone the repo/i)).toBeInTheDocument();
-  });
-
-  // --- Container ---
-
-  it("main container has max-width 1200px class", () => {
-    const { container } = render(createElement(Home));
-    const maxWidthElements = container.querySelectorAll(".max-w-\\[1200px\\]");
-    expect(maxWidthElements.length).toBeGreaterThanOrEqual(1);
-  });
-
-  // --- Section order ---
-
-  it("sections appear in correct order: hero, banner, value props, GitHub CTA", () => {
-    const { container } = render(createElement(Home));
-    const allElements = Array.from(container.querySelectorAll("*"));
-
-    const waitlistForm = screen.getByTestId("waitlist-form");
-    const scenarioBanner = screen.getByTestId("scenario-banner");
-    const grid = container.querySelector(".sm\\:grid-cols-3")!;
-    const githubHeading = screen.getByText(/built in public/i);
-
-    const waitlistIdx = allElements.indexOf(waitlistForm);
-    const bannerIdx = allElements.indexOf(scenarioBanner);
-    const gridIdx = allElements.indexOf(grid);
-    const githubIdx = allElements.indexOf(githubHeading);
-
-    expect(waitlistIdx).toBeLessThan(bannerIdx);
-    expect(bannerIdx).toBeLessThan(gridIdx);
-    expect(gridIdx).toBeLessThan(githubIdx);
+    expect(screen.queryByText(/built in public/i)).not.toBeInTheDocument();
   });
 });
