@@ -274,6 +274,15 @@ export default function Home() {
               <p className="text-lg font-semibold text-brand-charcoal">
                 Starting at $500/month for teams
               </p>
+              <p className="mt-2 text-sm text-brand-charcoal/60">
+                Currently in beta.{" "}
+                <a
+                  href="mailto:hello@juntoai.org"
+                  className="text-brand-blue hover:underline"
+                >
+                  Reach out to get your quote
+                </a>
+              </p>
             </div>
           </div>
         </section>
