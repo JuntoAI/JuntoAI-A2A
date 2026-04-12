@@ -19,7 +19,6 @@ import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
 import { NegotiationHistory } from "@/components/arena/NegotiationHistory";
 import { AdvancedConfigModal, type MemoryStrategy } from "@/components/arena/AdvancedConfigModal";
-import { BuilderModal } from "@/components/builder/BuilderModal";
 import { listCustomScenarios, deleteCustomScenario, updateCustomScenario, type CustomScenarioSummary } from "@/lib/builder/api";
 import { ScenarioEditorModal, type SaveCallbacks } from "@/components/arena/ScenarioEditorModal";
 import { Spinner } from "@/components/ui/Spinner";
@@ -40,7 +39,6 @@ function ArenaPageContent() {
 
   // Builder state
   const [customScenarios, setCustomScenarios] = useState<ScenarioSummary[]>([]);
-  const [showBuilder, setShowBuilder] = useState(false);
   const [isDeletingScenario, setIsDeletingScenario] = useState(false);
   const customScenariosRaw = useRef<CustomScenarioSummary[]>([]);
 
@@ -373,7 +371,7 @@ function ArenaPageContent() {
           isLoading={isLoadingScenarios}
           error={error && !selectedScenarioId && !isStarting ? error : null}
           customScenarios={customScenarios}
-          onBuildOwn={() => setShowBuilder(true)}
+          onBuildOwn={() => router.push("/arena/builder")}
           onDeleteCustom={handleDeleteCustomScenario}
           isDeleting={isDeletingScenario}
           onEditCustom={handleEditCustomScenario}
@@ -486,20 +484,6 @@ function ArenaPageContent() {
           onCancel={() => setAdvancedConfigAgent(null)}
         />
       )}
-
-      {/* Builder Modal */}
-      <BuilderModal
-        isOpen={showBuilder}
-        onClose={() => setShowBuilder(false)}
-        onScenarioSaved={(scenarioId) => {
-          setShowBuilder(false);
-          refreshCustomScenarios();
-          // Auto-select the newly saved custom scenario
-          handleScenarioSelect(scenarioId);
-        }}
-        email={email ?? ""}
-        tokenBalance={tokenBalance}
-      />
 
       {/* Scenario Editor Modal */}
       <ScenarioEditorModal
