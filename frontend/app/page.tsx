@@ -278,7 +278,7 @@ export default function Home() {
               <p className="mt-2 text-sm text-brand-charcoal/60">
                 Currently in beta.{" "}
                 <a
-                  href="mailto:hello@juntoai.org"
+                  href="mailto:support@juntoai.org"
                   className="text-brand-blue hover:underline"
                 >
                   Reach out to get your quote
