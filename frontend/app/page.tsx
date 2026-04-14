@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { isLocalMode } from "@/lib/runMode";
 import WaitlistForm from "@/components/WaitlistForm";
+import SalesPersonaSetter from "@/components/SalesPersonaSetter";
 
 export const metadata: Metadata = {
   title: "AI Deal Rehearsal for Sales Teams | JuntoAI",
@@ -120,6 +121,7 @@ export default function Home() {
 
   return (
     <>
+      <SalesPersonaSetter />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

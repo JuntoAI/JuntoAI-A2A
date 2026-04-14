@@ -4,6 +4,7 @@
   "description": "Two co-founders negotiate equity split for their pre-seed startup. The technical co-founder built the MVP; the business co-founder landed the first pilot customer. A startup lawyer mediates to ensure the agreement is fundable and includes vesting protections.",
   "difficulty": "beginner",
   "category": "Community",
+  "tags": ["founder"],
   "agents": [
     {
       "role": "Technical Co-Founder",

@@ -25,6 +25,7 @@ describe("SessionContext (cloud mode)", () => {
     expect(result.current.tokenBalance).toBe(0);
     expect(result.current.lastResetDate).toBeNull();
     expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.persona).toBeNull();
   });
 
   it("login() sets state, sessionStorage, and cookie", () => {
@@ -123,5 +124,108 @@ describe("SessionContext (cloud mode)", () => {
     expect(() => {
       renderHook(() => useSession());
     }).toThrow("useSession must be used within a SessionProvider");
+  });
+
+  // --- Persona tests ---
+
+  it("setPersona() updates state and sessionStorage", () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    act(() => {
+      result.current.setPersona("founder");
+    });
+
+    expect(result.current.persona).toBe("founder");
+    expect(sessionStorage.getItem("junto_persona")).toBe("founder");
+  });
+
+  it("setPersona() can switch between personas", () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    act(() => {
+      result.current.setPersona("sales");
+    });
+    expect(result.current.persona).toBe("sales");
+    expect(sessionStorage.getItem("junto_persona")).toBe("sales");
+
+    act(() => {
+      result.current.setPersona("founder");
+    });
+    expect(result.current.persona).toBe("founder");
+    expect(sessionStorage.getItem("junto_persona")).toBe("founder");
+  });
+
+  it("setPersona(null) clears persona from state and sessionStorage", () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    act(() => {
+      result.current.setPersona("sales");
+    });
+    act(() => {
+      result.current.setPersona(null);
+    });
+
+    expect(result.current.persona).toBeNull();
+    expect(sessionStorage.getItem("junto_persona")).toBeNull();
+  });
+
+  it("logout() clears persona from state and sessionStorage", () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    act(() => {
+      result.current.setPersona("founder");
+    });
+    expect(result.current.persona).toBe("founder");
+
+    act(() => {
+      result.current.logout();
+    });
+
+    expect(result.current.persona).toBeNull();
+    expect(sessionStorage.getItem("junto_persona")).toBeNull();
+  });
+
+  it("restores persona from sessionStorage on mount", () => {
+    sessionStorage.setItem("junto_email", "user@example.com");
+    sessionStorage.setItem("junto_token_balance", "50");
+    sessionStorage.setItem("junto_last_reset", "2025-06-01");
+    sessionStorage.setItem("junto_persona", "founder");
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    expect(result.current.persona).toBe("founder");
+    expect(result.current.email).toBe("user@example.com");
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  it("restores persona even without email (unauthenticated with persona)", () => {
+    sessionStorage.setItem("junto_persona", "sales");
+
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    expect(result.current.persona).toBe("sales");
+    expect(result.current.isAuthenticated).toBe(false);
+  });
+
+  it("login() preserves persona that was set before authentication", () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    act(() => {
+      result.current.setPersona("founder");
+    });
+    expect(result.current.persona).toBe("founder");
+
+    act(() => {
+      result.current.login("test@example.com", 100, "2025-01-15");
+    });
+
+    expect(result.current.persona).toBe("founder");
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  it("persona defaults to null when no persona is stored", () => {
+    const { result } = renderHook(() => useSession(), { wrapper });
+
+    expect(result.current.persona).toBeNull();
   });
 });

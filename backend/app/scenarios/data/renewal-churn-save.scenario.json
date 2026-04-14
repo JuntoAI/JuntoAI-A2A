@@ -4,6 +4,7 @@
   "description": "A high-stakes renewal negotiation where a dissatisfied customer is threatening to cancel after two years of declining satisfaction. The Customer Success Manager must retain the account by addressing grievances around underused features, poor support response times, and a 15% price increase — while a Finance Compliance officer enforces discount ceilings and flags revenue recognition risks from non-standard retention offers.",
   "difficulty": "intermediate",
   "category": "Sales",
+  "tags": ["sales"],
   "agents": [
     {
       "role": "Customer Success Manager",

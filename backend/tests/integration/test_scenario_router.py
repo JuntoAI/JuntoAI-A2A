@@ -95,7 +95,7 @@ class TestListScenarios:
         assert entry["name"] == "Test Scenario"
         assert entry["description"] == "A test scenario for integration tests."
         # list endpoint should only return summary fields
-        assert set(entry.keys()) == {"id", "name", "description", "difficulty", "category", "available"}
+        assert set(entry.keys()) == {"id", "name", "description", "difficulty", "category", "tags", "available"}
 
 
 class TestGetScenario:
@@ -126,3 +126,64 @@ class TestGetScenarioNotFound:
         body = resp.json()
         assert body["detail"]["scenario_id"] == "nonexistent_scenario"
         assert "not found" in body["detail"]["error"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Persona filtering via query param — Requirements 4.3, 4.4, 4.5, 4.6
+# ---------------------------------------------------------------------------
+
+_SALES_SCENARIO = {**_TEST_SCENARIO, "id": "sales_scenario", "name": "Sales Scenario", "tags": ["sales"]}
+_FOUNDER_SCENARIO = {**_TEST_SCENARIO, "id": "founder_scenario", "name": "Founder Scenario", "tags": ["founder"]}
+_GENERAL_SCENARIO = {**_TEST_SCENARIO, "id": "general_scenario", "name": "General Scenario"}
+
+
+@pytest.fixture()
+def persona_registry(tmp_path: Path) -> ScenarioRegistry:
+    """Registry with sales, founder, and untagged scenarios."""
+    for name, data in [
+        ("sales.scenario.json", _SALES_SCENARIO),
+        ("founder.scenario.json", _FOUNDER_SCENARIO),
+        ("general.scenario.json", _GENERAL_SCENARIO),
+    ]:
+        (tmp_path / name).write_text(json.dumps(data))
+    return ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+
+@pytest.fixture()
+async def persona_client(persona_registry: ScenarioRegistry):
+    app.dependency_overrides[get_scenario_registry] = lambda: persona_registry
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="http://testserver",
+    ) as c:
+        yield c
+    app.dependency_overrides.pop(get_scenario_registry, None)
+
+
+class TestPersonaQueryParam:
+    async def test_persona_sales_filters_correctly(self, persona_client):
+        resp = await persona_client.get("/api/v1/scenarios?persona=sales")
+        assert resp.status_code == 200
+        ids = {s["id"] for s in resp.json()}
+        assert "sales_scenario" in ids
+        assert "general_scenario" in ids
+        assert "founder_scenario" not in ids
+
+    async def test_persona_founder_filters_correctly(self, persona_client):
+        resp = await persona_client.get("/api/v1/scenarios?persona=founder")
+        assert resp.status_code == 200
+        ids = {s["id"] for s in resp.json()}
+        assert "founder_scenario" in ids
+        assert "general_scenario" in ids
+        assert "sales_scenario" not in ids
+
+    async def test_no_persona_returns_all(self, persona_client):
+        resp = await persona_client.get("/api/v1/scenarios")
+        assert resp.status_code == 200
+        ids = {s["id"] for s in resp.json()}
+        assert ids == {"sales_scenario", "founder_scenario", "general_scenario"}
+
+    async def test_response_includes_tags_field(self, persona_client):
+        resp = await persona_client.get("/api/v1/scenarios")
+        for entry in resp.json():
+            assert "tags" in entry

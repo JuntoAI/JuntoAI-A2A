@@ -50,6 +50,33 @@ describe("fetchScenarios", () => {
     );
   });
 
+  it("passes persona query param when provided", async () => {
+    const data = [
+      { id: "startup_pitch", name: "Startup Pitch", description: "Pitch scenario", tags: ["founder"] },
+    ];
+    fetchSpy.mockResolvedValueOnce(jsonResponse(data));
+
+    const result = await fetchScenarios(undefined, "founder");
+
+    expect(result).toEqual(data);
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/v1/scenarios?persona=founder",
+    );
+  });
+
+  it("passes both email and persona query params", async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse([]));
+
+    await fetchScenarios("user@test.com", "sales");
+
+    expect(fetchSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("email=user%40test.com"),
+    );
+    expect(fetchSpy).toHaveBeenLastCalledWith(
+      expect.stringContaining("persona=sales"),
+    );
+  });
+
   it("throws with detail on non-2xx", async () => {
     fetchSpy.mockResolvedValueOnce(
       jsonResponse({ detail: "Server error" }, 500),

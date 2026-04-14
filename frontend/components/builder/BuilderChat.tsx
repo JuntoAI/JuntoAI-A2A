@@ -36,6 +36,8 @@ export interface BuilderChatProps {
   email: string;
   onJsonDelta: (section: string, data: Record<string, unknown>) => void;
   onHealthReport: (report: HealthCheckFullReport) => void;
+  /** Optional initial template text to pre-fill the chat input (editable, not auto-sent). */
+  initialTemplate?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,9 +90,10 @@ export function BuilderChat({
   email,
   onJsonDelta,
   onHealthReport,
+  initialTemplate,
 }: BuilderChatProps) {
   const [messages, setMessages] = useState<BuilderChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialTemplate ?? "");
   const [isWaiting, setIsWaiting] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [hasReceivedToken, setHasReceivedToken] = useState(false);

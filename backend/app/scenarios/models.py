@@ -181,6 +181,11 @@ class ArenaScenario(BaseModel):
     negotiation_params: NegotiationParams
     outcome_receipt: OutcomeReceipt
     evaluator_config: EvaluatorConfig | None = Field(default=None)
+    tags: list[str] | None = Field(
+        default=None,
+        description="Optional persona tags for filtering. "
+        "None means visible to all personas.",
+    )
     allowed_email_domains: list[str] | None = Field(
         default=None,
         description="If set, only users whose email ends with one of these "

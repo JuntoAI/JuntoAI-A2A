@@ -10,6 +10,10 @@ vi.mock("@/components/WaitlistForm", () => ({
   default: () => createElement("div", { "data-testid": "waitlist-form" }, "WaitlistForm"),
 }));
 
+vi.mock("@/components/SalesPersonaSetter", () => ({
+  default: () => createElement("div", { "data-testid": "sales-persona-setter" }),
+}));
+
 vi.mock("@/lib/runMode", () => ({ isLocalMode: false }));
 
 vi.mock("next/navigation", () => ({
@@ -105,5 +109,12 @@ describe("Sales-Focused Homepage (page.tsx)", () => {
   it("does not render old 'Built in Public' section", () => {
     render(createElement(Home));
     expect(screen.queryByText(/built in public/i)).not.toBeInTheDocument();
+  });
+
+  // --- Requirement 1.2: SalesPersonaSetter is rendered ---
+
+  it("renders SalesPersonaSetter component", () => {
+    render(createElement(Home));
+    expect(screen.getByTestId("sales-persona-setter")).toBeInTheDocument();
   });
 });

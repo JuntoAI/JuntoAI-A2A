@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { useSession } from "@/context/SessionContext";
 import { ScenarioSelector } from "@/components/arena/ScenarioSelector";
+import { PersonaToggle } from "@/components/arena/PersonaToggle";
 import { AgentCard } from "@/components/arena/AgentCard";
 import { InformationToggle } from "@/components/arena/InformationToggle";
 import { InitializeButton } from "@/components/arena/InitializeButton";
@@ -26,7 +27,7 @@ import { Spinner } from "@/components/ui/Spinner";
 function ArenaPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { email, tokenBalance, updateTokenBalance, dailyLimit, updateTier } = useSession();
+  const { email, tokenBalance, updateTokenBalance, dailyLimit, updateTier, persona, setPersona } = useSession();
 
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
@@ -154,12 +155,28 @@ function ArenaPageContent() {
     [email, editorScenarioId, refreshCustomScenarios, selectedScenarioId],
   );
 
+  // Effective persona: default to "sales" if null (Req 1.4)
+  const effectivePersona = persona ?? "sales";
+
+  // Handle persona switch: update context, clear stale state (Req 8.2, 8.3, 8.4)
+  const handlePersonaChange = useCallback(
+    (newPersona: "sales" | "founder") => {
+      setPersona(newPersona);
+      setSelectedScenarioId(null);
+      setScenarioDetail(null);
+      setActiveToggles([]);
+      setError(null);
+    },
+    [setPersona],
+  );
+
+  // Load scenarios (re-runs when persona changes)
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setIsLoadingScenarios(true);
       try {
-        const list = await fetchScenarios(email ?? undefined);
+        const list = await fetchScenarios(email ?? undefined, effectivePersona);
         if (!cancelled) {
           setScenarios(list);
           const preselect = searchParams.get("scenario");
@@ -178,7 +195,7 @@ function ArenaPageContent() {
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [effectivePersona]);
 
   // Fetch available models on mount
   useEffect(() => {
@@ -360,6 +377,8 @@ function ArenaPageContent() {
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
       <h1 className="text-2xl font-bold text-gray-900">Arena Control Panel</h1>
+
+      <PersonaToggle persona={effectivePersona} onPersonaChange={handlePersonaChange} />
 
       {isLoadingScenarios ? (
         <Spinner message="Loading scenarios…" />

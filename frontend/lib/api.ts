@@ -21,6 +21,7 @@ export interface ScenarioSummary {
   description: string;
   difficulty: "beginner" | "intermediate" | "advanced" | "fun";
   category: string;
+  tags?: string[] | null;
 }
 
 export interface AgentBudget {
@@ -100,9 +101,12 @@ async function extractErrorDetail(res: Response): Promise<string> {
 // API functions
 // ---------------------------------------------------------------------------
 
-export async function fetchScenarios(email?: string): Promise<ScenarioSummary[]> {
-  const params = email ? `?email=${encodeURIComponent(email)}` : "";
-  const res = await fetch(`${API_BASE}/scenarios${params}`);
+export async function fetchScenarios(email?: string, persona?: string): Promise<ScenarioSummary[]> {
+  const params = new URLSearchParams();
+  if (email) params.set("email", email);
+  if (persona) params.set("persona", persona);
+  const qs = params.toString();
+  const res = await fetch(`${API_BASE}/scenarios${qs ? `?${qs}` : ""}`);
   if (!res.ok) {
     const detail = await extractErrorDetail(res);
     throw new Error(detail);

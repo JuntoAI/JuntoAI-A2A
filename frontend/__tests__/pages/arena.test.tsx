@@ -14,7 +14,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 const mockUpdateTokenBalance = vi.fn();
-let mockSessionState = {
+const mockSetPersona = vi.fn();
+let mockSessionState: Record<string, unknown> = {
   email: "test@example.com",
   tokenBalance: 50,
   lastResetDate: "2025-01-01",
@@ -22,6 +23,8 @@ let mockSessionState = {
   login: vi.fn(),
   logout: vi.fn(),
   updateTokenBalance: mockUpdateTokenBalance,
+  persona: "sales",
+  setPersona: mockSetPersona,
 };
 
 vi.mock("@/context/SessionContext", () => ({
@@ -110,6 +113,8 @@ describe("Arena Control Panel Page", () => {
       login: vi.fn(),
       logout: vi.fn(),
       updateTokenBalance: mockUpdateTokenBalance,
+      persona: "sales",
+      setPersona: mockSetPersona,
     };
     // Reset search params
     mockSearchParams.delete("scenario");
@@ -368,5 +373,106 @@ describe("Arena Control Panel Page", () => {
     await waitFor(() => {
       expect(screen.getByText("Network error")).toBeInTheDocument();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Persona Integration Tests (Req 8.1, 8.2, 8.3, 8.4)
+// ---------------------------------------------------------------------------
+
+describe("Arena — Persona Integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSessionState = {
+      email: "test@example.com",
+      tokenBalance: 50,
+      lastResetDate: "2025-01-01",
+      isAuthenticated: true,
+      login: vi.fn(),
+      logout: vi.fn(),
+      updateTokenBalance: mockUpdateTokenBalance,
+      persona: "sales",
+      setPersona: mockSetPersona,
+    };
+    mockSearchParams.delete("scenario");
+    vi.mocked(api.fetchScenarios).mockResolvedValue(mockScenarios);
+    vi.mocked(api.fetchScenarioDetail).mockResolvedValue(mockDetail);
+    vi.mocked(api.fetchAvailableModels).mockResolvedValue([]);
+  });
+
+  // Req 8.1: persona toggle is rendered on the Arena page
+  it("renders the persona toggle with Sales and Founders options", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByRole("radiogroup", { name: "Persona selector" })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("radio", { name: "Sales" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Founders" })).toBeInTheDocument();
+  });
+
+  // Req 8.1: persona toggle reflects current persona from session
+  it("shows Sales as active when session persona is 'sales'", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "Sales" })).toHaveAttribute("aria-checked", "true");
+    });
+  });
+
+  // Req 8.2: switching persona calls setPersona on session context
+  it("calls setPersona when persona toggle is switched", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: "Founders" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("radio", { name: "Founders" }));
+    expect(mockSetPersona).toHaveBeenCalledWith("founder");
+  });
+
+  // Req 8.3: fetchScenarios is called with persona
+  it("passes persona to fetchScenarios on mount", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(api.fetchScenarios).toHaveBeenCalledWith("test@example.com", "sales");
+    });
+  });
+
+  // Req 8.4: switching persona clears selected scenario
+  it("clears selected scenario when persona is switched", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText(/The Talent War/)).toBeInTheDocument();
+    });
+
+    // Select a scenario first
+    await act(async () => {
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "talent_war" },
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("Recruiter")).toBeInTheDocument();
+    });
+
+    // Switch persona — this clears the selection
+    await act(async () => {
+      fireEvent.click(screen.getByRole("radio", { name: "Founders" }));
+    });
+
+    // Agent cards should no longer be visible (scenario detail cleared)
+    await waitFor(() => {
+      expect(screen.queryByText("Recruiter")).not.toBeInTheDocument();
+    });
+  });
+
+  // Req 1.4: defaults persona to "sales" when session persona is null
+  it("defaults to 'sales' persona when session persona is null", async () => {
+    mockSessionState.persona = null;
+    renderPage();
+    await waitFor(() => {
+      expect(api.fetchScenarios).toHaveBeenCalledWith("test@example.com", "sales");
+    });
+    expect(screen.getByRole("radio", { name: "Sales" })).toHaveAttribute("aria-checked", "true");
   });
 });

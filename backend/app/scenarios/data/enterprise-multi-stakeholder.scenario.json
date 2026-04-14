@@ -4,6 +4,7 @@
   "description": "A complex enterprise software deal with four stakeholders navigating a champion-blocker dynamic. The Sales Director must sell a $1.2M platform deal to a CTO who champions the product but must justify the spend, a Procurement Director actively blocking on cost with a mandate to cut vendor budgets, and a Legal/Compliance officer enforcing strict DPA, liability, and IP requirements. This is the most complex scenario — testing N-agent negotiation with competing internal agendas.",
   "difficulty": "advanced",
   "category": "Sales",
+  "tags": ["sales"],
   "agents": [
     {
       "role": "Sales Director",

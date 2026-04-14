@@ -4,6 +4,7 @@
   "description": "A high-stakes SaaS subscription negotiation centered on seat-based pricing, implementation fees, and SLA penalties. A senior Account Executive defends annual contract value against a VP of Operations pushing for volume discounts and contractual protections, while a Procurement compliance officer enforces strict security and SLA standards.",
   "difficulty": "intermediate",
   "category": "Sales",
+  "tags": ["sales"],
   "agents": [
     {
       "role": "Seller",

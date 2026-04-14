@@ -199,7 +199,7 @@ class TestListScenarios:
         ids = {entry["id"] for entry in result}
         assert ids == {"s1", "s2"}
         for entry in result:
-            assert set(entry.keys()) == {"id", "name", "description", "difficulty", "category", "available"}
+            assert set(entry.keys()) == {"id", "name", "description", "difficulty", "category", "tags", "available"}
 
     def test_entries_contain_correct_fields(self, tmp_path):
         _write_scenario(tmp_path, "x.scenario.json", _scenario(id="x", name="X Name", description="X Desc"))
@@ -207,7 +207,7 @@ class TestListScenarios:
         registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
         result = registry.list_scenarios()
 
-        assert result == [{"id": "x", "name": "X Name", "description": "X Desc", "difficulty": "intermediate", "category": "General", "available": True}]
+        assert result == [{"id": "x", "name": "X Name", "description": "X Desc", "difficulty": "intermediate", "category": "General", "tags": None, "available": True}]
 
 
 # ---------------------------------------------------------------------------
@@ -456,3 +456,94 @@ class TestAllowedModelIds:
 
         result = registry.list_scenarios()
         assert result[0]["available"] is False
+
+
+# ---------------------------------------------------------------------------
+# Persona filtering — Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+# ---------------------------------------------------------------------------
+
+
+class TestPersonaFiltering:
+    """Tests for persona-based scenario filtering via the tags field."""
+
+    def _setup_tagged_scenarios(self, tmp_path):
+        """Create scenarios with various tag configurations."""
+        _write_scenario(tmp_path, "sales_only.scenario.json",
+                        _scenario(id="sales_only", name="Sales Only", tags=["sales"]))
+        _write_scenario(tmp_path, "founder_only.scenario.json",
+                        _scenario(id="founder_only", name="Founder Only", tags=["founder"]))
+        _write_scenario(tmp_path, "both.scenario.json",
+                        _scenario(id="both", name="Both Personas", tags=["sales", "founder"]))
+        _write_scenario(tmp_path, "no_tags.scenario.json",
+                        _scenario(id="no_tags", name="No Tags"))
+        return ScenarioRegistry(scenarios_dir=str(tmp_path))
+
+    def test_persona_sales_returns_sales_and_untagged(self, tmp_path):
+        registry = self._setup_tagged_scenarios(tmp_path)
+        result = registry.list_scenarios(persona="sales")
+        ids = {r["id"] for r in result}
+        assert ids == {"sales_only", "both", "no_tags"}
+
+    def test_persona_founder_returns_founder_and_untagged(self, tmp_path):
+        registry = self._setup_tagged_scenarios(tmp_path)
+        result = registry.list_scenarios(persona="founder")
+        ids = {r["id"] for r in result}
+        assert ids == {"founder_only", "both", "no_tags"}
+
+    def test_persona_none_returns_all_scenarios(self, tmp_path):
+        registry = self._setup_tagged_scenarios(tmp_path)
+        result = registry.list_scenarios(persona=None)
+        ids = {r["id"] for r in result}
+        assert ids == {"sales_only", "founder_only", "both", "no_tags"}
+
+    def test_backward_compat_no_persona_param(self, tmp_path):
+        """Calling list_scenarios() without persona returns all scenarios."""
+        registry = self._setup_tagged_scenarios(tmp_path)
+        result = registry.list_scenarios()
+        assert len(result) == 4
+
+    def test_unknown_persona_returns_only_untagged(self, tmp_path):
+        registry = self._setup_tagged_scenarios(tmp_path)
+        result = registry.list_scenarios(persona="unknown")
+        ids = {r["id"] for r in result}
+        assert ids == {"no_tags"}
+
+    def test_tags_field_included_in_response(self, tmp_path):
+        _write_scenario(tmp_path, "tagged.scenario.json",
+                        _scenario(id="tagged", tags=["sales"]))
+        _write_scenario(tmp_path, "untagged.scenario.json",
+                        _scenario(id="untagged"))
+        registry = ScenarioRegistry(scenarios_dir=str(tmp_path))
+        result = registry.list_scenarios()
+
+        by_id = {r["id"]: r for r in result}
+        assert by_id["tagged"]["tags"] == ["sales"]
+        assert by_id["untagged"]["tags"] is None
+
+
+class TestArenaScenarioTagsValidation:
+    """Tests for ArenaScenario model validation with the tags field."""
+
+    def test_tags_none_by_default(self):
+        from app.scenarios.models import ArenaScenario
+        data = _scenario()
+        scenario = ArenaScenario.model_validate(data)
+        assert scenario.tags is None
+
+    def test_tags_empty_list(self):
+        from app.scenarios.models import ArenaScenario
+        data = _scenario(tags=[])
+        scenario = ArenaScenario.model_validate(data)
+        assert scenario.tags == []
+
+    def test_tags_populated(self):
+        from app.scenarios.models import ArenaScenario
+        data = _scenario(tags=["sales", "founder"])
+        scenario = ArenaScenario.model_validate(data)
+        assert scenario.tags == ["sales", "founder"]
+
+    def test_tags_free_form_strings(self):
+        from app.scenarios.models import ArenaScenario
+        data = _scenario(tags=["any-string", "123", "CamelCase"])
+        scenario = ArenaScenario.model_validate(data)
+        assert scenario.tags == ["any-string", "123", "CamelCase"]

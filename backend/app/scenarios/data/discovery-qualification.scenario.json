@@ -4,6 +4,7 @@
   "description": "A first-contact discovery call where a Sales Development Rep must qualify a guarded executive prospect through strategic questioning. The SDR must uncover Budget, Authority, Need, and Timeline (BANT) without resorting to premature pitching, while a Sales Manager/Coach evaluates discovery quality and flags ineffective techniques.",
   "difficulty": "beginner",
   "category": "Sales",
+  "tags": ["sales"],
   "agents": [
     {
       "role": "SDR",

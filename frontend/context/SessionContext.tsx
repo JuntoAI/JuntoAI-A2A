@@ -10,6 +10,10 @@ import {
 } from "react";
 import { isLocalMode } from "@/lib/runMode";
 
+// --- Types ---
+
+export type Persona = "sales" | "founder" | null;
+
 // --- Interfaces ---
 
 export interface SessionState {
@@ -20,6 +24,7 @@ export interface SessionState {
   dailyLimit: number;
   isAuthenticated: boolean;
   isHydrated: boolean;
+  persona: Persona;
 }
 
 export interface SessionContextValue extends SessionState {
@@ -27,6 +32,7 @@ export interface SessionContextValue extends SessionState {
   logout: () => void;
   updateTokenBalance: (newBalance: number) => void;
   updateTier: (tier: number, dailyLimit: number, tokenBalance: number) => void;
+  setPersona: (persona: Persona) => void;
 }
 
 // --- Constants ---
@@ -36,6 +42,7 @@ const STORAGE_KEY_TOKEN_BALANCE = "junto_token_balance";
 const STORAGE_KEY_LAST_RESET = "junto_last_reset";
 const STORAGE_KEY_TIER = "junto_tier";
 const STORAGE_KEY_DAILY_LIMIT = "junto_daily_limit";
+const STORAGE_KEY_PERSONA = "junto_persona";
 const SESSION_COOKIE_NAME = "junto_session";
 
 const defaultState: SessionState = {
@@ -46,6 +53,7 @@ const defaultState: SessionState = {
   dailyLimit: 20,
   isAuthenticated: false,
   isHydrated: false,
+  persona: null,
 };
 
 // --- Context ---
@@ -60,6 +68,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // Restore from sessionStorage on mount (or auto-auth in local mode)
   useEffect(() => {
     if (isLocalMode) {
+      const storedPersona = sessionStorage.getItem(STORAGE_KEY_PERSONA) as Persona;
       setState({
         email: "local@dev",
         tokenBalance: Infinity,
@@ -68,6 +77,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         dailyLimit: 100,
         isAuthenticated: true,
         isHydrated: true,
+        persona: storedPersona ?? "sales",
       });
       return;
     }
@@ -77,6 +87,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const lastReset = sessionStorage.getItem(STORAGE_KEY_LAST_RESET);
     const tierStr = sessionStorage.getItem(STORAGE_KEY_TIER);
     const dailyLimitStr = sessionStorage.getItem(STORAGE_KEY_DAILY_LIMIT);
+    const storedPersona = sessionStorage.getItem(STORAGE_KEY_PERSONA) as Persona;
 
     if (email) {
       setState({
@@ -87,9 +98,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         dailyLimit: dailyLimitStr !== null ? Number(dailyLimitStr) : 20,
         isAuthenticated: true,
         isHydrated: true,
+        persona: storedPersona,
       });
     } else {
-      setState((prev) => ({ ...prev, isHydrated: true }));
+      setState((prev) => ({ ...prev, isHydrated: true, persona: storedPersona }));
     }
   }, []);
 
@@ -113,9 +125,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         dailyLimit,
         isAuthenticated: true,
         isHydrated: true,
+        persona: state.persona,
       });
     },
-    []
+    [state.persona]
   );
 
   const logout = useCallback(() => {
@@ -125,6 +138,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem(STORAGE_KEY_LAST_RESET);
     sessionStorage.removeItem(STORAGE_KEY_TIER);
     sessionStorage.removeItem(STORAGE_KEY_DAILY_LIMIT);
+    sessionStorage.removeItem(STORAGE_KEY_PERSONA);
 
     // Remove cookie by setting max-age=0
     document.cookie = `${SESSION_COOKIE_NAME}=; SameSite=Strict; path=/; max-age=0`;
@@ -145,9 +159,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, tier, dailyLimit, tokenBalance }));
   }, []);
 
+  const setPersona = useCallback((persona: Persona) => {
+    if (persona) {
+      sessionStorage.setItem(STORAGE_KEY_PERSONA, persona);
+    } else {
+      sessionStorage.removeItem(STORAGE_KEY_PERSONA);
+    }
+    setState((prev) => ({ ...prev, persona }));
+  }, []);
+
   return (
     <SessionContext.Provider
-      value={{ ...state, login, logout, updateTokenBalance, updateTier }}
+      value={{ ...state, login, logout, updateTokenBalance, updateTier, setPersona }}
     >
       {children}
     </SessionContext.Provider>

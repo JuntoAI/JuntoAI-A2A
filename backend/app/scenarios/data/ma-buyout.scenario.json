@@ -4,6 +4,7 @@
   "description": "A corporate acquisition negotiation between a Fortune 100 CEO pursuing strategic AI capabilities and a startup founder protecting their team and legacy. An EU regulatory advisor applies real antitrust scrutiny that can reshape or block the deal.",
   "difficulty": "advanced",
   "category": "Corporate",
+  "tags": ["founder"],
   "agents": [
     {
       "role": "Buyer",

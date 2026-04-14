@@ -83,7 +83,7 @@ class ScenarioRegistry:
                     agent.fallback_model_id,
                 )
 
-    def list_scenarios(self, email: str | None = None) -> list[dict]:
+    def list_scenarios(self, email: str | None = None, persona: str | None = None) -> list[dict]:
         def _sort_key(s: ArenaScenario) -> tuple:
             # Primary: category alphabetical, "General" last
             cat_key = (1, s.category) if s.category == "General" else (0, s.category)
@@ -104,6 +104,7 @@ class ScenarioRegistry:
                 "description": s.description,
                 "difficulty": s.difficulty,
                 "category": s.category,
+                "tags": s.tags,
                 "available": (
                     _is_scenario_available(s, allowed)
                     if allowed is not None
@@ -112,6 +113,7 @@ class ScenarioRegistry:
             }
             for s in sorted_scenarios
             if self._user_can_access(s, email)
+            and (persona is None or s.tags is None or persona in s.tags)
         ]
 
     def get_scenario(self, scenario_id: str, email: str | None = None) -> ArenaScenario:
