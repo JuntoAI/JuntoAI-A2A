@@ -20,7 +20,7 @@ function generateSessionId(): string {
   return `builder-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export const BUILDER_TEMPLATES: Record<string, string> = {
+const BUILDER_TEMPLATES: Record<string, string> = {
   founder: `I'm [Your Name], founder of [Company Name].
 
 Here's my LinkedIn: [Your LinkedIn URL]
