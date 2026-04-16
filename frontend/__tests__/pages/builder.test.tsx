@@ -32,7 +32,8 @@ vi.mock("@/lib/builder/api", () => ({
 }));
 
 // Import AFTER mocks
-import BuilderPage, { BUILDER_TEMPLATES } from "@/app/(protected)/arena/builder/page";
+import BuilderPage from "@/app/(protected)/arena/builder/page";
+import { BUILDER_TEMPLATES } from "@/lib/builder/templates";
 
 // ---------------------------------------------------------------------------
 // Tests
