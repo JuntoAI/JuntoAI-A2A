@@ -201,8 +201,8 @@ def _manual_compute(sessions: list[dict]):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.property
+@settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
 @given(sessions=_sessions_list)
-@settings(max_examples=100)
 def test_unique_user_count_equals_distinct_emails(sessions: list[dict]):
     """Property 1: Unique user count equals distinct emails in time window."""
     result = compute_stats(sessions, now=_NOW)
@@ -218,8 +218,8 @@ def test_unique_user_count_equals_distinct_emails(sessions: list[dict]):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.property
-@given(sessions=_sessions_list)
 @settings(max_examples=100)
+@given(sessions=_sessions_list)
 def test_simulation_counts_and_outcomes(sessions: list[dict]):
     """Property 2: Simulation counts and outcome breakdown match manual computation."""
     result = compute_stats(sessions, now=_NOW)
@@ -244,8 +244,8 @@ def test_simulation_counts_and_outcomes(sessions: list[dict]):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.property
-@given(sessions=_sessions_list)
 @settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
+@given(sessions=_sessions_list)
 def test_total_token_sum(sessions: list[dict]):
     """Property 3: Total token sum equals aggregate of session tokens in time window."""
     result = compute_stats(sessions, now=_NOW)
@@ -261,8 +261,8 @@ def test_total_token_sum(sessions: list[dict]):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.property
-@given(sessions=_sessions_list)
 @settings(max_examples=100)
+@given(sessions=_sessions_list)
 def test_per_model_token_breakdown(sessions: list[dict]):
     """Property 4: Per-model token breakdown matches grouped aggregation."""
     result = compute_stats(sessions, now=_NOW)
@@ -283,8 +283,8 @@ def test_per_model_token_breakdown(sessions: list[dict]):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.property
-@given(sessions=_sessions_list)
 @settings(max_examples=100)
+@given(sessions=_sessions_list)
 def test_per_model_avg_response_time(sessions: list[dict]):
     """Property 5: Per-model average response time matches manual mean computation."""
     result = compute_stats(sessions, now=_NOW)
@@ -321,8 +321,8 @@ def test_per_model_avg_response_time(sessions: list[dict]):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.property
-@given(sessions=_sessions_list)
 @settings(max_examples=100)
+@given(sessions=_sessions_list)
 def test_scenario_popularity_ranking(sessions: list[dict]):
     """Property 6: Scenario popularity is ranked descending by simulation count."""
     result = compute_stats(sessions, now=_NOW)
@@ -348,8 +348,8 @@ def test_scenario_popularity_ranking(sessions: list[dict]):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.property
-@given(sessions=_sessions_list)
 @settings(max_examples=100)
+@given(sessions=_sessions_list)
 def test_average_turns(sessions: list[dict]):
     """Property 7: Average turns equals mean of turn_count for terminal sessions."""
     result = compute_stats(sessions, now=_NOW)
@@ -376,8 +376,8 @@ def test_average_turns(sessions: list[dict]):
 # ---------------------------------------------------------------------------
 
 @pytest.mark.property
-@given(sessions=_sessions_list)
 @settings(max_examples=100)
+@given(sessions=_sessions_list)
 def test_custom_agent_session_classification(sessions: list[dict]):
     """Property 11: Custom agent session classification matches endpoint_overrides presence."""
     result = compute_stats(sessions, now=_NOW)
