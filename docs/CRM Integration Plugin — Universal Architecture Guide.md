@@ -26,9 +26,15 @@ Every CRM plugin MUST implement these capabilities:
 
 ### 2.1 Configuration Panel
 
-- **API Key input**: Admin-level setting where the A2A integration API key (`a2a_live_...`) is stored securely. Never exposed to non-admin users.
+- **Integration Token input**: Admin-level setting where the A2A integration token (`a2a_live_...`) is stored securely. Never exposed to non-admin users. This token is provided by JuntoAI when the contract is signed.
 - **A2A Base URL**: Configurable endpoint (default: `https://api.juntoai.org/api/v1/integrations`). Allows pointing to self-hosted instances.
-- **Connection test**: A "Test Connection" button that calls `GET /integrations/health` to verify the API key works.
+- **Connection test**: A "Test Connection" button that calls `GET /integrations/health` with the token and the admin's email to verify connectivity.
+
+> **Authentication model**: Every API request requires two headers:
+> - `X-Integration-Token`: The org token (one per customer org, provided by JuntoAI)
+> - `X-User-Email`: The email of the CRM user triggering the request
+>
+> The email's domain must match the org's registered domain. For example, if the org is registered with domain `acme.com`, only users with `@acme.com` emails can call the API. This means the plugin must send the logged-in CRM user's email with every request.
 
 ### 2.2 Contact/Deal View Panel
 
@@ -207,9 +213,10 @@ extensions/a2a-simulation/
 
 **Service Layer (`Services/A2ASimulation.php`):**
 - All A2A API calls go through this service — never from the frontend JS directly
-- API key is stored in EspoCRM's Integration entity (admin-only access)
+- Integration token is stored in EspoCRM's Integration entity (admin-only access)
+- Every request includes both `X-Integration-Token` (from admin config) and `X-User-Email` (from the logged-in EspoCRM user)
 - Uses `cURL` or Guzzle for HTTP requests to A2A
-- Handles error responses gracefully (timeout, 401, 404, 500)
+- Handles error responses gracefully (timeout, 401, 403, 404, 429, 500)
 
 **Frontend Panel (`panels/a2a-simulations.js`):**
 - Extends `Espo.Views.Record.Panels.Relationship`
@@ -226,19 +233,23 @@ extensions/a2a-simulation/
 
 ### 4.3 Security Model
 
-- API key stored server-side only (EspoCRM Integration settings)
-- Frontend JS never sees the API key — all A2A calls proxied through EspoCRM backend
+- Integration token stored server-side only (EspoCRM Integration settings)
+- Frontend JS never sees the token — all A2A calls proxied through EspoCRM backend
+- The backend attaches the logged-in user's email as `X-User-Email` on every request to A2A
+- A2A validates that the email domain matches the org's registered domain — no spoofing possible from the CRM side since the backend controls the header
 - EspoCRM's built-in ACL controls who can trigger simulations (role-based)
 - Simulation records inherit Contact's access permissions
+- Simulations triggered from EspoCRM appear in the user's A2A web app history (same email = same session ownership)
 
 ### 4.4 Installation Flow
 
 1. Admin uploads extension ZIP via EspoCRM Admin → Extensions
 2. Extension creates the `A2ASimulation` entity and adds panel to Contact view
 3. Admin navigates to Admin → Integrations → A2A Simulation
-4. Admin enters API key and A2A base URL
-5. Admin clicks "Test Connection" to verify
+4. Admin enters the Integration Token (provided by JuntoAI) and A2A base URL
+5. Admin clicks "Test Connection" to verify (uses admin's own email for the test)
 6. Users with appropriate role permissions see the panel on Contact views
+7. Each user's simulations are attributed to their own email — visible in both EspoCRM and the A2A web app
 
 ---
 
@@ -360,7 +371,10 @@ extensions/a2a-simulation/
 
 | Error | Plugin Behavior |
 |---|---|
-| Invalid API key (401) | Show "Invalid API key" in config panel. Block simulation attempts. |
+| Invalid token (401) | Show "Invalid integration token" in config panel. Block simulation attempts. |
+| Invalid email (401) | Show "User email is not valid. Contact your admin." |
+| Org deactivated (403) | Show "Integration access has been revoked. Contact JuntoAI support." |
+| Domain mismatch (403) | Show "Your email domain is not authorized for this integration." |
 | Rate limit exceeded (429) | Show "Daily simulation limit reached. Resets at midnight UTC." |
 | Scenario not found (404) | Remove scenario from picker, refresh list. |
 | A2A server unavailable (5xx) | Show "Simulation service temporarily unavailable. Try again later." |
@@ -374,18 +388,20 @@ extensions/a2a-simulation/
 
 Before releasing any CRM plugin:
 
-- [ ] API key configuration and secure storage
+- [ ] Integration token configuration and secure storage
 - [ ] Connection test succeeds/fails appropriately
+- [ ] User email sent with every request matches org domain
 - [ ] Scenario list fetches and displays correctly
 - [ ] Context auto-fill from CRM entity fields
 - [ ] Simulation creation returns session_id and viewer URL
 - [ ] Status polling updates simulation record on completion
 - [ ] Viewer URL opens Glass Box in new tab
-- [ ] Error states display user-friendly messages
-- [ ] Non-admin users cannot see/modify API key
+- [ ] Error states display user-friendly messages (401, 403, 429)
+- [ ] Non-admin users cannot see/modify integration token
 - [ ] ACL/permissions control who can trigger simulations
 - [ ] Multiple simulations on same Contact work correctly
 - [ ] Plugin works with both cloud and self-hosted A2A instances
+- [ ] Simulations appear in user's A2A web app history
 
 ---
 
