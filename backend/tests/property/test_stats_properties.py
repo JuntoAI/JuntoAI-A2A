@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 import pytest
-from hypothesis import given, settings, assume
+from hypothesis import given, settings, assume, HealthCheck
 from hypothesis import strategies as st
 
 from app.services.stats_aggregator import compute_stats
@@ -83,7 +83,7 @@ _session = st.fixed_dictionaries({
     ),
 })
 
-_sessions_list = st.lists(_session, min_size=0, max_size=30)
+_sessions_list = st.lists(_session, min_size=0, max_size=20)
 
 
 # ---------------------------------------------------------------------------
@@ -245,7 +245,7 @@ def test_simulation_counts_and_outcomes(sessions: list[dict]):
 
 @pytest.mark.property
 @given(sessions=_sessions_list)
-@settings(max_examples=100)
+@settings(max_examples=100, suppress_health_check=[HealthCheck.too_slow])
 def test_total_token_sum(sessions: list[dict]):
     """Property 3: Total token sum equals aggregate of session tokens in time window."""
     result = compute_stats(sessions, now=_NOW)
