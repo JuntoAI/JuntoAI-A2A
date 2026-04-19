@@ -158,29 +158,45 @@ function LoadingSkeleton() {
   );
 }
 
+const INITIAL_DAYS = 14;
+const EXPANDED_DAYS = 90;
+
 export function NegotiationHistory({ email, dailyLimit }: NegotiationHistoryProps) {
   const [data, setData] = useState<SessionHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [days, setDays] = useState(INITIAL_DAYS);
 
-  const loadHistory = useCallback(async () => {
-    setLoading(true);
+  const loadHistory = useCallback(async (requestedDays: number, isExpanding = false) => {
+    if (isExpanding) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
-      const result = await fetchNegotiationHistory(email);
+      const result = await fetchNegotiationHistory(email, requestedDays);
       setData(result);
+      setDays(requestedDays);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load history");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [email]);
 
   useEffect(() => {
-    loadHistory();
+    loadHistory(INITIAL_DAYS);
+  }, [loadHistory]);
+
+  const handleShowMore = useCallback(() => {
+    loadHistory(EXPANDED_DAYS, true);
   }, [loadHistory]);
 
   const todayUTC = new Date().toISOString().slice(0, 10);
+  const canShowMore = days < EXPANDED_DAYS && data && data.days.length > 0;
 
   return (
     <div
@@ -194,7 +210,7 @@ export function NegotiationHistory({ email, dailyLimit }: NegotiationHistoryProp
           <p className="text-sm text-red-700">{error}</p>
           <button
             type="button"
-            onClick={loadHistory}
+            onClick={() => loadHistory(days)}
             className="mt-2 rounded-md bg-[#007BFF] px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
           >
             Retry
@@ -219,6 +235,17 @@ export function NegotiationHistory({ email, dailyLimit }: NegotiationHistoryProp
             defaultExpanded={group.date === todayUTC}
           />
         ))}
+
+      {!loading && !error && canShowMore && (
+        <button
+          type="button"
+          onClick={handleShowMore}
+          disabled={loadingMore}
+          className="w-full rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loadingMore ? "Loading…" : "Show older negotiations"}
+        </button>
+      )}
     </div>
   );
 }

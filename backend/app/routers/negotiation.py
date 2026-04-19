@@ -89,7 +89,7 @@ def _group_sessions_by_day(
 @router.get("/negotiation/history", response_model=SessionHistoryResponse)
 async def get_negotiation_history(
     email: str = Query(default="", description="User email"),
-    days: int = Query(default=7, ge=1, le=90, description="Number of days to look back"),
+    days: int = Query(default=14, ge=1, le=90, description="Number of days to look back"),
     db: SessionStore = Depends(get_session_store),
     registry: ScenarioRegistry = Depends(get_scenario_registry),
     custom_store=Depends(get_custom_scenario_store),
