@@ -369,8 +369,8 @@ class TestHistoryEndpointDateFiltering:
         finally:
             app.dependency_overrides.clear()
 
-    async def test_days_defaults_to_7(self, sqlite_client, mock_registry):
-        """When days is omitted, defaults to 7."""
+    async def test_days_defaults_to_14(self, sqlite_client, mock_registry):
+        """When days is omitted, defaults to 14."""
         app.dependency_overrides[get_session_store] = lambda: sqlite_client
         app.dependency_overrides[get_scenario_registry] = lambda: mock_registry
         try:
@@ -384,7 +384,7 @@ class TestHistoryEndpointDateFiltering:
                 )
 
             assert resp.status_code == 200
-            assert resp.json()["period_days"] == 7
+            assert resp.json()["period_days"] == 14
         finally:
             app.dependency_overrides.clear()
 
