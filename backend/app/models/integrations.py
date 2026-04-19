@@ -7,27 +7,6 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.config import settings
 
 
-class CreateKeyRequest(BaseModel):
-    """Request body for POST /api/v1/integrations/keys."""
-
-    org_name: str = Field(..., min_length=1, max_length=200)
-    scopes: list[str] | None = None
-    rate_limit_daily: int | None = Field(None, gt=0, le=10000)
-    rate_limit_per_minute: int | None = Field(None, gt=0, le=100)
-
-
-class CreateKeyResponse(BaseModel):
-    """Response body for POST /api/v1/integrations/keys."""
-
-    key_id: str
-    api_key: str  # Raw key — shown once only
-    org_name: str
-    scopes: list[str]
-    rate_limit_daily: int
-    created_at: str
-    warning: str = "Save this API key now. It will not be shown again."
-
-
 class CRMContext(BaseModel):
     """CRM context fields for simulation personalization."""
 

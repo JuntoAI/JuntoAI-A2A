@@ -1,4 +1,8 @@
-"""Async API key store implementations for dual-mode persistence (Firestore + SQLite)."""
+"""Async integration org store implementations for dual-mode persistence (Firestore + SQLite).
+
+Stores org tokens (one per customer org) with domain allowlisting and rate limiting.
+Replaces the previous API key + scopes model with a simpler org token + email domain model.
+"""
 
 import json
 import os
@@ -8,14 +12,14 @@ import aiosqlite
 
 from app.exceptions import DatabaseConnectionError
 
-_CREATE_API_KEYS_TABLE_SQL = """
-CREATE TABLE IF NOT EXISTS integration_api_keys (
+_CREATE_INTEGRATION_ORGS_TABLE_SQL = """
+CREATE TABLE IF NOT EXISTS integration_orgs (
     key_id TEXT PRIMARY KEY,
     key_hash TEXT NOT NULL UNIQUE,
     key_prefix TEXT NOT NULL,
     org_name TEXT NOT NULL,
+    domain TEXT NOT NULL,
     created_by_email TEXT NOT NULL,
-    scopes TEXT NOT NULL,
     rate_limit_daily INTEGER NOT NULL DEFAULT 1000,
     rate_limit_per_minute INTEGER NOT NULL DEFAULT 10,
     active INTEGER NOT NULL DEFAULT 1,
@@ -28,16 +32,16 @@ CREATE TABLE IF NOT EXISTS integration_api_keys (
 )
 """
 
-_CREATE_API_KEYS_INDEX_SQL = """
-CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON integration_api_keys(key_hash)
+_CREATE_INTEGRATION_ORGS_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_integration_orgs_hash ON integration_orgs(key_hash)
 """
 
 
 class SQLiteApiKeyClient:
     """Implements the ``ApiKeyStore`` protocol using aiosqlite.
 
-    The constructor is synchronous. Table creation happens lazily on the
-    first database operation via ``_get_connection()``.
+    Stores integration org tokens with domain allowlisting.
+    Table creation happens lazily on first database operation.
     """
 
     def __init__(self, db_path: str = "data/juntoai.db") -> None:
@@ -57,35 +61,30 @@ class SQLiteApiKeyClient:
             ) from e
 
         if not self._table_ready:
-            await conn.execute(_CREATE_API_KEYS_TABLE_SQL)
-            await conn.execute(_CREATE_API_KEYS_INDEX_SQL)
+            await conn.execute(_CREATE_INTEGRATION_ORGS_TABLE_SQL)
+            await conn.execute(_CREATE_INTEGRATION_ORGS_INDEX_SQL)
             await conn.commit()
             self._table_ready = True
 
         return conn
 
     def _row_to_dict(self, row: tuple, cursor_description: list) -> dict:
-        """Convert a SQLite row tuple to a dict, deserializing JSON fields."""
+        """Convert a SQLite row tuple to a dict."""
         columns = [desc[0] for desc in cursor_description]
         record = dict(zip(columns, row))
-        # Deserialize scopes from JSON string to list
-        if "scopes" in record and isinstance(record["scopes"], str):
-            record["scopes"] = json.loads(record["scopes"])
         # Convert active from int to bool
         if "active" in record:
             record["active"] = bool(record["active"])
         return record
 
     async def create_key(self, key_record: dict) -> None:
-        """Insert a new API key record."""
+        """Insert a new org token record."""
         conn = await self._get_connection()
         try:
-            # Serialize scopes list to JSON string
-            scopes_json = json.dumps(key_record.get("scopes", []))
             await conn.execute(
-                """INSERT INTO integration_api_keys
-                (key_id, key_hash, key_prefix, org_name, created_by_email,
-                 scopes, rate_limit_daily, rate_limit_per_minute, active,
+                """INSERT INTO integration_orgs
+                (key_id, key_hash, key_prefix, org_name, domain, created_by_email,
+                 rate_limit_daily, rate_limit_per_minute, active,
                  created_at, last_used_at, usage_today, usage_today_date,
                  minute_window_start, minute_window_count)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -94,8 +93,8 @@ class SQLiteApiKeyClient:
                     key_record["key_hash"],
                     key_record["key_prefix"],
                     key_record["org_name"],
+                    key_record["domain"],
                     key_record["created_by_email"],
-                    scopes_json,
                     key_record.get("rate_limit_daily", 1000),
                     key_record.get("rate_limit_per_minute", 10),
                     1 if key_record.get("active", True) else 0,
@@ -112,11 +111,11 @@ class SQLiteApiKeyClient:
             await conn.close()
 
     async def get_key_by_hash(self, key_hash: str) -> dict | None:
-        """Look up an API key record by its SHA-256 hash. Returns None if not found."""
+        """Look up an org token by its SHA-256 hash."""
         conn = await self._get_connection()
         try:
             cursor = await conn.execute(
-                "SELECT * FROM integration_api_keys WHERE key_hash = ?",
+                "SELECT * FROM integration_orgs WHERE key_hash = ?",
                 (key_hash,),
             )
             row = await cursor.fetchone()
@@ -127,11 +126,11 @@ class SQLiteApiKeyClient:
             await conn.close()
 
     async def get_key_by_id(self, key_id: str) -> dict | None:
-        """Look up an API key record by key_id. Returns None if not found."""
+        """Look up an org token by key_id."""
         conn = await self._get_connection()
         try:
             cursor = await conn.execute(
-                "SELECT * FROM integration_api_keys WHERE key_id = ?",
+                "SELECT * FROM integration_orgs WHERE key_id = ?",
                 (key_id,),
             )
             row = await cursor.fetchone()
@@ -142,17 +141,13 @@ class SQLiteApiKeyClient:
             await conn.close()
 
     async def update_key(self, key_id: str, updates: dict) -> None:
-        """Update fields on an existing API key record."""
+        """Update fields on an existing org token record."""
         conn = await self._get_connection()
         try:
-            # Build SET clause dynamically from updates
             set_parts = []
             values = []
             for key, value in updates.items():
-                if key == "scopes":
-                    set_parts.append(f"{key} = ?")
-                    values.append(json.dumps(value))
-                elif key == "active":
+                if key == "active":
                     set_parts.append(f"{key} = ?")
                     values.append(1 if value else 0)
                 else:
@@ -164,7 +159,7 @@ class SQLiteApiKeyClient:
 
             values.append(key_id)
             await conn.execute(
-                f"UPDATE integration_api_keys SET {', '.join(set_parts)} WHERE key_id = ?",
+                f"UPDATE integration_orgs SET {', '.join(set_parts)} WHERE key_id = ?",
                 tuple(values),
             )
             await conn.commit()
@@ -176,7 +171,7 @@ class SQLiteApiKeyClient:
         conn = await self._get_connection()
         try:
             await conn.execute(
-                "UPDATE integration_api_keys SET active = 0 WHERE key_id = ?",
+                "UPDATE integration_orgs SET active = 0 WHERE key_id = ?",
                 (key_id,),
             )
             await conn.commit()
@@ -188,12 +183,12 @@ class SQLiteApiKeyClient:
         conn = await self._get_connection()
         try:
             await conn.execute(
-                "UPDATE integration_api_keys SET usage_today = usage_today + 1 WHERE key_id = ?",
+                "UPDATE integration_orgs SET usage_today = usage_today + 1 WHERE key_id = ?",
                 (key_id,),
             )
             await conn.commit()
             cursor = await conn.execute(
-                "SELECT usage_today FROM integration_api_keys WHERE key_id = ?",
+                "SELECT usage_today FROM integration_orgs WHERE key_id = ?",
                 (key_id,),
             )
             row = await cursor.fetchone()
@@ -207,7 +202,7 @@ class SQLiteApiKeyClient:
         try:
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             await conn.execute(
-                "UPDATE integration_api_keys SET usage_today = 0, usage_today_date = ? WHERE key_id = ?",
+                "UPDATE integration_orgs SET usage_today = 0, usage_today_date = ? WHERE key_id = ?",
                 (today, key_id),
             )
             await conn.commit()
@@ -218,11 +213,10 @@ class SQLiteApiKeyClient:
 class FirestoreApiKeyClient:
     """Implements the ``ApiKeyStore`` protocol using Firestore.
 
-    Uses the ``integration_api_keys`` collection with document ID = ``key_id``.
-    Scopes are stored as a native Firestore array.
+    Uses the ``integration_orgs`` collection with document ID = ``key_id``.
     """
 
-    COLLECTION = "integration_api_keys"
+    COLLECTION = "integration_orgs"
 
     def __init__(self, db=None, project: str | None = None) -> None:
         if db is not None:
@@ -234,12 +228,12 @@ class FirestoreApiKeyClient:
         self._collection = self._db.collection(self.COLLECTION)
 
     async def create_key(self, key_record: dict) -> None:
-        """Write a new API key document keyed by key_id."""
+        """Write a new org token document."""
         doc_ref = self._collection.document(key_record["key_id"])
         await doc_ref.set(key_record)
 
     async def get_key_by_hash(self, key_hash: str) -> dict | None:
-        """Query for an API key by its SHA-256 hash. Returns None if not found."""
+        """Query for an org token by its SHA-256 hash."""
         from google.cloud.firestore_v1.base_query import FieldFilter
 
         query = self._collection.where(
@@ -250,14 +244,14 @@ class FirestoreApiKeyClient:
         return None
 
     async def get_key_by_id(self, key_id: str) -> dict | None:
-        """Read an API key document by key_id. Returns None if not found."""
+        """Read an org token document by key_id."""
         doc = await self._collection.document(key_id).get()
         if not doc.exists:
             return None
         return doc.to_dict()
 
     async def update_key(self, key_id: str, updates: dict) -> None:
-        """Merge fields into an existing API key document."""
+        """Merge fields into an existing org token document."""
         doc_ref = self._collection.document(key_id)
         await doc_ref.update(updates)
 
@@ -272,7 +266,6 @@ class FirestoreApiKeyClient:
 
         doc_ref = self._collection.document(key_id)
         await doc_ref.update({"usage_today": transforms.Increment(1)})
-        # Read back the updated value
         doc = await doc_ref.get()
         data = doc.to_dict()
         return data.get("usage_today", 0)

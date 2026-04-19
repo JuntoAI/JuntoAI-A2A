@@ -21,7 +21,6 @@ from hypothesis import strategies as st
 
 from app.models.integrations import (
     CRMContext,
-    CreateKeyRequest,
     HealthResponse,
     IntegrationErrorResponse,
     RateLimitInfo,
@@ -70,22 +69,6 @@ _scopes = st.lists(
     max_size=4,
     unique=True,
 )
-
-# ---------------------------------------------------------------------------
-# Strategy: CreateKeyRequest
-# ---------------------------------------------------------------------------
-
-
-@st.composite
-def create_key_request_strategy(draw):
-    """Generate valid CreateKeyRequest instances."""
-    return CreateKeyRequest(
-        org_name=draw(_non_empty_text),
-        scopes=draw(st.one_of(st.none(), _scopes)),
-        rate_limit_daily=draw(st.one_of(st.none(), st.integers(min_value=1, max_value=10000))),
-        rate_limit_per_minute=draw(st.one_of(st.none(), st.integers(min_value=1, max_value=100))),
-    )
-
 
 # ---------------------------------------------------------------------------
 # Strategy: CRMContext
@@ -402,17 +385,6 @@ def integration_error_response_strategy(draw):
 @pytest.mark.property
 @pytest.mark.slow
 @settings(max_examples=100, deadline=None)
-@given(instance=create_key_request_strategy())
-def test_create_key_request_round_trip(instance: CreateKeyRequest):
-    """CreateKeyRequest survives JSON serialization round-trip."""
-    json_str = instance.model_dump_json()
-    restored = CreateKeyRequest.model_validate_json(json_str)
-    assert restored == instance
-
-
-@pytest.mark.property
-@pytest.mark.slow
-@settings(max_examples=100, deadline=None)
 @given(instance=simulate_request_strategy())
 def test_simulate_request_round_trip(instance: SimulateRequest):
     """SimulateRequest survives JSON serialization round-trip.
@@ -591,12 +563,15 @@ def test_api_key_generation_and_validation_round_trip(
         try:
             with patch("app.services.api_key_service.settings") as mock_settings:
                 mock_settings.RUN_MODE = "local"
+                mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+                mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+                mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
                 # Generate key
                 raw_key, key_record = await service.generate_key(
                     org_name=org_name,
+                    domain="test.com",
                     created_by_email="test@example.com",
-                    scopes=scopes,
                     rate_limit_daily=rate_limit_daily,
                 )
 
@@ -608,7 +583,6 @@ def test_api_key_generation_and_validation_round_trip(
                 assert validated_record["key_id"] == key_record["key_id"]
                 assert validated_record["key_hash"] == key_record["key_hash"]
                 assert validated_record["org_name"] == org_name
-                assert validated_record["scopes"] == scopes
                 assert validated_record["rate_limit_daily"] == rate_limit_daily
                 assert validated_record["active"] is True
 
@@ -653,11 +627,14 @@ def test_api_key_record_completeness(
         try:
             with patch("app.services.api_key_service.settings") as mock_settings:
                 mock_settings.RUN_MODE = "local"
+                mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+                mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+                mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
                 raw_key, key_record = await service.generate_key(
                     org_name=org_name,
+                    domain="test.com",
                     created_by_email="admin@example.com",
-                    scopes=scopes,
                     rate_limit_daily=rate_limit_daily,
                     rate_limit_per_minute=rate_limit_per_minute,
                 )
@@ -665,7 +642,7 @@ def test_api_key_record_completeness(
                 # Assert all required fields exist
                 required_fields = [
                     "key_id", "key_hash", "key_prefix", "org_name",
-                    "created_by_email", "scopes", "rate_limit_daily",
+                    "domain", "created_by_email", "rate_limit_daily",
                     "rate_limit_per_minute", "active", "created_at",
                 ]
                 for field in required_fields:
@@ -677,7 +654,6 @@ def test_api_key_record_completeness(
                 assert isinstance(key_record["key_prefix"], str) and len(key_record["key_prefix"]) == 4
                 assert isinstance(key_record["org_name"], str)
                 assert isinstance(key_record["created_by_email"], str)
-                assert isinstance(key_record["scopes"], list)
                 assert isinstance(key_record["rate_limit_daily"], int)
                 assert isinstance(key_record["rate_limit_per_minute"], int)
                 assert isinstance(key_record["active"], bool)
@@ -692,7 +668,6 @@ def test_api_key_record_completeness(
 
                 # Assert metadata matches inputs
                 assert key_record["org_name"] == org_name
-                assert key_record["scopes"] == scopes
                 assert key_record["rate_limit_daily"] == rate_limit_daily
                 assert key_record["rate_limit_per_minute"] == rate_limit_per_minute
                 assert key_record["active"] is True
@@ -734,12 +709,15 @@ def test_rate_limit_enforcement(
         try:
             with patch("app.services.api_key_service.settings") as mock_settings:
                 mock_settings.RUN_MODE = "local"
+                mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+                mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+                mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
                 # Generate a key with specific rate limits
                 raw_key, key_record = await service.generate_key(
                     org_name="test-org",
+                    domain="test.com",
                     created_by_email="test@example.com",
-                    scopes=["simulate"],
                     rate_limit_daily=daily_limit,
                     rate_limit_per_minute=per_minute_limit,
                 )
@@ -811,89 +789,58 @@ def test_rate_limit_enforcement(
 from unittest.mock import AsyncMock
 from fastapi import HTTPException
 
-from app.middleware.api_key_auth import require_scope
+from app.middleware.api_key_auth import validate_integration_auth
 
 ALL_SCOPES = ["simulate", "read_sessions", "list_scenarios", "manage_keys"]
 
-_scope_subsets = st.lists(
-    st.sampled_from(ALL_SCOPES),
-    min_size=0,
-    max_size=3,
-    unique=True,
-).filter(lambda s: len(s) < len(ALL_SCOPES))  # Must be a strict subset
-
-
-@st.composite
-def scope_access_control_strategy(draw):
-    """Generate a strict subset of scopes and a scope NOT in that subset.
-
-    Returns (key_scopes, missing_scope) where missing_scope ∉ key_scopes.
-    """
-    key_scopes = draw(_scope_subsets)
-    complement = [s for s in ALL_SCOPES if s not in key_scopes]
-    # complement is guaranteed non-empty because key_scopes is a strict subset
-    missing_scope = draw(st.sampled_from(complement))
-    return key_scopes, missing_scope
+_domain_strategy = st.text(
+    alphabet=st.characters(whitelist_categories=("L", "N"), blacklist_characters="\x00"),
+    min_size=2,
+    max_size=20,
+).map(lambda s: f"{s}.com")
 
 
 @pytest.mark.property
 @pytest.mark.slow
 @settings(max_examples=100, deadline=None)
-@given(data=scope_access_control_strategy())
-def test_scope_based_access_control(data: tuple[list[str], str]):
-    """Property 3: Keys lacking a required scope are rejected with 403 insufficient_scope.
+@given(
+    org_domain=_domain_strategy,
+    wrong_domain=_domain_strategy,
+)
+def test_domain_mismatch_access_control(org_domain: str, wrong_domain: str):
+    """Property 3: Email domain mismatch is rejected with 403 domain_mismatch.
 
-    **Validates: Requirements 2.4**
+    **Validates: Requirements 2.4 (adapted for domain-based auth)**
     """
-
-    key_scopes, missing_scope = data
+    from hypothesis import assume
+    assume(org_domain.lower() != wrong_domain.lower())
 
     async def _test():
         service, store, db_path = _make_service()
         try:
             with patch("app.services.api_key_service.settings") as mock_settings:
                 mock_settings.RUN_MODE = "local"
+                mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+                mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
-                # Generate a key with the given subset of scopes
                 raw_key, key_record = await service.generate_key(
-                    org_name="scope-test-org",
-                    created_by_email="test@example.com",
-                    scopes=key_scopes if key_scopes else ["simulate"],
+                    org_name="domain-test-org",
+                    domain=org_domain,
+                    created_by_email=f"admin@{org_domain}",
                     rate_limit_daily=1000,
                     rate_limit_per_minute=100,
                 )
 
-                # If key_scopes is empty, we generated with ["simulate"] as a
-                # fallback to have a valid key, but we need to update scopes to
-                # the actual empty list for the test
-                if not key_scopes:
-                    await store.update_key(key_record["key_id"], {"scopes": []})
-
-                # Get the scope dependency for the missing scope
-                scope_dependency = require_scope(missing_scope)
-
-                # Mock get_api_key_store to return our test store
                 with patch("app.middleware.api_key_auth.get_api_key_store", return_value=store):
-                    # Call the scope dependency with the raw key
                     try:
-                        await scope_dependency(x_api_key=raw_key)
-                        # Should NOT reach here
-                        assert False, (
-                            f"Expected HTTPException(403) but call succeeded. "
-                            f"key_scopes={key_scopes}, required={missing_scope}"
+                        await validate_integration_auth(
+                            x_integration_token=raw_key,
+                            x_user_email=f"user@{wrong_domain}",
                         )
+                        assert False, "Expected HTTPException(403) but call succeeded"
                     except HTTPException as exc:
-                        # Assert 403 with insufficient_scope
-                        assert exc.status_code == 403, (
-                            f"Expected 403 but got {exc.status_code}. "
-                            f"key_scopes={key_scopes}, required={missing_scope}"
-                        )
-                        assert exc.detail["error"] == "insufficient_scope", (
-                            f"Expected 'insufficient_scope' but got '{exc.detail['error']}'. "
-                            f"key_scopes={key_scopes}, required={missing_scope}"
-                        )
-                        assert exc.detail["details"]["required_scope"] == missing_scope
-                        assert exc.detail["details"]["key_scopes"] == key_scopes
+                        assert exc.status_code == 403
+                        assert exc.detail["error"] == "domain_mismatch"
         finally:
             os.unlink(db_path)
 

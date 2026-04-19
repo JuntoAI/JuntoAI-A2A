@@ -1,4 +1,9 @@
-"""API Key Service — generation, hashing, validation, and rate-limit checking."""
+"""API Key Service — org token generation, hashing, validation, and rate-limit checking.
+
+Manages per-org integration tokens with domain allowlisting. No scopes — all
+authenticated orgs get full access to the integration API. Rate limiting is
+per-org (daily + per-minute).
+"""
 
 from __future__ import annotations
 
@@ -11,37 +16,36 @@ from datetime import datetime, timedelta, timezone
 from app.config import settings
 from app.db.base import ApiKeyStore
 
-DEFAULT_SCOPES = ["simulate", "read_sessions", "list_scenarios"]
 DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
 
 class ApiKeyService:
-    """Manages API key lifecycle: generation, validation, rate limiting, deactivation."""
+    """Manages org token lifecycle: generation, validation, rate limiting, deactivation."""
 
     def __init__(self, store: ApiKeyStore) -> None:
         self._store = store
 
     @staticmethod
     def generate_raw_key() -> str:
-        """Generate a raw API key: a2a_live_<base64url 32 random bytes>."""
+        """Generate a raw org token: a2a_live_<base64url 32 random bytes>."""
         random_bytes = secrets.token_bytes(32)
         encoded = base64.urlsafe_b64encode(random_bytes).decode("ascii")
         return f"a2a_live_{encoded}"
 
     @staticmethod
     def hash_key(raw_key: str) -> str:
-        """Compute SHA-256 hex digest of a raw API key."""
+        """Compute SHA-256 hex digest of a raw org token."""
         return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
 
     async def generate_key(
         self,
         org_name: str,
+        domain: str,
         created_by_email: str,
-        scopes: list[str] | None = None,
         rate_limit_daily: int | None = None,
         rate_limit_per_minute: int | None = None,
     ) -> tuple[str, dict]:
-        """Generate a new API key and persist the record.
+        """Generate a new org token and persist the record.
 
         Returns (raw_key, key_record). The raw key is shown once only.
         """
@@ -49,19 +53,17 @@ class ApiKeyService:
         key_hash = self.hash_key(raw_key)
 
         # Extract prefix: first 4 chars after "a2a_live_"
-        key_prefix = raw_key[len("a2a_live_") : len("a2a_live_") + 4]
-
-        # Apply defaults
-        if scopes is None:
-            scopes = list(DEFAULT_SCOPES)
+        key_prefix = raw_key[len("a2a_live_"):len("a2a_live_") + 4]
 
         if rate_limit_daily is None:
             rate_limit_daily = (
-                100 if settings.RUN_MODE == "cloud" else 1000
+                settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD
+                if settings.RUN_MODE == "cloud"
+                else settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL
             )
 
         if rate_limit_per_minute is None:
-            rate_limit_per_minute = DEFAULT_RATE_LIMIT_PER_MINUTE
+            rate_limit_per_minute = settings.DEFAULT_RATE_LIMIT_PER_MINUTE
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -70,8 +72,8 @@ class ApiKeyService:
             "key_hash": key_hash,
             "key_prefix": key_prefix,
             "org_name": org_name,
+            "domain": domain.lower().strip(),
             "created_by_email": created_by_email,
-            "scopes": scopes,
             "rate_limit_daily": rate_limit_daily,
             "rate_limit_per_minute": rate_limit_per_minute,
             "active": True,
@@ -87,7 +89,7 @@ class ApiKeyService:
         return raw_key, key_record
 
     async def validate_key(self, raw_key: str) -> dict | None:
-        """Validate an API key by hash lookup.
+        """Validate an org token by hash lookup.
 
         Returns the key record if found, or None if no match.
         Updates last_used_at on successful lookup.
@@ -106,7 +108,7 @@ class ApiKeyService:
         return record
 
     async def check_rate_limit(self, key_record: dict) -> tuple[bool, dict]:
-        """Check daily and per-minute rate limits for a key.
+        """Check daily and per-minute rate limits for an org.
 
         Returns (allowed, rate_info) where rate_info contains:
         - daily_limit, used_today, remaining, resets_at
@@ -150,7 +152,6 @@ class ApiKeyService:
         if minute_window_start is not None:
             try:
                 window_start = datetime.fromisoformat(minute_window_start)
-                # Ensure timezone-aware comparison
                 if window_start.tzinfo is None:
                     window_start = window_start.replace(tzinfo=timezone.utc)
                 elapsed = (now - window_start).total_seconds()
@@ -166,12 +167,10 @@ class ApiKeyService:
                     }
                     return False, rate_info
 
-                # If window has expired, reset it
                 if elapsed >= 60:
                     minute_window_start = None
                     minute_window_count = 0
             except (ValueError, TypeError):
-                # Invalid timestamp — reset window
                 minute_window_start = None
                 minute_window_count = 0
 
@@ -181,7 +180,6 @@ class ApiKeyService:
 
         # Update per-minute window
         if minute_window_start is None or minute_window_count == 0:
-            # Start a new window
             new_window_start = now.isoformat()
             new_window_count = 1
         else:
@@ -205,5 +203,5 @@ class ApiKeyService:
         return True, rate_info
 
     async def deactivate_key(self, key_id: str) -> None:
-        """Soft-delete: set active=false on the key record."""
+        """Soft-delete: set active=false on the org token record."""
         await self._store.deactivate_key(key_id)

@@ -2,7 +2,11 @@
 
 Provides endpoints for external CRM systems to interact with the A2A
 negotiation engine: health checks, scenario listing, simulation triggering,
-session polling, and API key management.
+and session polling.
+
+Auth model: X-Integration-Token (org token) + X-User-Email (domain validated).
+No scopes — all authenticated orgs get full access.
+Rate limiting is per-org (daily + per-minute).
 """
 
 from __future__ import annotations
@@ -14,10 +18,8 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.db import get_api_key_store, get_session_store, get_share_store
-from app.middleware.api_key_auth import require_scope, validate_api_key
+from app.middleware.api_key_auth import validate_integration_auth
 from app.models.integrations import (
-    CreateKeyRequest,
-    CreateKeyResponse,
     HealthResponse,
     IntegrationErrorResponse,
     RateLimitInfo,
@@ -41,9 +43,9 @@ integrations_router = APIRouter(prefix="/integrations", tags=["integrations"])
 # ---------------------------------------------------------------------------
 
 
-def _add_rate_limit_headers(response: Response, key_record: dict) -> None:
-    """Attach X-RateLimit-* headers to a response from key_record rate info."""
-    rate_info = key_record.get("_rate_info", {})
+def _add_rate_limit_headers(response: Response, org_record: dict) -> None:
+    """Attach X-RateLimit-* headers to a response from org rate info."""
+    rate_info = org_record.get("_rate_info", {})
     response.headers["X-RateLimit-Limit"] = str(rate_info.get("daily_limit", 0))
     response.headers["X-RateLimit-Remaining"] = str(rate_info.get("remaining", 0))
     response.headers["X-RateLimit-Reset"] = rate_info.get("resets_at", "")
@@ -60,7 +62,7 @@ def _build_integration_service() -> IntegrationService:
 
     return IntegrationService(
         session_store=get_session_store(),
-        share_service=None,  # Uses internal import in the service
+        share_service=None,
         scenario_registry=get_scenario_registry(),
         api_key_service=ApiKeyService(get_api_key_store()),
         custom_scenario_store=get_custom_scenario_store(),
@@ -84,18 +86,18 @@ def _build_integration_service() -> IntegrationService:
 )
 async def health_check(
     response: Response,
-    key_record: dict = Depends(validate_api_key),
+    org_record: dict = Depends(validate_integration_auth),
 ) -> HealthResponse:
-    """Health check endpoint — validates API key and returns rate limit status."""
-    _add_rate_limit_headers(response, key_record)
+    """Health check endpoint — validates token + email and returns rate limit status."""
+    _add_rate_limit_headers(response, org_record)
 
-    rate_info = key_record.get("_rate_info", {})
+    rate_info = org_record.get("_rate_info", {})
 
     return HealthResponse(
         status="ok",
         version=settings.APP_VERSION,
         key_valid=True,
-        org_name=key_record.get("org_name", ""),
+        org_name=org_record.get("org_name", ""),
         rate_limit=RateLimitInfo(
             daily_limit=rate_info.get("daily_limit", 0),
             used_today=rate_info.get("used_today", 0),
@@ -121,10 +123,10 @@ async def health_check(
 )
 async def list_scenarios(
     response: Response,
-    key_record: dict = Depends(require_scope("list_scenarios")),
+    org_record: dict = Depends(validate_integration_auth),
 ) -> ScenarioListResponse:
     """List available scenarios with filtered public fields."""
-    _add_rate_limit_headers(response, key_record)
+    _add_rate_limit_headers(response, org_record)
 
     service = _build_integration_service()
     scenarios = service.list_scenarios()
@@ -154,17 +156,26 @@ async def simulate(
     request: SimulateRequest,
     response: Response,
     background_tasks: BackgroundTasks,
-    key_record: dict = Depends(require_scope("simulate")),
+    org_record: dict = Depends(validate_integration_auth),
 ) -> SimulateResponse:
-    """Trigger an async negotiation simulation."""
-    _add_rate_limit_headers(response, key_record)
+    """Trigger an async negotiation simulation.
+
+    The user email from X-User-Email is automatically used as triggered_by
+    for session ownership and attribution.
+    """
+    _add_rate_limit_headers(response, org_record)
+
+    # Override triggered_by with the authenticated user email
+    user_email = org_record.get("_user_email", "")
+    if user_email:
+        request = request.model_copy(update={"triggered_by": user_email})
 
     service = _build_integration_service()
 
     try:
         result = await service.create_simulation(
             request=request,
-            key_record=key_record,
+            key_record=org_record,
             background_tasks=background_tasks,
         )
         return result
@@ -207,15 +218,15 @@ async def simulate(
 async def get_session_status(
     session_id: str,
     response: Response,
-    key_record: dict = Depends(require_scope("read_sessions")),
+    org_record: dict = Depends(validate_integration_auth),
 ) -> SessionStatusResponse:
     """Poll the status of a simulation session."""
-    _add_rate_limit_headers(response, key_record)
+    _add_rate_limit_headers(response, org_record)
 
     service = _build_integration_service()
 
     try:
-        result = await service.get_session_status(session_id, key_record)
+        result = await service.get_session_status(session_id, org_record)
         return result
     except IntegrationError as exc:
         return JSONResponse(
@@ -241,100 +252,3 @@ async def get_session_status(
                 "details": {},
             },
         )
-
-
-# ---------------------------------------------------------------------------
-# POST /integrations/keys — generate new API key
-# ---------------------------------------------------------------------------
-
-
-@integrations_router.post(
-    "/keys",
-    response_model=CreateKeyResponse,
-    status_code=201,
-    responses={
-        401: {"model": IntegrationErrorResponse},
-        403: {"model": IntegrationErrorResponse},
-        429: {"model": IntegrationErrorResponse},
-    },
-)
-async def create_api_key(
-    request: CreateKeyRequest,
-    response: Response,
-    key_record: dict = Depends(require_scope("manage_keys")),
-) -> CreateKeyResponse:
-    """Generate a new API key for an organization."""
-    _add_rate_limit_headers(response, key_record)
-
-    store = get_api_key_store()
-    service = ApiKeyService(store)
-
-    raw_key, new_key_record = await service.generate_key(
-        org_name=request.org_name,
-        created_by_email=key_record.get("created_by_email", ""),
-        scopes=request.scopes,
-        rate_limit_daily=request.rate_limit_daily,
-        rate_limit_per_minute=request.rate_limit_per_minute,
-    )
-
-    # Store raw key on the record for potential webhook use downstream
-    new_key_record["_raw_key"] = raw_key
-
-    return CreateKeyResponse(
-        key_id=new_key_record["key_id"],
-        api_key=raw_key,
-        org_name=new_key_record["org_name"],
-        scopes=new_key_record["scopes"],
-        rate_limit_daily=new_key_record["rate_limit_daily"],
-        created_at=new_key_record["created_at"],
-    )
-
-
-# ---------------------------------------------------------------------------
-# DELETE /integrations/keys/{key_id} — deactivate API key
-# ---------------------------------------------------------------------------
-
-
-@integrations_router.delete(
-    "/keys/{key_id}",
-    status_code=200,
-    responses={
-        401: {"model": IntegrationErrorResponse},
-        403: {"model": IntegrationErrorResponse},
-        404: {"model": IntegrationErrorResponse},
-        429: {"model": IntegrationErrorResponse},
-    },
-)
-async def deactivate_api_key(
-    key_id: str,
-    response: Response,
-    key_record: dict = Depends(require_scope("manage_keys")),
-) -> JSONResponse:
-    """Deactivate an API key (soft-delete)."""
-    _add_rate_limit_headers(response, key_record)
-
-    store = get_api_key_store()
-    service = ApiKeyService(store)
-
-    # Verify the key exists
-    existing = await store.get_key_by_id(key_id)
-    if existing is None:
-        return JSONResponse(
-            status_code=404,
-            content={
-                "error": "key_not_found",
-                "message": f"API key '{key_id}' not found.",
-                "details": {},
-            },
-        )
-
-    await service.deactivate_key(key_id)
-
-    return JSONResponse(
-        status_code=200,
-        content={
-            "key_id": key_id,
-            "active": False,
-            "message": "API key deactivated successfully.",
-        },
-    )

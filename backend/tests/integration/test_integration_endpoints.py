@@ -2,7 +2,9 @@
 
 Feature: 350_crm-integration-api
 Requirements: 1.1, 2.1, 2.2, 2.3, 2.4, 3.2, 3.3, 4.1, 5.1, 6.1, 6.2, 6.3,
-              8.1, 8.2, 8.3, 9.1, 9.3, 10.1, 13.1, 13.2
+              8.1, 8.2, 8.3, 9.1, 9.3, 13.1, 13.2
+
+Auth model: X-Integration-Token (org token) + X-User-Email (domain validated).
 """
 
 from __future__ import annotations
@@ -25,6 +27,19 @@ from app.services.api_key_service import ApiKeyService
 
 BASE = "/api/v1/integrations"
 
+# Consistent org domain and user email for all tests
+ORG_DOMAIN = "testorg.com"
+USER_EMAIL = "user@testorg.com"
+ADMIN_EMAIL = "admin@testorg.com"
+
+
+def _auth_headers(raw_key: str, email: str = USER_EMAIL) -> dict:
+    """Build auth headers for the new token + email model."""
+    return {
+        "X-Integration-Token": raw_key,
+        "X-User-Email": email,
+    }
+
 
 def _error_schema_valid(body: dict) -> bool:
     """Check that an error response matches IntegrationErrorResponse schema."""
@@ -42,7 +57,7 @@ def _error_schema_valid(body: dict) -> bool:
 
 @pytest.fixture()
 async def api_key_env(tmp_path, valid_scenario_dict):
-    """Set up a SQLite API key store with a fully-scoped key and mock dependencies.
+    """Set up a SQLite API key store with an org token and mock dependencies.
 
     Yields (raw_key, key_record, store, client).
     """
@@ -50,11 +65,11 @@ async def api_key_env(tmp_path, valid_scenario_dict):
     store = SQLiteApiKeyClient(db_path=db_path)
     service = ApiKeyService(store)
 
-    # Generate a key with all scopes
+    # Generate an org token with domain validation
     raw_key, key_record = await service.generate_key(
         org_name="TestOrg",
-        created_by_email="admin@testorg.com",
-        scopes=["simulate", "read_sessions", "list_scenarios", "manage_keys"],
+        domain=ORG_DOMAIN,
+        created_by_email=ADMIN_EMAIL,
         rate_limit_daily=1000,
         rate_limit_per_minute=60,
     )
@@ -123,7 +138,7 @@ class TestHealthEndpoint:
         env = api_key_env
         resp = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": env["raw_key"]},
+            headers=_auth_headers(env["raw_key"]),
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -153,7 +168,7 @@ class TestScenariosEndpoint:
         env = api_key_env
         resp = await env["client"].get(
             f"{BASE}/scenarios",
-            headers={"X-API-Key": env["raw_key"]},
+            headers=_auth_headers(env["raw_key"]),
         )
         assert resp.status_code == 200
         body = resp.json()
@@ -204,7 +219,7 @@ class TestSimulateEndpoint:
         ):
             resp = await env["client"].post(
                 f"{BASE}/simulate",
-                headers={"X-API-Key": env["raw_key"]},
+                headers=_auth_headers(env["raw_key"]),
                 json={
                     "scenario_id": "test-scenario",
                     "active_toggles": ["toggle_1"],
@@ -224,7 +239,7 @@ class TestSimulateEndpoint:
 
         resp = await env["client"].post(
             f"{BASE}/simulate",
-            headers={"X-API-Key": env["raw_key"]},
+            headers=_auth_headers(env["raw_key"]),
             json={"scenario_id": "nonexistent-scenario"},
         )
 
@@ -249,7 +264,7 @@ class TestSimulateEndpoint:
         ):
             resp = await env["client"].post(
                 f"{BASE}/simulate",
-                headers={"X-API-Key": env["raw_key"]},
+                headers=_auth_headers(env["raw_key"]),
                 json={
                     "scenario_id": "_dynamic",
                     "scenario_builder": {
@@ -275,8 +290,8 @@ class TestSimulateEndpoint:
         assert "session_id" in body
         assert body["status"] == "running"
 
-    async def test_triggered_by_email_sets_owner(self, api_key_env):
-        """Test triggered_by with valid email — Requirement 9.1"""
+    async def test_triggered_by_email_overridden_from_header(self, api_key_env):
+        """triggered_by is automatically set from X-User-Email — Requirement 9.1"""
         env = api_key_env
 
         with patch(
@@ -285,61 +300,29 @@ class TestSimulateEndpoint:
         ):
             resp = await env["client"].post(
                 f"{BASE}/simulate",
-                headers={"X-API-Key": env["raw_key"]},
+                headers=_auth_headers(env["raw_key"]),
                 json={
                     "scenario_id": "test-scenario",
-                    "triggered_by": "user@company.com",
+                    "triggered_by": "ignored@other.com",
                 },
             )
 
         assert resp.status_code == 201
 
-        # Verify session was updated with owner_email
+        # Verify session was updated with owner_email from X-User-Email header
         update_calls = env["session_store"].update_session.call_args_list
-        # Find the metadata update call (has owner_email)
         metadata_found = False
         for call in update_calls:
             args = call[0] if call[0] else ()
             kwargs = call[1] if call[1] else {}
             update_data = args[1] if len(args) > 1 else kwargs.get("updates", {})
             if isinstance(update_data, dict) and "owner_email" in update_data:
-                assert update_data["owner_email"] == "user@company.com"
+                assert update_data["owner_email"] == USER_EMAIL
                 assert update_data["source"] == "integration"
                 assert update_data["integration_org"] == "TestOrg"
                 metadata_found = True
                 break
         assert metadata_found, "owner_email metadata not found in session updates"
-
-    async def test_triggered_by_display_name_uses_synthetic_owner(self, api_key_env):
-        """Test triggered_by with display name — Requirement 9.3"""
-        env = api_key_env
-
-        with patch(
-            "app.services.integration_service.IntegrationService._create_viewer_url",
-            new=AsyncMock(return_value="http://localhost:3000/share/xyz"),
-        ):
-            resp = await env["client"].post(
-                f"{BASE}/simulate",
-                headers={"X-API-Key": env["raw_key"]},
-                json={
-                    "scenario_id": "test-scenario",
-                    "triggered_by": "Jane Smith",
-                },
-            )
-
-        assert resp.status_code == 201
-
-        # Verify session was updated with synthetic owner
-        update_calls = env["session_store"].update_session.call_args_list
-        metadata_found = False
-        for call in update_calls:
-            args = call[0] if call[0] else ()
-            update_data = args[1] if len(args) > 1 else {}
-            if isinstance(update_data, dict) and "owner_email" in update_data:
-                assert update_data["owner_email"] == "integration:TestOrg"
-                metadata_found = True
-                break
-        assert metadata_found, "synthetic owner_email not found in session updates"
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +353,7 @@ class TestSessionStatusEndpoint:
 
         resp = await env["client"].get(
             f"{BASE}/sessions/{session_id}",
-            headers={"X-API-Key": env["raw_key"]},
+            headers=_auth_headers(env["raw_key"]),
         )
 
         assert resp.status_code == 200
@@ -407,7 +390,7 @@ class TestSessionStatusEndpoint:
 
         resp = await env["client"].get(
             f"{BASE}/sessions/{session_id}",
-            headers={"X-API-Key": env["raw_key"]},
+            headers=_auth_headers(env["raw_key"]),
         )
 
         assert resp.status_code == 200
@@ -421,66 +404,13 @@ class TestSessionStatusEndpoint:
 
         resp = await env["client"].get(
             f"{BASE}/sessions/nonexistent-session",
-            headers={"X-API-Key": env["raw_key"]},
+            headers=_auth_headers(env["raw_key"]),
         )
 
         assert resp.status_code == 404
         body = resp.json()
         assert body["error"] == "session_not_found"
         assert _error_schema_valid(body)
-
-
-# ---------------------------------------------------------------------------
-# Key management endpoint tests
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-class TestKeyManagement:
-    """POST/DELETE /api/v1/integrations/keys — Requirement 1.1, 1.5"""
-
-    async def test_create_key(self, api_key_env):
-        env = api_key_env
-
-        resp = await env["client"].post(
-            f"{BASE}/keys",
-            headers={"X-API-Key": env["raw_key"]},
-            json={"org_name": "NewOrg"},
-        )
-
-        assert resp.status_code == 201
-        body = resp.json()
-        assert "key_id" in body
-        assert "api_key" in body
-        assert body["api_key"].startswith("a2a_live_")
-        assert body["org_name"] == "NewOrg"
-        assert "scopes" in body
-        assert "rate_limit_daily" in body
-        assert "created_at" in body
-
-    async def test_deactivate_key(self, api_key_env):
-        env = api_key_env
-
-        # First create a key to deactivate
-        create_resp = await env["client"].post(
-            f"{BASE}/keys",
-            headers={"X-API-Key": env["raw_key"]},
-            json={"org_name": "ToDeactivate"},
-        )
-        assert create_resp.status_code == 201
-        new_key_id = create_resp.json()["key_id"]
-
-        # Deactivate it
-        resp = await env["client"].delete(
-            f"{BASE}/keys/{new_key_id}",
-            headers={"X-API-Key": env["raw_key"]},
-        )
-
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["active"] is False
-        assert body["key_id"] == new_key_id
 
 
 # ---------------------------------------------------------------------------
@@ -493,66 +423,59 @@ class TestKeyManagement:
 class TestAuthErrors:
     """Auth error responses — Requirements 2.1, 2.2, 2.3, 2.4, 13.1, 13.2"""
 
-    async def test_missing_api_key_returns_401(self, api_key_env):
+    async def test_missing_headers_returns_422(self, api_key_env):
         env = api_key_env
         resp = await env["client"].get(f"{BASE}/health")
-        # FastAPI returns 422 for missing required header
+        # FastAPI returns 422 for missing required headers
         assert resp.status_code == 422
 
-    async def test_invalid_api_key_returns_401(self, api_key_env):
+    async def test_invalid_token_returns_401(self, api_key_env):
         env = api_key_env
         resp = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": "a2a_live_invalid_key_that_does_not_exist"},
+            headers=_auth_headers("a2a_live_invalid_key_that_does_not_exist"),
         )
         assert resp.status_code == 401
         body = resp.json()["detail"]
-        assert body["error"] == "invalid_api_key"
+        assert body["error"] == "invalid_token"
         assert isinstance(body["message"], str)
         assert isinstance(body["details"], dict)
 
-    async def test_deactivated_key_returns_403(self, api_key_env):
+    async def test_deactivated_org_returns_403(self, api_key_env):
         env = api_key_env
 
-        # Create a new key and deactivate it
+        # Create a new org token and deactivate it
         service = env["service"]
         raw_key2, record2 = await service.generate_key(
             org_name="DeactivatedOrg",
+            domain="deactivated.com",
             created_by_email="admin@deactivated.com",
-            scopes=["simulate", "read_sessions", "list_scenarios"],
         )
         await service.deactivate_key(record2["key_id"])
 
         resp = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": raw_key2},
+            headers=_auth_headers(raw_key2, email="admin@deactivated.com"),
         )
         assert resp.status_code == 403
         body = resp.json()["detail"]
-        assert body["error"] == "key_deactivated"
+        assert body["error"] == "org_deactivated"
         assert _error_schema_valid(body)
 
-    async def test_insufficient_scope_returns_403(self, api_key_env):
+    async def test_domain_mismatch_returns_403(self, api_key_env):
+        """Email domain not matching org domain returns 403."""
         env = api_key_env
 
-        # Create a key without manage_keys scope
-        service = env["service"]
-        raw_key_limited, _ = await service.generate_key(
-            org_name="LimitedOrg",
-            created_by_email="admin@limited.com",
-            scopes=["simulate"],  # No manage_keys scope
-        )
-
-        # Try to create a key (requires manage_keys scope)
-        resp = await env["client"].post(
-            f"{BASE}/keys",
-            headers={"X-API-Key": raw_key_limited},
-            json={"org_name": "ShouldFail"},
+        resp = await env["client"].get(
+            f"{BASE}/health",
+            headers=_auth_headers(env["raw_key"], email="user@wrongdomain.com"),
         )
         assert resp.status_code == 403
         body = resp.json()["detail"]
-        assert body["error"] == "insufficient_scope"
+        assert body["error"] == "domain_mismatch"
         assert _error_schema_valid(body)
+        assert body["details"]["expected_domain"] == ORG_DOMAIN
+        assert body["details"]["provided_domain"] == "wrongdomain.com"
 
 
 # ---------------------------------------------------------------------------
@@ -568,12 +491,12 @@ class TestRateLimiting:
     async def test_rate_limit_429_includes_required_fields(self, api_key_env):
         env = api_key_env
 
-        # Create a key with very low daily limit
+        # Create an org token with very low daily limit
         service = env["service"]
         raw_key_limited, record = await service.generate_key(
             org_name="RateLimitedOrg",
+            domain="ratelimited.com",
             created_by_email="admin@ratelimited.com",
-            scopes=["simulate", "read_sessions", "list_scenarios"],
             rate_limit_daily=1,
             rate_limit_per_minute=60,
         )
@@ -581,14 +504,14 @@ class TestRateLimiting:
         # First request should succeed (uses the 1 allowed request)
         resp1 = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": raw_key_limited},
+            headers=_auth_headers(raw_key_limited, email="admin@ratelimited.com"),
         )
         assert resp1.status_code == 200
 
         # Second request should be rate limited
         resp2 = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": raw_key_limited},
+            headers=_auth_headers(raw_key_limited, email="admin@ratelimited.com"),
         )
         assert resp2.status_code == 429
         body = resp2.json()["detail"]
@@ -601,7 +524,7 @@ class TestRateLimiting:
         env = api_key_env
         resp = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": env["raw_key"]},
+            headers=_auth_headers(env["raw_key"]),
         )
         assert resp.status_code == 200
         assert "x-ratelimit-limit" in resp.headers
@@ -623,7 +546,7 @@ class TestErrorResponseFormat:
         env = api_key_env
         resp = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": "a2a_live_bogus_key_value"},
+            headers=_auth_headers("a2a_live_bogus_key_value"),
         )
         assert resp.status_code == 401
         body = resp.json()["detail"]
@@ -634,14 +557,14 @@ class TestErrorResponseFormat:
         service = env["service"]
         raw_key2, record2 = await service.generate_key(
             org_name="SchemaTestOrg",
+            domain="schema.com",
             created_by_email="admin@schema.com",
-            scopes=["simulate"],
         )
         await service.deactivate_key(record2["key_id"])
 
         resp = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": raw_key2},
+            headers=_auth_headers(raw_key2, email="admin@schema.com"),
         )
         assert resp.status_code == 403
         body = resp.json()["detail"]
@@ -653,7 +576,7 @@ class TestErrorResponseFormat:
 
         resp = await env["client"].get(
             f"{BASE}/sessions/does-not-exist",
-            headers={"X-API-Key": env["raw_key"]},
+            headers=_auth_headers(env["raw_key"]),
         )
         assert resp.status_code == 404
         body = resp.json()
@@ -664,19 +587,19 @@ class TestErrorResponseFormat:
         service = env["service"]
         raw_key_limited, _ = await service.generate_key(
             org_name="Schema429Org",
+            domain="schema429.com",
             created_by_email="admin@schema429.com",
-            scopes=["simulate", "read_sessions", "list_scenarios"],
             rate_limit_daily=1,
         )
         # Exhaust the limit
         await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": raw_key_limited},
+            headers=_auth_headers(raw_key_limited, email="admin@schema429.com"),
         )
         # This should be 429
         resp = await env["client"].get(
             f"{BASE}/health",
-            headers={"X-API-Key": raw_key_limited},
+            headers=_auth_headers(raw_key_limited, email="admin@schema429.com"),
         )
         assert resp.status_code == 429
         body = resp.json()["detail"]

@@ -1,7 +1,6 @@
 """Unit tests for the API Key Service.
 
 Tests cover:
-- Default scopes assignment when none specified
 - Default rate limits for cloud mode (100) and local mode (1000)
 - Key deactivation preserves record (soft-delete)
 - key_prefix extraction from raw key
@@ -9,7 +8,7 @@ Tests cover:
 - Daily usage counter reset at midnight UTC
 - Per-minute window tracking
 
-Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.5, 3.1
+Requirements: 1.1, 1.2, 1.4, 1.5, 2.5, 3.1
 """
 
 from __future__ import annotations
@@ -22,7 +21,7 @@ from unittest.mock import patch
 import pytest
 
 from app.db.api_key_store import SQLiteApiKeyClient
-from app.services.api_key_service import ApiKeyService, DEFAULT_SCOPES
+from app.services.api_key_service import ApiKeyService
 
 
 # ---------------------------------------------------------------------------
@@ -52,44 +51,6 @@ def service(store):
 
 
 # ---------------------------------------------------------------------------
-# Test: Default scopes assignment when none specified (Requirement 1.3)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_default_scopes_assigned_when_none_specified(service):
-    """When no scopes are specified, default scopes are assigned."""
-    with patch("app.services.api_key_service.settings") as mock_settings:
-        mock_settings.RUN_MODE = "local"
-
-        raw_key, key_record = await service.generate_key(
-            org_name="TestOrg",
-            created_by_email="admin@test.com",
-            scopes=None,
-        )
-
-    assert key_record["scopes"] == ["simulate", "read_sessions", "list_scenarios"]
-    assert key_record["scopes"] == list(DEFAULT_SCOPES)
-
-
-@pytest.mark.unit
-@pytest.mark.asyncio
-async def test_custom_scopes_preserved_when_specified(service):
-    """When scopes are explicitly provided, they are used as-is."""
-    with patch("app.services.api_key_service.settings") as mock_settings:
-        mock_settings.RUN_MODE = "local"
-
-        raw_key, key_record = await service.generate_key(
-            org_name="TestOrg",
-            created_by_email="admin@test.com",
-            scopes=["manage_keys"],
-        )
-
-    assert key_record["scopes"] == ["manage_keys"]
-
-
-# ---------------------------------------------------------------------------
 # Test: Default rate limits for cloud mode (100) and local mode (1000) (Requirement 1.4)
 # ---------------------------------------------------------------------------
 
@@ -100,9 +61,13 @@ async def test_default_rate_limit_cloud_mode(service):
     """In cloud mode, default daily rate limit is 100."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "cloud"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="CloudOrg",
+            domain="cloud.com",
             created_by_email="admin@cloud.com",
             rate_limit_daily=None,
         )
@@ -116,9 +81,13 @@ async def test_default_rate_limit_local_mode(service):
     """In local mode, default daily rate limit is 1000."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="LocalOrg",
+            domain="local.com",
             created_by_email="admin@local.com",
             rate_limit_daily=None,
         )
@@ -132,14 +101,42 @@ async def test_explicit_rate_limit_overrides_default(service):
     """When rate_limit_daily is explicitly provided, it overrides the default."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "cloud"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="CustomOrg",
+            domain="custom.com",
             created_by_email="admin@custom.com",
             rate_limit_daily=500,
         )
 
     assert key_record["rate_limit_daily"] == 500
+
+
+# ---------------------------------------------------------------------------
+# Test: Domain stored in key record
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_domain_stored_in_key_record(service):
+    """The domain parameter is stored in the key record."""
+    with patch("app.services.api_key_service.settings") as mock_settings:
+        mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
+
+        raw_key, key_record = await service.generate_key(
+            org_name="DomainOrg",
+            domain="example.com",
+            created_by_email="admin@example.com",
+        )
+
+    assert key_record["domain"] == "example.com"
 
 
 # ---------------------------------------------------------------------------
@@ -153,9 +150,13 @@ async def test_deactivation_preserves_record(service, store):
     """Deactivating a key sets active=false but preserves the full record."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="DeactivateOrg",
+            domain="deactivate.com",
             created_by_email="admin@deactivate.com",
         )
 
@@ -173,7 +174,7 @@ async def test_deactivation_preserves_record(service, store):
     assert record["org_name"] == "DeactivateOrg"
     assert record["created_by_email"] == "admin@deactivate.com"
     assert record["key_hash"] == key_record["key_hash"]
-    assert record["scopes"] == key_record["scopes"]
+    assert record["domain"] == "deactivate.com"
 
 
 # ---------------------------------------------------------------------------
@@ -187,9 +188,13 @@ async def test_key_prefix_extraction(service):
     """key_prefix is the first 4 characters after 'a2a_live_' in the raw key."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="PrefixOrg",
+            domain="prefix.com",
             created_by_email="admin@prefix.com",
         )
 
@@ -220,9 +225,13 @@ async def test_last_used_at_updated_on_validation(service, store):
     """Validating a key updates last_used_at timestamp."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="ValidationOrg",
+            domain="validation.com",
             created_by_email="admin@validation.com",
         )
 
@@ -264,9 +273,13 @@ async def test_daily_usage_counter_reset_at_midnight(service, store):
     """When the date changes, usage_today resets to 0 before checking limits."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="ResetOrg",
+            domain="reset.com",
             created_by_email="admin@reset.com",
             rate_limit_daily=100,
         )
@@ -299,9 +312,13 @@ async def test_daily_limit_enforced_when_exhausted(service, store):
     """When usage_today >= rate_limit_daily, request is rejected."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="ExhaustedOrg",
+            domain="exhausted.com",
             created_by_email="admin@exhausted.com",
             rate_limit_daily=10,
         )
@@ -336,9 +353,13 @@ async def test_per_minute_limit_enforced(service, store):
     """When minute_window_count >= rate_limit_per_minute within 60s, request is rejected."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="MinuteOrg",
+            domain="minute.com",
             created_by_email="admin@minute.com",
             rate_limit_daily=1000,
             rate_limit_per_minute=5,
@@ -374,9 +395,13 @@ async def test_per_minute_window_resets_after_60_seconds(service, store):
     """When the minute window is older than 60s, it resets and allows the request."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="WindowResetOrg",
+            domain="windowreset.com",
             created_by_email="admin@windowreset.com",
             rate_limit_daily=1000,
             rate_limit_per_minute=5,
@@ -412,9 +437,13 @@ async def test_successful_request_increments_counters(service, store):
     """A successful rate limit check increments usage_today."""
     with patch("app.services.api_key_service.settings") as mock_settings:
         mock_settings.RUN_MODE = "local"
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_LOCAL = 1000
+        mock_settings.DEFAULT_RATE_LIMIT_DAILY_CLOUD = 100
+        mock_settings.DEFAULT_RATE_LIMIT_PER_MINUTE = 10
 
         raw_key, key_record = await service.generate_key(
             org_name="IncrementOrg",
+            domain="increment.com",
             created_by_email="admin@increment.com",
             rate_limit_daily=100,
             rate_limit_per_minute=10,
