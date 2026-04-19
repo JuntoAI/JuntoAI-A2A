@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING
 from app.config import settings
 
 if TYPE_CHECKING:
-    from app.db.base import SessionStore, ShareStore
+    from app.db.base import ApiKeyStore, SessionStore, ShareStore
 
 _client: SessionStore | None = None
 _share_client: ShareStore | None = None
+_api_key_client: ApiKeyStore | None = None
 _firestore_db = None
 _profile_client = None
 _custom_scenario_store = None
@@ -106,6 +107,25 @@ def get_share_store() -> ShareStore:
 
             _share_client = FirestoreShareClient(db=get_firestore_db())
     return _share_client
+
+
+def get_api_key_store() -> ApiKeyStore:
+    """Return a module-level singleton ApiKeyStore implementation.
+
+    - ``RUN_MODE=local``  → ``SQLiteApiKeyClient``
+    - ``RUN_MODE=cloud``  → ``FirestoreApiKeyClient``
+    """
+    global _api_key_client
+    if _api_key_client is None:
+        if settings.RUN_MODE == "local":
+            from app.db.api_key_store import SQLiteApiKeyClient
+
+            _api_key_client = SQLiteApiKeyClient(db_path=settings.SQLITE_DB_PATH)
+        else:
+            from app.db.api_key_store import FirestoreApiKeyClient
+
+            _api_key_client = FirestoreApiKeyClient(db=get_firestore_db())
+    return _api_key_client
 
 
 # Backward-compat alias (deprecated) — keeps existing call sites working

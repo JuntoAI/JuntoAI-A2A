@@ -17,6 +17,7 @@ from app.routers.health import router as health_router
 from app.routers.models import router as models_router
 from app.routers.negotiation import router as negotiation_router
 from app.routers.profile import router as profile_router
+from app.routers.integrations import integrations_router
 from app.routers.share import router as share_router
 from app.scenarios.router import router as scenarios_router
 
@@ -57,6 +58,7 @@ api_router.include_router(auth_router)
 api_router.include_router(scenarios_router)
 api_router.include_router(builder_router)
 api_router.include_router(share_router)
+api_router.include_router(integrations_router)
 
 if settings.ADMIN_PASSWORD:
     from app.routers.admin import router as admin_router

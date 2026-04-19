@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     SES_SENDER_EMAIL: str = "noreply@juntoai.org"
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # --- Integration API settings ---
+    WEBHOOK_RETRY_DELAYS: list[int] = [5, 30, 120]
+    DEFAULT_RATE_LIMIT_DAILY_CLOUD: int = 100
+    DEFAULT_RATE_LIMIT_DAILY_LOCAL: int = 1000
+    DEFAULT_RATE_LIMIT_PER_MINUTE: int = 10
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse comma-separated CORS origins into a list."""
