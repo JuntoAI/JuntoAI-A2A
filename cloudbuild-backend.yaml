@@ -48,6 +48,9 @@ steps:
         SES_SENDER_EMAIL: "noreply@juntoai.org"
         AWS_SES_REGION: "us-east-1"
         FRONTEND_URL: "https://a2a.juntoai.org"
+        ESPOCRM_URL: "https://crm.juntoai.org"
+        ESPOCRM_JUNTOAI_MINI_ACCOUNT_ID: "69e66ae277693805a"
+        ESPOCRM_JUNTOAI_TEAM_ID: "69e243af322a363f5"
         EOF
     waitFor: ["-"]
 
@@ -68,7 +71,7 @@ steps:
       - --env-vars-file
       - /workspace/backend-env.yaml
       - --set-secrets
-      - AWS_ACCESS_KEY_ID=aws-ses-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-ses-secret-access-key:latest,ADMIN_PASSWORD=admin-password:latest
+      - AWS_ACCESS_KEY_ID=aws-ses-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-ses-secret-access-key:latest,ADMIN_PASSWORD=admin-password:latest,ESPOCRM_API_KEY=espocrm-api-key:latest
       - --no-traffic
       - --tag
       - canary
