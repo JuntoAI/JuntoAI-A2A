@@ -141,7 +141,7 @@ class TestBuildContactPayload:
             {"signed_up_at": "2025-01-15T10:00:00+00:00"},
             None,
         )
-        assert payload["cJuntoaiRegisteredAt"] == "2025-01-15T10:00:00+00:00"
+        assert payload["cJuntoaiRegisteredAt"] == "2025-01-15 10:00:00"
 
     def test_consent_timestamp_equals_registered_at(self):
         """Req 2.7: cJuntoaiConsentTimestamp == cJuntoaiRegisteredAt."""

@@ -58,14 +58,20 @@ def build_contact_payload(
         last_name = "."
 
     # --- Timestamps ---
+    # EspoCRM Date-Time fields expect "YYYY-MM-DD HH:MM:SS" format (UTC, no TZ offset)
     signed_up_at = waitlist_data.get("signed_up_at")
     if signed_up_at:
         if isinstance(signed_up_at, datetime):
-            registered_at = signed_up_at.astimezone(timezone.utc).isoformat()
+            registered_at = signed_up_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         else:
-            registered_at = str(signed_up_at)
+            # Try to parse string timestamps and reformat
+            try:
+                dt = datetime.fromisoformat(str(signed_up_at).replace("Z", "+00:00"))
+                registered_at = dt.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            except (ValueError, TypeError):
+                registered_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     else:
-        registered_at = datetime.now(timezone.utc).isoformat()
+        registered_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
     return {
         "emailAddress": normalised_email,
