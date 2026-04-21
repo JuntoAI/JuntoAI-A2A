@@ -142,6 +142,28 @@ async def join_waitlist(
                 "last_reset_date": today,
             })
             token_balance = 20
+
+            # Fire-and-forget CRM sync for new cloud users
+            if settings.RUN_MODE == "cloud":
+                import asyncio as _asyncio
+
+                from app.services.espocrm_service import sync_contact as _sync_contact
+
+                _waitlist_snapshot = {
+                    "email": email_key,
+                    "signed_up_at": datetime.now(timezone.utc).isoformat(),
+                }
+
+                async def _crm_task() -> None:
+                    result = await _sync_contact(email_key, _waitlist_snapshot, None)
+                    if result.action == "error":
+                        logger.warning(
+                            "CRM auto-sync failed for %s: %s",
+                            email_key,
+                            result.detail,
+                        )
+
+                _asyncio.create_task(_crm_task())
         else:
             data = doc.to_dict()
             token_balance = data.get("token_balance", 20)

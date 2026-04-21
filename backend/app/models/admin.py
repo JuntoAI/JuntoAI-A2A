@@ -178,3 +178,11 @@ class SimulationListParams(BaseModel):
     deal_status: str | None = None
     owner_email: str | None = None
     order: Literal["asc", "desc"] = "desc"
+
+
+class CrmSyncResult(BaseModel):
+    """Response model for POST /api/v1/admin/users/{email}/sync-crm."""
+
+    email: str
+    action: Literal["created", "updated", "skipped", "error"]
+    detail: str | None = None
