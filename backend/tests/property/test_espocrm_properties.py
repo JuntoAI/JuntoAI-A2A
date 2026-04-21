@@ -84,10 +84,10 @@ def test_all_required_fields_always_present(
         "emailAddress",
         "firstName",
         "lastName",
-        "juntoaiServices",
-        "juntoaiRegisteredAt",
-        "juntoaiMarketingEmail",
-        "juntoaiConsentTimestamp",
+        "cJuntoaiServices",
+        "cJuntoaiRegisteredAt",
+        "cJuntoaiMarketingEmail",
+        "cJuntoaiConsentTimestamp",
         "accountId",
         "teamsIds",
         "cLinkedIn",
@@ -121,8 +121,8 @@ def test_hardcoded_field_invariants(
     """Property 3: Hardcoded field invariants.
 
     For any input, build_contact_payload SHALL produce a payload where:
-    - juntoaiServices == ["a2a"]
-    - juntoaiMarketingEmail is True
+    - cJuntoaiServices == ["a2a"]
+    - cJuntoaiMarketingEmail is True
     - accountId == settings.ESPOCRM_JUNTOAI_MINI_ACCOUNT_ID
     - teamsIds == [settings.ESPOCRM_JUNTOAI_TEAM_ID]
 
@@ -132,8 +132,8 @@ def test_hardcoded_field_invariants(
 
     payload = build_contact_payload(email, waitlist_data, profile_data)
 
-    assert payload["juntoaiServices"] == ["a2a"]
-    assert payload["juntoaiMarketingEmail"] is True
+    assert payload["cJuntoaiServices"] == ["a2a"]
+    assert payload["cJuntoaiMarketingEmail"] is True
     assert payload["accountId"] == settings.ESPOCRM_JUNTOAI_MINI_ACCOUNT_ID
     assert payload["teamsIds"] == [settings.ESPOCRM_JUNTOAI_TEAM_ID]
 
@@ -222,12 +222,12 @@ def test_consent_timestamp_equals_registered_at(
     """Property 6: Consent timestamp equals registered-at.
 
     For any input, build_contact_payload SHALL produce a payload where
-    juntoaiConsentTimestamp == juntoaiRegisteredAt.
+    cJuntoaiConsentTimestamp == cJuntoaiRegisteredAt.
 
     Validates: Requirements 2.7
     """
     payload = build_contact_payload(email, waitlist_data, profile_data)
-    assert payload["juntoaiConsentTimestamp"] == payload["juntoaiRegisteredAt"]
+    assert payload["cJuntoaiConsentTimestamp"] == payload["cJuntoaiRegisteredAt"]
 
 
 # ---------------------------------------------------------------------------

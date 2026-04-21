@@ -124,8 +124,8 @@ class TestBuildContactPayload:
         with _patch_settings():
             payload = build_contact_payload("user@example.com", {}, None)
 
-        assert payload["juntoaiServices"] == ["a2a"]
-        assert payload["juntoaiMarketingEmail"] is True
+        assert payload["cJuntoaiServices"] == ["a2a"]
+        assert payload["cJuntoaiMarketingEmail"] is True
         assert payload["accountId"] == "acc-123"
         assert payload["teamsIds"] == ["team-456"]
 
@@ -135,22 +135,22 @@ class TestBuildContactPayload:
         assert payload["emailAddress"] == "user@example.com"
 
     def test_signed_up_at_used_for_registered_at(self):
-        """Req 2.5: signed_up_at from waitlist_data used for juntoaiRegisteredAt."""
+        """Req 2.5: signed_up_at from waitlist_data used for cJuntoaiRegisteredAt."""
         payload = build_contact_payload(
             "user@example.com",
             {"signed_up_at": "2025-01-15T10:00:00+00:00"},
             None,
         )
-        assert payload["juntoaiRegisteredAt"] == "2025-01-15T10:00:00+00:00"
+        assert payload["cJuntoaiRegisteredAt"] == "2025-01-15T10:00:00+00:00"
 
     def test_consent_timestamp_equals_registered_at(self):
-        """Req 2.7: juntoaiConsentTimestamp == juntoaiRegisteredAt."""
+        """Req 2.7: cJuntoaiConsentTimestamp == cJuntoaiRegisteredAt."""
         payload = build_contact_payload(
             "user@example.com",
             {"signed_up_at": "2025-01-15T10:00:00+00:00"},
             None,
         )
-        assert payload["juntoaiConsentTimestamp"] == payload["juntoaiRegisteredAt"]
+        assert payload["cJuntoaiConsentTimestamp"] == payload["cJuntoaiRegisteredAt"]
 
     def test_linkedin_and_country_mapped(self):
         """cLinkedIn and addressCountry populated from profile_data."""
@@ -175,9 +175,9 @@ class TestBuildContactPayload:
     def test_all_nine_keys_present(self):
         """Req 2.11: all required keys always present."""
         required = {
-            "emailAddress", "firstName", "lastName", "juntoaiServices",
-            "juntoaiRegisteredAt", "juntoaiMarketingEmail",
-            "juntoaiConsentTimestamp", "accountId", "teamsIds",
+            "emailAddress", "firstName", "lastName", "cJuntoaiServices",
+            "cJuntoaiRegisteredAt", "cJuntoaiMarketingEmail",
+            "cJuntoaiConsentTimestamp", "accountId", "teamsIds",
             "cLinkedIn", "addressCountry",
         }
         payload = build_contact_payload("user@example.com", {}, None)
