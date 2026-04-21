@@ -251,6 +251,25 @@ async def update_profile(
     daily_limit = get_daily_limit(tier)
     token_balance = await _get_waitlist_token_balance(profile_client, email)
 
+    # 7. Fire-and-forget CRM sync with updated profile data (cloud only)
+    if settings.RUN_MODE == "cloud" and update_fields:
+        import asyncio as _asyncio
+
+        from app.services.espocrm_service import sync_contact as _sync_contact
+
+        _profile_snapshot = dict(profile)
+
+        async def _crm_task() -> None:
+            result = await _sync_contact(email.lower().strip(), {}, _profile_snapshot)
+            if result.action == "error":
+                logger.warning(
+                    "CRM profile-sync failed for %s: %s",
+                    email.lower().strip(),
+                    result.detail,
+                )
+
+        _asyncio.create_task(_crm_task())
+
     return _build_profile_response(profile, tier, daily_limit, token_balance)
 
 

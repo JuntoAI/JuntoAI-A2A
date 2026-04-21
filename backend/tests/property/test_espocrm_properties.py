@@ -90,6 +90,8 @@ def test_all_required_fields_always_present(
         "juntoaiConsentTimestamp",
         "accountId",
         "teamsIds",
+        "cLinkedIn",
+        "addressCountry",
     }
     payload = build_contact_payload(email, waitlist_data, profile_data)
     missing = required_keys - payload.keys()

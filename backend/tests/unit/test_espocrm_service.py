@@ -152,12 +152,33 @@ class TestBuildContactPayload:
         )
         assert payload["juntoaiConsentTimestamp"] == payload["juntoaiRegisteredAt"]
 
+    def test_linkedin_and_country_mapped(self):
+        """cLinkedIn and addressCountry populated from profile_data."""
+        payload = build_contact_payload(
+            "user@example.com",
+            {},
+            {
+                "display_name": "Jane Doe",
+                "linkedin_url": "https://linkedin.com/in/janedoe",
+                "country": "DE",
+            },
+        )
+        assert payload["cLinkedIn"] == "https://linkedin.com/in/janedoe"
+        assert payload["addressCountry"] == "DE"
+
+    def test_linkedin_and_country_empty_when_missing(self):
+        """cLinkedIn and addressCountry are empty strings when not in profile."""
+        payload = build_contact_payload("user@example.com", {}, None)
+        assert payload["cLinkedIn"] == ""
+        assert payload["addressCountry"] == ""
+
     def test_all_nine_keys_present(self):
-        """Req 2.11: all nine required keys always present."""
+        """Req 2.11: all required keys always present."""
         required = {
             "emailAddress", "firstName", "lastName", "juntoaiServices",
             "juntoaiRegisteredAt", "juntoaiMarketingEmail",
             "juntoaiConsentTimestamp", "accountId", "teamsIds",
+            "cLinkedIn", "addressCountry",
         }
         payload = build_contact_payload("user@example.com", {}, None)
         assert required.issubset(payload.keys())

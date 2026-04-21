@@ -77,6 +77,8 @@ def build_contact_payload(
         "juntoaiConsentTimestamp": registered_at,
         "accountId": settings.ESPOCRM_JUNTOAI_MINI_ACCOUNT_ID,
         "teamsIds": [settings.ESPOCRM_JUNTOAI_TEAM_ID],
+        "cLinkedIn": (profile_data or {}).get("linkedin_url") or "",
+        "addressCountry": (profile_data or {}).get("country") or "",
     }
 
 
