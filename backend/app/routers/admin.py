@@ -24,6 +24,7 @@ from app.models.admin import (
     BroadcastEmailRequest,
     BroadcastEmailResponse,
     BroadcastPreviewResponse,
+    CrmSyncResult,
     ModelPerformance,
     OverviewResponse,
     RecentSimulation,
@@ -606,6 +607,58 @@ async def admin_delete_user(
     )
 
     return JSONResponse(content={"detail": f"User {normalised_email} and all associated data deleted"})
+
+
+# ---------------------------------------------------------------------------
+# CRM sync endpoint
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/users/{email}/sync-crm",
+    response_model=CrmSyncResult,
+    dependencies=[Depends(verify_admin_session)],
+)
+async def admin_sync_crm(email: str) -> CrmSyncResult:
+    """Manually trigger an EspoCRM contact sync for an existing user.
+
+    Fetches the waitlist and profile documents for the given email, then
+    calls ``sync_contact`` synchronously (awaited). Returns the
+    ``CrmSyncResult`` with HTTP 200 regardless of the action value —
+    even ``action="error"`` surfaces the detail to the admin rather than
+    converting it to a 5xx.
+
+    Returns 404 if the user does not exist in the waitlist collection.
+    Returns 503 in local mode (enforced by ``verify_admin_session``).
+    """
+    from app.db import get_firestore_db
+    from app.services.espocrm_service import sync_contact
+
+    email_key = email.lower().strip()
+    db = get_firestore_db()
+
+    # 1. Fetch waitlist document — 404 if not found
+    waitlist_ref = db.collection("waitlist").document(email_key)
+    waitlist_doc = await waitlist_ref.get()
+    if not waitlist_doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+    waitlist_data = waitlist_doc.to_dict()
+
+    # 2. Fetch profile document — None if not found (profile is optional)
+    profile_ref = db.collection("profiles").document(email_key)
+    profile_doc = await profile_ref.get()
+    profile_data = profile_doc.to_dict() if profile_doc.exists else None
+
+    # 3. Await sync — never raises, always returns CrmSyncResult
+    result = await sync_contact(email_key, waitlist_data, profile_data)
+
+    logger.info(
+        "admin action=crm_sync email=%s crm_action=%s",
+        email_key,
+        result.action,
+    )
+
+    return result
 
 
 # ---------------------------------------------------------------------------

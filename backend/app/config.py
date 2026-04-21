@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     SES_SENDER_EMAIL: str = "noreply@juntoai.org"
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # --- EspoCRM integration ---
+    ESPOCRM_URL: str = ""
+    ESPOCRM_API_KEY: str = ""
+    ESPOCRM_JUNTOAI_MINI_ACCOUNT_ID: str = ""
+    ESPOCRM_JUNTOAI_TEAM_ID: str = ""
+
     # --- Integration API settings ---
     WEBHOOK_RETRY_DELAYS: list[int] = [5, 30, 120]
     DEFAULT_RATE_LIMIT_DAILY_CLOUD: int = 100
