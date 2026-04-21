@@ -132,6 +132,50 @@ export default function AdminUsersPage() {
     }
   }
 
+  // Sync All state
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncAllProgress, setSyncAllProgress] = useState("");
+
+  async function syncAllCrm() {
+    if (users.length === 0) return;
+    const confirmed = confirm(
+      `Sync all ${users.length} loaded users to EspoCRM?\n\nThis will create or update each contact sequentially.`
+    );
+    if (!confirmed) return;
+
+    setSyncingAll(true);
+    let created = 0, updated = 0, skipped = 0, errors = 0;
+
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+      setSyncAllProgress(`Syncing ${i + 1}/${users.length}: ${user.email}`);
+      try {
+        const res = await fetch(
+          `${API_URL}/api/v1/admin/users/${encodeURIComponent(user.email)}/sync-crm`,
+          { method: "POST", credentials: "include" }
+        );
+        const body = await res.json().catch(() => null);
+        const action = body?.action ?? "error";
+        if (action === "created") created++;
+        else if (action === "updated") updated++;
+        else if (action === "skipped") skipped++;
+        else errors++;
+      } catch {
+        errors++;
+      }
+    }
+
+    setSyncingAll(false);
+    setSyncAllProgress("");
+    alert(
+      `CRM Sync Complete\n\n` +
+      `Created: ${created}\n` +
+      `Updated: ${updated}\n` +
+      `Skipped: ${skipped}\n` +
+      `Errors: ${errors}`
+    );
+  }
+
   async function syncCrm(email: string) {
     const confirmed = confirm(`Sync ${email} to EspoCRM?\n\nThis will create or update their contact record.`);
     if (!confirmed) return;
@@ -241,7 +285,7 @@ export default function AdminUsersPage() {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-brand-charcoal">Users</h2>
 
-      {/* Filters */}
+      {/* Filters + Sync All */}
       <div className="flex flex-wrap items-center gap-3">
         <select
           value={tierFilter}
@@ -261,6 +305,19 @@ export default function AdminUsersPage() {
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
+
+        <div className="ml-auto flex items-center gap-3">
+          {syncAllProgress && (
+            <span className="text-xs text-gray-500">{syncAllProgress}</span>
+          )}
+          <button
+            onClick={syncAllCrm}
+            disabled={syncingAll || loading || users.length === 0}
+            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            {syncingAll ? "Syncing…" : "Sync All to CRM"}
+          </button>
+        </div>
       </div>
 
       {/* Error */}
