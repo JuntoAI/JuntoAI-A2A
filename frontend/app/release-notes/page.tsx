@@ -9,6 +9,23 @@ export const metadata: Metadata = {
 
 const FEATURES = [
   {
+    title: "EspoCRM Contact Sync",
+    specId: "360",
+    date: "2026-04-21",
+    items: [
+      "espocrm_service.py module with sync_contact async function: upsert contact via GET → POST/PUT /api/v1/Contact, httpx.AsyncClient with 10s timeout and X-Api-Key auth header",
+      "build_contact_payload pure function: normalised email, first/last name from display_name or email local part, hardcoded juntoaiServices=[\"a2a\"] and juntoaiMarketingEmail=True, juntoaiRegisteredAt/juntoaiConsentTimestamp from signed_up_at, accountId and teamsIds from settings",
+      "Guard conditions: RUN_MODE=local → skip silently; empty ESPOCRM_URL or ESPOCRM_API_KEY → log WARNING + skip; all error paths return CrmSyncResult, never raise",
+      "CrmSyncResult Pydantic V2 model (email, action: created/updated/skipped/error, detail: str | None) added to app/models/admin.py",
+      "Four EspoCRM settings added to Settings: ESPOCRM_URL, ESPOCRM_API_KEY, ESPOCRM_JUNTOAI_MINI_ACCOUNT_ID, ESPOCRM_JUNTOAI_TEAM_ID — loaded via existing pydantic-settings .env mechanism",
+      "Auto-sync on signup: fire-and-forget asyncio.create_task in POST /auth/join cloud path after Firestore write; new users only, no await, LoginResponse never modified",
+      "POST /api/v1/admin/users/{email}/sync-crm endpoint: awaited sync, returns CrmSyncResult HTTP 200 for all action values, 404 if user not in waitlist, 503 in local mode via verify_admin_session",
+      "HTTP error handling: 4xx/5xx → log status + body (truncated 500 chars) + action=error; network/timeout exceptions → log type + message + action=error",
+      "Property tests (7 Hypothesis properties): email normalisation round-trip, all required fields present, hardcoded field invariants, name splitting from display_name, name fallback from email local part, consent timestamp equals registered-at, sync_contact never raises",
+      "Unit tests: new contact creation, existing contact update, local/unconfigured skip, X-Api-Key header, timeout, HTTP 4xx/5xx, TimeoutException, admin endpoint (200/404/503/error passthrough)",
+    ],
+  },
+  {
     title: "Public Stats Dashboard",
     specId: "270",
     date: "2026-04-11",
