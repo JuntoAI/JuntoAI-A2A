@@ -127,6 +127,7 @@ export default function Header() {
                   try {
                     await fetch("/api/v1/admin/logout", { method: "POST" });
                   } catch {}
+                  setAdminLoggingOut(false);
                   // Also logout user session if authenticated
                   if (showAuth) logout();
                   else router.push("/admin/login");
