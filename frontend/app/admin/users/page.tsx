@@ -132,6 +132,28 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function syncCrm(email: string) {
+    const confirmed = confirm(`Sync ${email} to EspoCRM?\n\nThis will create or update their contact record.`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/admin/users/${encodeURIComponent(email)}/sync-crm`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        alert(body?.detail ?? `Failed to sync: ${res.status}`);
+        return;
+      }
+      const action = body?.action ?? "unknown";
+      const detail = body?.detail ? `\n${body.detail}` : "";
+      alert(`CRM sync result: ${action}${detail}`);
+    } catch {
+      alert("Network error while syncing to CRM.");
+    }
+  }
+
   async function adjustTokens(email: string, currentBalance: number) {
     const input = prompt(`Adjust token balance for ${email}\nCurrent: ${currentBalance}\n\nEnter new balance:`);
     if (input === null) return;
@@ -309,6 +331,13 @@ export default function AdminUsersPage() {
                         className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200"
                       >
                         Status
+                      </button>
+                      <button
+                        onClick={() => syncCrm(user.email)}
+                        className="rounded bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+                        title="Sync this user to EspoCRM"
+                      >
+                        CRM
                       </button>
                       <button
                         onClick={() => deleteUser(user.email)}
