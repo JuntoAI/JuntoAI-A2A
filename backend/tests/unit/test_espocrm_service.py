@@ -104,10 +104,10 @@ class TestBuildContactPayload:
         assert payload["lastName"] == "Jane Watson"
 
     def test_without_display_name_uses_email_local_part(self):
-        """Req 2.3: no display_name → firstName from email local part, lastName empty."""
+        """Req 2.3: no display_name → firstName from email local part, lastName '.'."""
         payload = build_contact_payload("john.doe@example.com", {}, None)
         assert payload["firstName"] == "john.doe"
-        assert payload["lastName"] == ""
+        assert payload["lastName"] == "."
 
     def test_empty_display_name_falls_back_to_email(self):
         """Req 2.3: empty display_name → fallback to email local part."""
@@ -117,7 +117,7 @@ class TestBuildContactPayload:
             {"display_name": ""},
         )
         assert payload["firstName"] == "alice"
-        assert payload["lastName"] == ""
+        assert payload["lastName"] == "."
 
     def test_hardcoded_fields(self):
         """Req 2.4, 2.6, 2.8, 2.9: hardcoded field values."""

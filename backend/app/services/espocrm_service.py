@@ -48,13 +48,14 @@ def build_contact_payload(
     if display_name and " " in display_name:
         first_name, last_name = display_name.split(" ", 1)
     elif display_name:
-        # Single-word display name — use it as firstName, lastName empty
+        # Single-word display name — use it as firstName, use a placeholder lastName
         first_name = display_name
-        last_name = ""
+        last_name = "."
     else:
-        # Fallback: derive firstName from email local part
+        # Fallback: derive firstName from email local part, use "." as lastName
+        # EspoCRM requires a non-empty lastName
         first_name = normalised_email.split("@")[0]
-        last_name = ""
+        last_name = "."
 
     # --- Timestamps ---
     signed_up_at = waitlist_data.get("signed_up_at")

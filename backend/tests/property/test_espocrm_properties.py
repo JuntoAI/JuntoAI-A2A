@@ -194,7 +194,7 @@ def test_name_fallback_from_email_local_part(email: str) -> None:
     expected_first = normalised.split("@")[0]
 
     assert payload["firstName"] == expected_first
-    assert payload["lastName"] == ""
+    assert payload["lastName"] == "."
 
 
 # ---------------------------------------------------------------------------
