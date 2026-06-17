@@ -14,8 +14,22 @@ resource "google_cloud_run_v2_service" "backend" {
     session_affinity                 = true
     max_instance_request_concurrency = 80
 
+    # Scaling: scale to zero when idle to eliminate costs
+    scaling {
+      min_instance_count = var.backend_min_instances
+      max_instance_count = var.backend_max_instances
+    }
+
     containers {
       image = var.backend_image
+
+      resources {
+        limits = {
+          cpu    = var.backend_cpu
+          memory = var.backend_memory
+        }
+        cpu_idle = var.backend_cpu_idle
+      }
     }
   }
 
@@ -43,8 +57,22 @@ resource "google_cloud_run_v2_service" "frontend" {
   template {
     service_account = var.frontend_sa_email
 
+    # Scaling: scale to zero when idle
+    scaling {
+      min_instance_count = var.frontend_min_instances
+      max_instance_count = var.frontend_max_instances
+    }
+
     containers {
       image = var.frontend_image
+
+      resources {
+        limits = {
+          cpu    = var.frontend_cpu
+          memory = var.frontend_memory
+        }
+        cpu_idle = var.frontend_cpu_idle
+      }
     }
   }
 

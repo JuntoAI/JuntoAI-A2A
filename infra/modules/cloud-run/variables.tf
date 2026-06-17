@@ -65,3 +65,71 @@ variable "backend_instance_shutdown_timeout" {
   type        = number
   default     = 1200
 }
+
+# -----------------------------------------------------------------------------
+# Backend Scaling & Resources
+# -----------------------------------------------------------------------------
+
+variable "backend_min_instances" {
+  description = "Minimum number of backend instances. 0 = scale to zero when idle."
+  type        = number
+  default     = 0
+}
+
+variable "backend_max_instances" {
+  description = "Maximum number of backend instances."
+  type        = number
+  default     = 20
+}
+
+variable "backend_cpu" {
+  description = "CPU limit for backend containers (e.g. '1000m' = 1 vCPU)."
+  type        = string
+  default     = "1000m"
+}
+
+variable "backend_memory" {
+  description = "Memory limit for backend containers."
+  type        = string
+  default     = "512Mi"
+}
+
+variable "backend_cpu_idle" {
+  description = "Whether CPU is throttled when no requests are being processed. true = throttled (cheaper), false = always allocated."
+  type        = bool
+  default     = true
+}
+
+# -----------------------------------------------------------------------------
+# Frontend Scaling & Resources
+# -----------------------------------------------------------------------------
+
+variable "frontend_min_instances" {
+  description = "Minimum number of frontend instances. 0 = scale to zero when idle."
+  type        = number
+  default     = 0
+}
+
+variable "frontend_max_instances" {
+  description = "Maximum number of frontend instances."
+  type        = number
+  default     = 20
+}
+
+variable "frontend_cpu" {
+  description = "CPU limit for frontend containers (e.g. '1000m' = 1 vCPU)."
+  type        = string
+  default     = "1000m"
+}
+
+variable "frontend_memory" {
+  description = "Memory limit for frontend containers."
+  type        = string
+  default     = "512Mi"
+}
+
+variable "frontend_cpu_idle" {
+  description = "Whether CPU is throttled when no requests are being processed. true = throttled (cheaper), false = always allocated."
+  type        = bool
+  default     = true
+}
