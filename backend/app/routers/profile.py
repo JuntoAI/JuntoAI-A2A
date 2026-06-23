@@ -24,7 +24,9 @@ from app.services.email_verifier import (
 from app.services.tier_calculator import (
     calculate_tier,
     get_daily_limit,
+    is_internal_email,
     is_profile_complete,
+    UNLIMITED_TOKENS,
 )
 
 logger = logging.getLogger(__name__)
@@ -173,8 +175,11 @@ async def get_profile(email: str, profile_client=Depends(get_profile_client)):
     tier = calculate_tier(
         profile.get("profile_completed_at"), profile.get("email_verified", False)
     )
-    daily_limit = get_daily_limit(tier)
-    token_balance = await _check_and_reset_tokens(profile_client, email, daily_limit)
+    daily_limit = get_daily_limit(tier, email=email)
+    if is_internal_email(email):
+        token_balance = UNLIMITED_TOKENS
+    else:
+        token_balance = await _check_and_reset_tokens(profile_client, email, daily_limit)
 
     return _build_profile_response(profile, tier, daily_limit, token_balance)
 
@@ -248,8 +253,11 @@ async def update_profile(
     tier = calculate_tier(
         profile.get("profile_completed_at"), profile.get("email_verified", False)
     )
-    daily_limit = get_daily_limit(tier)
-    token_balance = await _get_waitlist_token_balance(profile_client, email)
+    daily_limit = get_daily_limit(tier, email=email)
+    if is_internal_email(email):
+        token_balance = UNLIMITED_TOKENS
+    else:
+        token_balance = await _get_waitlist_token_balance(profile_client, email)
 
     # 7. Fire-and-forget CRM sync with updated profile data (cloud only)
     if settings.RUN_MODE == "cloud" and update_fields:

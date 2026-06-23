@@ -6,6 +6,8 @@ No side effects — all functions are deterministic based on inputs.
 from datetime import datetime
 
 TIER_LIMITS: dict[int, int] = {1: 20, 2: 50, 3: 100}
+UNLIMITED_TOKENS: int = 999999
+INTERNAL_DOMAIN: str = "juntoai.org"
 
 
 def calculate_tier(
@@ -24,8 +26,19 @@ def calculate_tier(
     return 1
 
 
-def get_daily_limit(tier: int) -> int:
-    """Return daily token limit for a given tier. Defaults to 20 for unknown tiers."""
+def is_internal_email(email: str) -> bool:
+    """Return True if the email belongs to the internal @juntoai.org domain."""
+    return email.lower().strip().endswith(f"@{INTERNAL_DOMAIN}")
+
+
+def get_daily_limit(tier: int, email: str | None = None) -> int:
+    """Return daily token limit for a given tier.
+
+    If the email belongs to @juntoai.org, returns UNLIMITED_TOKENS regardless of tier.
+    Defaults to 20 for unknown tiers.
+    """
+    if email and is_internal_email(email):
+        return UNLIMITED_TOKENS
     return TIER_LIMITS.get(tier, 20)
 
 

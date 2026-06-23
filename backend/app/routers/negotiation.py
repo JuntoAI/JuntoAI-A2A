@@ -36,7 +36,7 @@ from app.orchestrator.state import create_initial_state
 from app.scenarios.loader import load_scenario_from_dict
 from app.scenarios.registry import ScenarioRegistry
 from app.scenarios.router import get_scenario_registry
-from app.services.tier_calculator import calculate_tier, get_daily_limit
+from app.services.tier_calculator import calculate_tier, get_daily_limit, is_internal_email, UNLIMITED_TOKENS
 from app.utils.sse import format_sse_event
 from app.orchestrator.usage_summary import compute_usage_summary
 from app.utils.token_cost import compute_token_cost
@@ -320,13 +320,17 @@ async def start_negotiation(
                 profile.get("profile_completed_at"),
                 profile.get("email_verified", False),
             )
-            daily_limit = get_daily_limit(tier)
+            daily_limit = get_daily_limit(tier, email=body.email)
         else:
-            daily_limit = get_daily_limit(1)  # Tier 1 default
+            daily_limit = get_daily_limit(1, email=body.email)
 
         # If no waitlist doc existed, fall back to the tier daily limit
         if not waitlist_doc.exists:
             tokens_remaining = daily_limit
+
+        # Internal @juntoai.org users get unlimited tokens
+        if is_internal_email(body.email):
+            tokens_remaining = UNLIMITED_TOKENS
     else:
         tokens_remaining = 999  # unlimited in local mode
 

@@ -24,7 +24,7 @@ from app.services.auth_service import (
     validate_google_token,
     verify_password,
 )
-from app.services.tier_calculator import calculate_tier, get_daily_limit
+from app.services.tier_calculator import calculate_tier, get_daily_limit, is_internal_email, UNLIMITED_TOKENS
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,9 @@ def _build_login_response(
     tier = calculate_tier(
         profile.get("profile_completed_at"), profile.get("email_verified", False)
     )
-    daily_limit = get_daily_limit(tier)
+    daily_limit = get_daily_limit(tier, email=email)
+    if is_internal_email(email):
+        token_balance = UNLIMITED_TOKENS
     return LoginResponse(
         email=email,
         tier=tier,
@@ -122,7 +124,7 @@ async def join_waitlist(
                         profile.get("profile_completed_at") if profile else None,
                         profile.get("email_verified", False) if profile else False,
                     )
-                    daily_limit = get_daily_limit(tier)
+                    daily_limit = get_daily_limit(tier, email=email_key)
                     await conn.execute(
                         "UPDATE waitlist SET token_balance = ?, last_reset_date = ? WHERE email = ?",
                         (daily_limit, today, email_key),
@@ -175,7 +177,7 @@ async def join_waitlist(
                     profile.get("profile_completed_at") if profile else None,
                     profile.get("email_verified", False) if profile else False,
                 )
-                daily_limit = get_daily_limit(tier)
+                daily_limit = get_daily_limit(tier, email=email_key)
                 await waitlist_ref.update({
                     "token_balance": daily_limit,
                     "last_reset_date": today,
@@ -188,7 +190,9 @@ async def join_waitlist(
         profile.get("profile_completed_at") if profile else None,
         profile.get("email_verified", False) if profile else False,
     )
-    daily_limit = get_daily_limit(tier)
+    daily_limit = get_daily_limit(tier, email=email_key)
+    if is_internal_email(email_key):
+        token_balance = UNLIMITED_TOKENS
 
     return LoginResponse(
         email=email_key,
