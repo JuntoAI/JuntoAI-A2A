@@ -175,10 +175,12 @@ class TestProperty11OllamaNoApiKeys:
         mock_settings.OLLAMA_BASE_URL = "http://localhost:11434"
         mock_settings.OLLAMA_MODEL = "llama3.1"
 
+        # Mock _instantiate_local_model directly — ChatLiteLLM is no longer
+        # exposed as a top-level attribute in newer langchain-community.
         with patch.dict(os.environ, env_clean, clear=True), \
              patch(_SETTINGS_PATH, mock_settings), \
              patch(
-                 "langchain_community.chat_models.ChatLiteLLM",
+                 "app.orchestrator.model_router._instantiate_local_model",
                  return_value=mock_litellm,
              ):
             # Should NOT raise ModelNotAvailableError
