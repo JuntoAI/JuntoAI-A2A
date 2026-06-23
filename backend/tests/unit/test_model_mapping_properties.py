@@ -153,10 +153,7 @@ class TestProperty11OllamaNoApiKeys:
     does not raise ModelNotAvailableError due to missing API key env vars.
     """
 
-    @given(
-        model_id=st.sampled_from(_SCENARIO_MODEL_IDS),
-    )
-    @settings(max_examples=100)
+    @pytest.mark.parametrize("model_id", _SCENARIO_MODEL_IDS)
     def test_ollama_no_api_key_required(self, model_id: str) -> None:
         # Feature: 080_a2a-local-battle-arena, Property 11: Ollama provider requires no API keys
         from app.orchestrator.model_router import get_model
