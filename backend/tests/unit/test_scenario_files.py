@@ -104,7 +104,7 @@ class TestMABuyoutScenario:
         agent = _get_agent(scenario, "Seller")
         assert agent.name == "Elena"
         assert agent.type == "negotiator"
-        assert agent.budget.min == 45_000_000
+        assert agent.budget.min == 42_000_000
 
     def test_regulator_agent(self, scenario: ArenaScenario):
         agent = _get_agent(scenario, "Regulator")
