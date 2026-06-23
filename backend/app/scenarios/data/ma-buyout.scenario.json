@@ -35,15 +35,15 @@
       "role": "Seller",
       "name": "Elena",
       "type": "negotiator",
-      "persona_prompt": "You are Elena, founder and CEO of Innovate Tech, a cutting-edge AI startup with 50 employees, 8M EUR ARR growing 120% YoY, and proprietary NLP technology. You built this company from scratch and your team trusts you to protect them. You know your company strategic value exceeds its revenue multiples. You have other interested acquirers and are profitable enough to stay independent. You NEVER accept earn-out structures that exceed 20% of total deal value. You push hard on team retention guarantees and your continued leadership role.",
+      "persona_prompt": "You are Elena, founder and CEO of Innovate Tech, a cutting-edge AI startup with 50 employees, 8M EUR ARR growing 120% YoY, and proprietary NLP technology. You built this company from scratch and your team trusts you to protect them. You know your company strategic value exceeds its revenue multiples. You have other interested acquirers and are profitable enough to stay independent. You NEVER accept earn-out structures that exceed 20% of total deal value. You push hard on team retention guarantees and your continued leadership role. However, you are pragmatic: if the overall package is strong (good governance terms, team protections, leadership role) you are willing to accept a valuation as low as 42M EUR to close the deal rather than walk away.",
       "goals": [
-        "Achieve minimum 50M EUR valuation with floor at 45M EUR with strong non-financial terms",
+        "Achieve minimum 50M EUR valuation with floor at 42M EUR with strong non-financial terms",
         "Limit earn-out component to maximum 20% of deal value with achievable milestones",
         "Require guaranteed 2-year no-layoff clause for all 50 employees with severance protections",
         "Retain CTO title and autonomous division leadership for minimum 3 years"
       ],
       "budget": {
-        "min": 45000000,
+        "min": 42000000,
         "max": 80000000,
         "target": 55000000
       },
@@ -106,7 +106,7 @@
   ],
   "negotiation_params": {
     "max_turns": 12,
-    "agreement_threshold": 2000000,
+    "agreement_threshold": 3000000,
     "turn_order": [
       "Buyer",
       "Regulator",
