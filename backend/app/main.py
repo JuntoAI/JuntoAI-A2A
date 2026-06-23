@@ -60,6 +60,10 @@ api_router.include_router(builder_router)
 api_router.include_router(share_router)
 api_router.include_router(integrations_router)
 
+from app.routers.internal import router as internal_router
+
+api_router.include_router(internal_router)
+
 if settings.ADMIN_PASSWORD:
     from app.routers.admin import router as admin_router
 

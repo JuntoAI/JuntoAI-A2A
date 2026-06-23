@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     # --- Cloud-only: Admin dashboard ---
     ADMIN_PASSWORD: str = ""
 
+    # --- Internal API access (transcript export, scenario analysis) ---
+    INTERNAL_API_KEY: str = ""
+
     # --- Cloud-only: Amazon SES (email verification) ---
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
