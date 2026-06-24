@@ -2,17 +2,19 @@
 inclusion: manual
 ---
 
-# JuntoAI A2A — Internal Transcript API & Firestore Access
+# JuntoAI A2A — Transcript Access for Analysis
 
-## Quick Access: Firestore REST API (Preferred for Analysis)
+## Preferred Method: Firestore REST API
 
-Transcripts are stored in Firestore `negotiation_sessions` collection. Access directly via REST:
+Transcripts are stored in Firestore (`negotiation_sessions` collection, project `juntoai-a2a-mvp`). Access directly via the Firestore REST API using gcloud credentials. No API keys, no proxy — just a gcloud access token.
 
-### Get latest session
+**Base URL**: `https://firestore.googleapis.com/v1/projects/juntoai-a2a-mvp/databases/(default)/documents`
+
+### Get latest session(s)
 ```powershell
 $token = gcloud auth print-access-token
 $headers = @{ "Authorization" = "Bearer $token"; "Content-Type" = "application/json" }
-$body = '{"structuredQuery":{"from":[{"collectionId":"negotiation_sessions"}],"orderBy":[{"field":{"fieldPath":"created_at"},"direction":"DESCENDING"}],"limit":1}}'
+$body = '{"structuredQuery":{"from":[{"collectionId":"negotiation_sessions"}],"orderBy":[{"field":{"fieldPath":"created_at"},"direction":"DESCENDING"}],"limit":5}}'
 $uri = "https://firestore.googleapis.com/v1/projects/juntoai-a2a-mvp/databases/(default)/documents:runQuery"
 Invoke-RestMethod -Uri $uri -Headers $headers -Method POST -Body $body
 ```
@@ -23,7 +25,7 @@ GET https://firestore.googleapis.com/v1/projects/juntoai-a2a-mvp/databases/(defa
 Authorization: Bearer <gcloud-access-token>
 ```
 
-### Filter by field (e.g. scenario_id)
+### Filter by scenario_id
 ```json
 {
   "structuredQuery": {
@@ -41,52 +43,52 @@ Authorization: Bearer <gcloud-access-token>
 }
 ```
 
-## HTTP API Endpoint (for external/automated access)
-
-### Bulk Export
-```
-GET /api/v1/internal/transcripts
-```
-
-Query params:
-- `scenario_id` — filter by scenario (e.g. `talent-war`, `mna-buyout`, `b2b-sales`)
-- `deal_status` — filter by outcome: `Agreed`, `Blocked`, `Failed`
-- `days` — look-back window (default 30, max 365)
-- `limit` — max sessions returned (default 50, max 500)
-
-Response:
+### Filter by deal_status
 ```json
 {
-  "count": 12,
-  "filters": { "scenario_id": "talent-war", "deal_status": null, "days": 30, "limit": 50 },
-  "sessions": [ /* full session documents */ ]
+  "structuredQuery": {
+    "from": [{"collectionId": "negotiation_sessions"}],
+    "where": {
+      "fieldFilter": {
+        "field": {"fieldPath": "deal_status"},
+        "op": "EQUAL",
+        "value": {"stringValue": "Failed"}
+      }
+    },
+    "limit": 20
+  }
 }
 ```
 
-### Single Transcript
+### Filter by owner_email
+```json
+{
+  "structuredQuery": {
+    "from": [{"collectionId": "negotiation_sessions"}],
+    "where": {
+      "fieldFilter": {
+        "field": {"fieldPath": "owner_email"},
+        "op": "EQUAL",
+        "value": {"stringValue": "markus@juntoai.org"}
+      }
+    },
+    "orderBy": [{"field": {"fieldPath": "created_at"}, "direction": "DESCENDING"}],
+    "limit": 10
+  }
+}
 ```
-GET /api/v1/internal/transcripts/{session_id}
-```
 
-Returns the raw session document directly.
-
-## Authentication
-
-### Local Mode (RUN_MODE=local)
-No auth required. Hit `http://localhost:8000/api/v1/internal/transcripts` directly.
-
-### Cloud Mode (RUN_MODE=cloud)
-Bearer token required:
-```
-Authorization: Bearer <INTERNAL_API_KEY>
-```
-
-**Production key**: Set as `INTERNAL_API_KEY` env var on the Cloud Run backend service.
-Generate with: `openssl rand -hex 32`
-
-**Deployed base URL**: `https://api.juntoai.org/api/v1/internal/transcripts`
+### Firestore response format
+Firestore REST returns typed fields. Key mappings:
+- `stringValue` → string fields (session_id, scenario_id, deal_status, etc.)
+- `integerValue` → number fields (turn_count, total_tokens_used, etc.)
+- `doubleValue` → float fields (current_offer, agreement_threshold)
+- `booleanValue` → boolean fields
+- `arrayValue.values` → arrays (history, agent_calls, active_toggles)
+- `mapValue.fields` → nested objects (content, agent_states, evaluation)
 
 ## Session Document Structure
+
 Each session doc contains:
 - `session_id`, `scenario_id`, `owner_email`
 - `deal_status` — Agreed | Blocked | Failed | Negotiating
@@ -138,8 +140,16 @@ Each session doc contains:
 5. **Failure modes**: Filter `deal_status=Failed` and examine final turns for stall patterns
 6. **Regulator behavior**: Filter history entries with `agent_type=regulator` and check warning escalation
 
+## Fallback: HTTP API Endpoint
+
+An HTTP API also exists at `/api/v1/internal/transcripts` (bearer token auth in cloud, no auth locally). Use this only for external automation — the Firestore REST approach above is simpler and more reliable for Kiro analysis sessions.
+
+- Local: `http://localhost:8000/api/v1/internal/transcripts`
+- Cloud: requires `Authorization: Bearer <INTERNAL_API_KEY>` header
+- Key stored in GCP Secret Manager as `internal-api-key`
+
 ## Code Reference
-- Router: #[[file:backend/app/routers/internal.py]]
+- Internal API router: #[[file:backend/app/routers/internal.py]]
 - Config: #[[file:backend/app/config.py]]
 - Session model: #[[file:backend/app/models/negotiation.py]]
 - DB clients: #[[file:backend/app/db/firestore_client.py]], #[[file:backend/app/db/sqlite_client.py]]
