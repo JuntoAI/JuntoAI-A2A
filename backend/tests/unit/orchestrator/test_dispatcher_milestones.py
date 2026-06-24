@@ -81,7 +81,7 @@ def _negotiator_state(role: str, price: float) -> dict[str, Any]:
         "role": role,
         "name": role,
         "agent_type": "negotiator",
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "last_proposed_price": price,
         "warning_count": 0,
     }

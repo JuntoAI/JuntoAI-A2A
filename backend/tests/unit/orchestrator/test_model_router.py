@@ -60,7 +60,7 @@ _SETTINGS_PATH = "app.orchestrator.model_router.settings"
 class TestResolveFamily:
     def test_gemini_prefix(self) -> None:
         with patch.dict(_FAMILIES_PATH, _CLOUD_FAMILIES):
-            assert _resolve_family("gemini-3-flash-preview") is ChatGoogleGenerativeAI
+            assert _resolve_family("gemini-3.5-flash") is ChatGoogleGenerativeAI
 
     def test_claude_prefix(self) -> None:
         with patch.dict(_FAMILIES_PATH, _CLOUD_FAMILIES):
@@ -86,10 +86,10 @@ class TestGetModelValid:
         fam = _mock_families()
         with patch.dict(_FAMILIES_PATH, fam), \
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
-            model = get_model("gemini-3-flash-preview", project="proj", location="us-central1")
+            model = get_model("gemini-3.5-flash", project="proj", location="us-central1")
         fam["gemini"].assert_called_once()
         kw = fam["gemini"].call_args.kwargs
-        assert kw["model"] == "gemini-3-flash-preview"
+        assert kw["model"] == "gemini-3.5-flash"
         assert kw["project"] == "proj"
         assert kw["location"] == "global"  # Gemini always uses global endpoint
         assert "timeout" in kw
@@ -99,7 +99,7 @@ class TestGetModelValid:
         fam = _mock_families()
         with patch.dict(_FAMILIES_PATH, fam), \
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
-            model = get_model("gemini-3.1-pro-preview", project="proj", location="eu")
+            model = get_model("gemini-3.5-flash", project="proj", location="eu")
         assert isinstance(model, BaseChatModel)
 
     def test_claude_sonnet_v2(self) -> None:
@@ -147,7 +147,7 @@ class TestGetModelFallback:
         with patch.dict(_FAMILIES_PATH, fam), \
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
             model = get_model(
-                "gemini-3-flash-preview",
+                "gemini-3.5-flash",
                 fallback_model_id="claude-sonnet-4-6",
                 project="proj",
                 location="eu",
@@ -163,7 +163,7 @@ class TestGetModelFallback:
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
             with pytest.raises(ModelNotAvailableError) as exc_info:
                 get_model(
-                    "gemini-3-flash-preview",
+                    "gemini-3.5-flash",
                     fallback_model_id="claude-sonnet-4-6",
                     project="proj",
                     location="eu",
@@ -176,7 +176,7 @@ class TestGetModelFallback:
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
             model = get_model(
                 "llama-3-70b",
-                fallback_model_id="gemini-3-flash-preview",
+                fallback_model_id="gemini-3.5-flash",
                 project="proj",
                 location="eu",
             )
@@ -199,7 +199,7 @@ class TestTimeoutConfig:
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
-                get_model("gemini-3-flash-preview")
+                get_model("gemini-3.5-flash")
         assert fam["gemini"].call_args.kwargs["timeout"] == 60.0
 
     def test_custom_timeout_from_env(self) -> None:
@@ -212,7 +212,7 @@ class TestTimeoutConfig:
         with patch.dict(os.environ, env, clear=False), \
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
             with patch.dict(_FAMILIES_PATH, fam):
-                get_model("gemini-3-flash-preview")
+                get_model("gemini-3.5-flash")
         assert fam["gemini"].call_args.kwargs["timeout"] == 120.0
 
     def test_env_defaults_for_project_and_location(self) -> None:
@@ -222,7 +222,7 @@ class TestTimeoutConfig:
              patch(f"{_SETTINGS_PATH}.RUN_MODE", "cloud"):
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
-                get_model("gemini-3-flash-preview")
+                get_model("gemini-3.5-flash")
         kw = fam["gemini"].call_args.kwargs
         assert kw["project"] == "my-proj"
         assert kw["location"] == "global"  # Gemini ignores env location, always global
@@ -236,7 +236,7 @@ class TestTimeoutConfig:
             os.environ.pop("VERTEX_AI_LOCATION", None)
             os.environ.pop("VERTEX_AI_REQUEST_TIMEOUT_SECONDS", None)
             with patch.dict(_FAMILIES_PATH, fam):
-                get_model("gemini-3-flash-preview")
+                get_model("gemini-3.5-flash")
         assert fam["gemini"].call_args.kwargs["location"] == "global"
 
     def test_claude_uses_regional_endpoint(self) -> None:
@@ -256,8 +256,8 @@ class TestTimeoutConfig:
 # 4.6  Property test P14: Model Router Returns or Raises
 # -------------------------------------------------------------------
 _VALID_MODEL_IDS = [
-    "gemini-3-flash-preview",
-    "gemini-3.1-pro-preview",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash",
     "claude-3-5-sonnet-v2",
     "claude-sonnet-4-6",
 ]

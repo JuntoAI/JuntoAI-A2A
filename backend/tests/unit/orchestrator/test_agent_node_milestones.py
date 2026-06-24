@@ -31,7 +31,7 @@ def _make_agent_config(
         "role": role,
         "name": name,
         "type": agent_type,
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "persona_prompt": f"You are {name}.",
     }
 
@@ -101,8 +101,8 @@ def _make_state(
         turn_order=[role, other],
         turn_order_index=0,
         agent_states={
-            role: {"role": role, "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
-            other: {"role": other, "name": "Bob", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
+            role: {"role": role, "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            other: {"role": other, "name": "Bob", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
         },
         active_toggles=[],
         total_tokens_used=0,

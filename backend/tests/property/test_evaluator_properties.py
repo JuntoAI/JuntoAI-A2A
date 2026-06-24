@@ -42,7 +42,7 @@ _role_name = st.text(
     max_size=15,
 )
 
-_model_id = st.sampled_from(["gemini-3-flash-preview", "claude-3-5-sonnet", "gemini-2-5-pro"])
+_model_id = st.sampled_from(["gemini-3.5-flash", "claude-3-5-sonnet", "gemini-2-5-pro"])
 
 _satisfaction = st.integers(min_value=1, max_value=10)
 
@@ -54,7 +54,7 @@ _positive_price = st.floats(
 def _make_agent_config(
     role: str,
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
     persona_prompt: str | None = None,
     goals: list[str] | None = None,
     budget: dict[str, float] | None = None,
@@ -160,7 +160,7 @@ def terminal_state_with_history(draw):
         "role": "TestAgent",
         "name": "TestAgent",
         "type": "negotiator",
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "persona_prompt": persona,
         "goals": goals,
         "budget": {"min": 1000.0, "max": 100000.0, "target": 50000.0},

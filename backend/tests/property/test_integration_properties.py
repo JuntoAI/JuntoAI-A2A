@@ -1093,7 +1093,7 @@ def _build_minimal_scenario(persona_prompt: str) -> ArenaScenario:
                 budget=Budget(min=100, max=1000, target=500),
                 tone="professional",
                 output_fields=["proposed_price", "reasoning"],
-                model_id="gemini-3-flash-preview",
+                model_id="gemini-3.5-flash",
             ),
             AgentDefinition(
                 role="seller",
@@ -1104,7 +1104,7 @@ def _build_minimal_scenario(persona_prompt: str) -> ArenaScenario:
                 budget=Budget(min=200, max=2000, target=1500),
                 tone="assertive",
                 output_fields=["proposed_price", "reasoning"],
-                model_id="gemini-3-flash-preview",
+                model_id="gemini-3.5-flash",
             ),
         ],
         toggles=[

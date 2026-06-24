@@ -75,14 +75,14 @@ def _make_mock_registry():
                 "persona_prompt": "You are a buyer.", "goals": ["Buy low"],
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "assertive", "output_fields": ["offer"],
-                "model_id": "gemini-3-flash-preview",
+                "model_id": "gemini-3.5-flash",
             },
             {
                 "role": "Seller", "name": "Bob", "type": "negotiator",
                 "persona_prompt": "You are a seller.", "goals": ["Sell high"],
                 "budget": {"min": 100.0, "max": 200.0, "target": 150.0},
                 "tone": "firm", "output_fields": ["offer"],
-                "model_id": "gemini-3-flash-preview",
+                "model_id": "gemini-3.5-flash",
             },
         ],
         "toggles": [{

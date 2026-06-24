@@ -164,7 +164,7 @@ def _minimal_scenario_config(agent_roles: list[str] | None = None) -> dict:
         {
             "role": role,
             "name": f"Agent {role}",
-            "model_id": "gemini-3-flash-preview",
+            "model_id": "gemini-3.5-flash",
             "persona": f"You are {role}.",
             "goals": [f"Goal for {role}"],
         }

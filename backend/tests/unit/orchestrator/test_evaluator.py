@@ -39,7 +39,7 @@ from app.orchestrator.evaluator import (
 
 def _make_agent_config(
     role: str = "Buyer",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
 ) -> dict[str, Any]:
     return {
         "role": role,
@@ -268,7 +268,7 @@ class TestEvaluatorDisabled:
     async def test_enabled_false_yields_no_events(self):
         """When evaluator_config.enabled is False, run_evaluation yields nothing."""
         scenario_config = _make_scenario_config(
-            evaluator_config={"model_id": "gemini-3-flash-preview", "enabled": False},
+            evaluator_config={"model_id": "gemini-3.5-flash", "enabled": False},
         )
 
         events = []
@@ -281,7 +281,7 @@ class TestEvaluatorDisabled:
     async def test_enabled_true_yields_events(self):
         """When evaluator_config.enabled is True, run_evaluation yields events."""
         scenario_config = _make_scenario_config(
-            evaluator_config={"model_id": "gemini-3-flash-preview", "enabled": True},
+            evaluator_config={"model_id": "gemini-3.5-flash", "enabled": True},
         )
 
         mock_model = MagicMock()
@@ -413,7 +413,7 @@ class TestResolveEvaluatorModel:
             mock_router.get_model.return_value = MagicMock()
             _resolve_evaluator_model(scenario)
             mock_router.get_model.assert_called_once_with(
-                "gemini-3-flash-preview", fallback_model_id=None,
+                "gemini-3.5-flash", fallback_model_id=None,
             )
 
     def test_raises_when_no_negotiator_agents(self):
@@ -642,12 +642,12 @@ class TestRunEvaluationDifferentScenarios:
             _make_agent_config("Seller"),
             {
                 "role": "Regulator", "name": "Regulator", "type": "regulator",
-                "model_id": "gemini-3-flash-preview",
+                "model_id": "gemini-3.5-flash",
                 "persona_prompt": "You are a regulator.",
             },
             {
                 "role": "Analyst", "name": "Analyst", "type": "observer",
-                "model_id": "gemini-3-flash-preview",
+                "model_id": "gemini-3.5-flash",
                 "persona_prompt": "You are an observer.",
             },
         ]

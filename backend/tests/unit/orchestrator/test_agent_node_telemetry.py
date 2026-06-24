@@ -25,7 +25,7 @@ def _make_agent_config(
     role: str = "Buyer",
     name: str = "Alice",
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
     persona_prompt: str = "You are a savvy buyer.",
 ) -> dict[str, Any]:
     return {
@@ -58,8 +58,8 @@ def _make_state(
         ]
     if agent_states is None:
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
-            "Seller": {"role": "Seller", "name": "Bob", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            "Seller": {"role": "Seller", "name": "Bob", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
         }
     return NegotiationState(
         session_id="test-sess",
@@ -151,7 +151,7 @@ class TestSuccessfulCallTelemetry:
         result = node_fn(state)
 
         record = result["agent_calls"][0]
-        assert record["model_id"] == "gemini-3-flash-preview"
+        assert record["model_id"] == "gemini-3.5-flash"
 
     @patch("app.orchestrator.agent_node.model_router")
     def test_record_has_nonnegative_latency(self, mock_router):
@@ -390,7 +390,7 @@ class TestModelOverrides:
         result = node_fn(state)
 
         record = result["agent_calls"][0]
-        assert record["model_id"] == "gemini-3-flash-preview"
+        assert record["model_id"] == "gemini-3.5-flash"
 
 
 # ===========================================================================
@@ -656,7 +656,7 @@ class TestRetryInvokeException:
             _make_agent_config("Regulator", "Carol", "regulator", "claude-sonnet-4-6"),
         ]
         agent_states = {
-            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
+            "Buyer": {"role": "Buyer", "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
             "Regulator": {"role": "Regulator", "name": "Carol", "agent_type": "regulator", "model_id": "claude-sonnet-4-6", "last_proposed_price": 0.0, "warning_count": 0},
         }
         state = _make_state(

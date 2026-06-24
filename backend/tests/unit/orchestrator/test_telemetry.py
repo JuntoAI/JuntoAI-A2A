@@ -20,7 +20,7 @@ def _valid_record(**overrides) -> dict:
     defaults = {
         "agent_role": "Buyer",
         "agent_type": "negotiator",
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "latency_ms": 120,
         "input_tokens": 50,
         "output_tokens": 30,
@@ -36,8 +36,8 @@ def _make_config() -> dict:
     return {
         "id": "scenario-001",
         "agents": [
-            {"role": "Buyer", "name": "Alice", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
-            {"role": "Seller", "name": "Bob", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": "Buyer", "name": "Alice", "type": "negotiator", "model_id": "gemini-3.5-flash"},
+            {"role": "Seller", "name": "Bob", "type": "negotiator", "model_id": "gemini-3.5-flash"},
         ],
         "negotiation_params": {"max_turns": 10, "turn_order": ["Buyer", "Seller"]},
     }

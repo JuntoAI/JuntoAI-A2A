@@ -21,7 +21,7 @@ def _agent_def(
     role: str,
     name: str,
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
 ) -> dict[str, Any]:
     return {
         "role": role,

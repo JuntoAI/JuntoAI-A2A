@@ -28,7 +28,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3.1-flash-lite-preview",
+      "model_id": "gemini-3.5-flash",
       "example_prompt": "Negotiate for milestone-based payments instead of hourly. Push for a kill fee if the project is cancelled."
     },
     {
@@ -53,7 +53,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3.1-pro-preview",
+      "model_id": "gemini-3.5-flash",
       "example_prompt": "Prioritize fixed-price contracts with clear deliverables. Offer a longer engagement in exchange for a lower rate."
     }
   ],

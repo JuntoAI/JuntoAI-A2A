@@ -28,7 +28,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3.1-flash-lite-preview",
+      "model_id": "gemini-3.5-flash",
       "example_prompt": "Lead with traction metrics and capital efficiency. Protect governance terms even if it means conceding on valuation."
     },
     {
@@ -53,7 +53,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3.1-pro-preview",
+      "model_id": "gemini-3.5-flash",
       "example_prompt": "Anchor on downside protection for LPs. Push for participating preferred and strong governance rights."
     },
     {
@@ -79,8 +79,8 @@
         "warnings",
         "recommendation"
       ],
-      "model_id": "gemini-3.1-pro-preview",
-      "fallback_model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.5-flash",
+      "fallback_model_id": "gemini-3.5-flash",
       "example_prompt": "Compare proposed terms against current Series A market standards. Flag deviations and suggest market-standard alternatives."
     }
   ],

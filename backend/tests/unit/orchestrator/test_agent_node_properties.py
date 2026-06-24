@@ -35,7 +35,7 @@ st_role = st.text(min_size=1, max_size=20, alphabet=st.characters(categories=("L
 st_text = st.text(min_size=1, max_size=80, alphabet=st.characters(categories=("L", "N", "P")))
 st_price = st.floats(min_value=0.01, max_value=1e9, allow_nan=False, allow_infinity=False)
 st_agent_type = st.sampled_from(["negotiator", "regulator", "observer"])
-st_model_id = st.sampled_from(["gemini-3-flash-preview", "gemini-3.1-pro-preview", "claude-3-5-sonnet-v2", "claude-sonnet-4-6"])
+st_model_id = st.sampled_from(["gemini-3.5-flash", "gemini-3.5-flash", "claude-3-5-sonnet-v2", "claude-sonnet-4-6"])
 st_status = st.sampled_from(["CLEAR", "WARNING", "BLOCKED"])
 
 
@@ -76,8 +76,8 @@ def st_negotiator_state(draw: st.DrawFn) -> tuple[NegotiationState, str, Negotia
     proposed = draw(st_price)
 
     agent_states = {
-        role: {"role": role, "name": "A", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
-        other_role: {"role": other_role, "name": "B", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
+        role: {"role": role, "name": "A", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+        other_role: {"role": other_role, "name": "B", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
     }
     state = NegotiationState(
         session_id="s", scenario_id="s", turn_count=draw(st.integers(min_value=0, max_value=100)),
@@ -121,7 +121,7 @@ def st_observer_state(draw: st.DrawFn) -> tuple[NegotiationState, str, ObserverO
     """Generate a state + role + ObserverOutput for observer update tests."""
     role = draw(st_role)
     agent_states = {
-        role: {"role": role, "name": "O", "agent_type": "observer", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
+        role: {"role": role, "name": "O", "agent_type": "observer", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
     }
     state = NegotiationState(
         session_id="s", scenario_id="s", turn_count=0,
@@ -338,7 +338,7 @@ def st_prompt_with_hidden_context(draw: st.DrawFn) -> tuple[dict, NegotiationSta
         "role": role,
         "name": "Agent",
         "type": "negotiator",
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "persona_prompt": "You are an agent.",
     }
 
@@ -407,12 +407,12 @@ def st_full_cycle_state(draw: st.DrawFn) -> NegotiationState:
     for r in negotiator_roles:
         agent_states[r] = {
             "role": r, "name": "N", "agent_type": "negotiator",
-            "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0,
+            "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0,
         }
     for r in regulator_roles:
         agent_states[r] = {
             "role": r, "name": "R", "agent_type": "regulator",
-            "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0,
+            "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0,
         }
 
     return NegotiationState(
@@ -535,7 +535,7 @@ def st_prompt_injection_state(
         "role": role,
         "name": "Agent",
         "type": agent_type,
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "persona_prompt": draw(st_text),
         "goals": draw(st.lists(st_text, min_size=0, max_size=3)),
     }
@@ -1058,7 +1058,7 @@ def st_memory_enabled_prompt_scenario(
         "role": role,
         "name": "Buyer Agent",
         "type": "negotiator",
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "persona_prompt": "You are a buyer.",
     }
 
@@ -1076,7 +1076,7 @@ def st_memory_enabled_prompt_scenario(
         "id": "test",
         "agents": [
             agent_config,
-            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-3.5-flash"},
         ],
         "negotiation_params": {"max_turns": 15},
     }
@@ -1239,7 +1239,7 @@ def st_disabled_memory_prompt_scenario(
         "role": role,
         "name": "Buyer Agent",
         "type": "negotiator",
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "persona_prompt": "You are a buyer.",
     }
 
@@ -1256,7 +1256,7 @@ def st_disabled_memory_prompt_scenario(
         "id": "test",
         "agents": [
             agent_config,
-            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": other_role, "name": "Seller", "type": "negotiator", "model_id": "gemini-3.5-flash"},
         ],
         "negotiation_params": {"max_turns": 15},
     }
@@ -1385,8 +1385,8 @@ def st_memory_extractor_update_scenario(
     scenario_config: dict[str, Any] = {
         "id": "test",
         "agents": [
-            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
-            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3.5-flash"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3.5-flash"},
         ],
         "negotiation_params": {"max_turns": 15},
     }
@@ -1503,8 +1503,8 @@ def st_opposing_offer_scenario(
     scenario_config: dict[str, Any] = {
         "id": "test",
         "agents": [
-            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
-            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3.5-flash"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3.5-flash"},
         ],
         "negotiation_params": {"max_turns": 15},
     }
@@ -1638,8 +1638,8 @@ def st_disabled_memory_update_scenario(
     scenario_config: dict[str, Any] = {
         "id": "test",
         "agents": [
-            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
-            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+            {"role": role, "name": "Agent A", "type": "negotiator", "model_id": "gemini-3.5-flash"},
+            {"role": other_role, "name": "Agent B", "type": "negotiator", "model_id": "gemini-3.5-flash"},
         ],
         "negotiation_params": {"max_turns": 15},
     }

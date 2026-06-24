@@ -1,6 +1,6 @@
 """Model mapping for local-mode LLM routing.
 
-Translates scenario ``model_id`` values (e.g. ``gemini-3-flash-preview``) to
+Translates scenario ``model_id`` values (e.g. ``gemini-3.5-flash``) to
 provider-specific model strings based on the active ``LLM_PROVIDER``.
 """
 
@@ -17,23 +17,17 @@ _ollama_model = os.environ.get("OLLAMA_MODEL", "llama3.1")
 # Scenario model_id → provider model string
 DEFAULT_MODEL_MAP: dict[str, dict[str, str]] = {
     "openai": {
-        "gemini-3-flash-preview": "gpt-4o-mini",
-        "gemini-3.1-flash-lite-preview": "gpt-4o-mini",
-        "gemini-3.1-pro-preview": "gpt-4o",
+        "gemini-3.5-flash": "gpt-4o",
         "claude-3-5-sonnet": "gpt-4o",
         "claude-sonnet-4": "gpt-4o",
     },
     "anthropic": {
-        "gemini-3-flash-preview": "claude-3-5-haiku-20241022",
-        "gemini-3.1-flash-lite-preview": "claude-3-5-haiku-20241022",
-        "gemini-3.1-pro-preview": "claude-sonnet-4-20250514",
+        "gemini-3.5-flash": "claude-sonnet-4-20250514",
         "claude-3-5-sonnet": "claude-3-5-sonnet-20241022",
         "claude-sonnet-4": "claude-sonnet-4-20250514",
     },
     "ollama": {
-        "gemini-3-flash-preview": f"ollama/{_ollama_model}",
-        "gemini-3.1-flash-lite-preview": f"ollama/{_ollama_model}",
-        "gemini-3.1-pro-preview": f"ollama/{_ollama_model}",
+        "gemini-3.5-flash": f"ollama/{_ollama_model}",
         "claude-3-5-sonnet": f"ollama/{_ollama_model}",
         "claude-sonnet-4": f"ollama/{_ollama_model}",
     },
@@ -41,8 +35,8 @@ DEFAULT_MODEL_MAP: dict[str, dict[str, str]] = {
 
 # Provider default models used as last-resort fallback
 _PROVIDER_DEFAULTS: dict[str, str] = {
-    "openai": "gpt-4o-mini",
-    "anthropic": "claude-3-5-haiku-20241022",
+    "openai": "gpt-4o",
+    "anthropic": "claude-sonnet-4-20250514",
     "ollama": f"ollama/{_ollama_model}",
 }
 
@@ -65,7 +59,7 @@ def resolve_model_id(
     Parameters
     ----------
     model_id:
-        The scenario model identifier (e.g. ``gemini-3-flash-preview``).
+        The scenario model identifier (e.g. ``gemini-3.5-flash``).
     provider:
         The LLM provider name (e.g. ``ollama``, ``openai``, ``anthropic``).
     model_override:

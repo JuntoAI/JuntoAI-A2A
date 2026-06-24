@@ -32,7 +32,7 @@ def _make_agent_config(
     role: str = "Buyer",
     name: str = "Alice",
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
     goals: list[str] | None = None,
     budget: dict | None = None,
 ) -> dict[str, Any]:
@@ -58,7 +58,7 @@ def _make_state(
 ) -> NegotiationState:
     if agents is None:
         agents = [
-            _make_agent_config("Buyer", "Alice", "negotiator", "gemini-3-flash-preview",
+            _make_agent_config("Buyer", "Alice", "negotiator", "gemini-3.5-flash",
                                goals=["Get lowest price"], budget={"min": 100000, "max": 200000}),
             _make_agent_config("Seller", "Bob", "negotiator", "claude-sonnet-4-6",
                                goals=["Maximize sale price"]),
@@ -259,7 +259,7 @@ class TestGenerateMilestones:
 
         # First call (Buyer) fails, second call (Seller) succeeds
         def side_effect(model_id, **kwargs):
-            if model_id == "gemini-3-flash-preview":
+            if model_id == "gemini-3.5-flash":
                 return mock_model_fail
             return mock_model_ok
 
@@ -317,7 +317,7 @@ class TestGenerateMilestones:
 
         # Verify get_model was called with each agent's model_id
         call_args = [call.args[0] for call in mock_router.get_model.call_args_list]
-        assert "gemini-3-flash-preview" in call_args
+        assert "gemini-3.5-flash" in call_args
         assert "claude-sonnet-4-6" in call_args
 
     @pytest.mark.asyncio

@@ -13,7 +13,7 @@ from app.orchestrator.state import NegotiationState, create_initial_state
 # ---------------------------------------------------------------------------
 
 
-def _make_agent(role: str, name: str, agent_type: str = "negotiator", model_id: str = "gemini-3-flash-preview") -> dict:
+def _make_agent(role: str, name: str, agent_type: str = "negotiator", model_id: str = "gemini-3.5-flash") -> dict:
     return {"role": role, "name": name, "type": agent_type, "model_id": model_id}
 
 

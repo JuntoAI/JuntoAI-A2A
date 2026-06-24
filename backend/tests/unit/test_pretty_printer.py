@@ -33,7 +33,7 @@ def _agent(**overrides) -> dict:
         "budget": _budget(),
         "tone": "assertive",
         "output_fields": ["offer"],
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
     }
     defaults.update(overrides)
     return defaults
@@ -175,7 +175,7 @@ class TestFieldsPreserved:
         assert agent["budget"] == {"min": 100.0, "max": 200.0, "target": 150.0}
         assert agent["tone"] == "assertive"
         assert agent["output_fields"] == ["offer"]
-        assert agent["model_id"] == "gemini-3-flash-preview"
+        assert agent["model_id"] == "gemini-3.5-flash"
         assert agent["fallback_model_id"] is None
 
     def test_toggle_fields_preserved(self):
@@ -257,7 +257,7 @@ class TestAllFieldsPopulated:
                         role="Negotiator",
                         name="Nora",
                         type="negotiator",
-                        fallback_model_id="gemini-3-flash-preview",
+                        fallback_model_id="gemini-3.5-flash",
                     ),
                     _agent(role="Regulator", name="Rex", type="regulator"),
                     _agent(role="Observer", name="Ollie", type="observer"),
@@ -282,8 +282,8 @@ class TestAllFieldsPopulated:
                     "process_label": "M&A Buyout",
                 },
                 "evaluator_config": {
-                    "model_id": "gemini-3.1-pro-preview",
-                    "fallback_model_id": "gemini-3-flash-preview",
+                    "model_id": "gemini-3.5-flash",
+                    "fallback_model_id": "gemini-3.5-flash",
                     "enabled": True,
                 },
                 "allowed_email_domains": ["example.com", "test.org"],
@@ -297,8 +297,8 @@ class TestAllFieldsPopulated:
         parsed = json.loads(result)
 
         assert parsed["difficulty"] == "advanced"
-        assert parsed["evaluator_config"]["model_id"] == "gemini-3.1-pro-preview"
-        assert parsed["evaluator_config"]["fallback_model_id"] == "gemini-3-flash-preview"
+        assert parsed["evaluator_config"]["model_id"] == "gemini-3.5-flash"
+        assert parsed["evaluator_config"]["fallback_model_id"] == "gemini-3.5-flash"
         assert parsed["evaluator_config"]["enabled"] is True
         assert parsed["allowed_email_domains"] == ["example.com", "test.org"]
 
@@ -323,7 +323,7 @@ class TestAllFieldsPopulated:
         parsed = json.loads(result)
 
         negotiator = next(a for a in parsed["agents"] if a["role"] == "Negotiator")
-        assert negotiator["fallback_model_id"] == "gemini-3-flash-preview"
+        assert negotiator["fallback_model_id"] == "gemini-3.5-flash"
 
     def test_round_trip_with_all_fields(self):
         scenario = self._full_scenario()

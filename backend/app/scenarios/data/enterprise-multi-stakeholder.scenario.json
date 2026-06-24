@@ -28,7 +28,7 @@
         "reasoning",
         "counter_terms"
       ],
-      "model_id": "gemini-3.1-pro-preview",
+      "model_id": "gemini-3.5-flash",
       "example_prompt": "Navigate the champion-blocker dynamic. Arm the CTO with ROI data while offering Procurement structured concessions. Pivot to phased rollout if full deal stalls."
     },
     {
@@ -53,7 +53,7 @@
         "reasoning",
         "internal_position"
       ],
-      "model_id": "gemini-3.1-pro-preview",
+      "model_id": "gemini-3.5-flash",
       "example_prompt": "Push for concrete technical guarantees. Support the deal but demand integration SLAs and implementation commitments. Bridge the gap between vendor pricing and Procurement's budget concerns."
     },
     {
@@ -78,7 +78,7 @@
         "reasoning",
         "objections"
       ],
-      "model_id": "gemini-3.1-flash-lite-preview",
+      "model_id": "gemini-3.5-flash",
       "example_prompt": "Challenge the pricing aggressively. Demand performance-based pricing and short-term exit clauses. Question the ROI projections with specific data requests."
     },
     {
@@ -104,8 +104,8 @@
         "warnings",
         "legal_requirements"
       ],
-      "model_id": "gemini-3.1-pro-preview",
-      "fallback_model_id": "gemini-3-flash-preview",
+      "model_id": "gemini-3.5-flash",
+      "fallback_model_id": "gemini-3.5-flash",
       "example_prompt": "Evaluate all proposals against DPA requirements, liability cap standards, IP ownership clauses, and vendor risk assessment thresholds. Block non-compliant terms."
     }
   ],

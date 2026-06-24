@@ -65,7 +65,7 @@ def st_state_with_milestones_varying_history(
         "role": role,
         "name": "Alice",
         "type": "negotiator",
-        "model_id": "gemini-3-flash-preview",
+        "model_id": "gemini-3.5-flash",
         "persona_prompt": "You are a buyer.",
     }
 
@@ -94,15 +94,15 @@ def st_state_with_milestones_varying_history(
             "id": "test",
             "agents": [
                 agent_config,
-                {"role": other_role, "name": "Bob", "type": "negotiator", "model_id": "gemini-3-flash-preview"},
+                {"role": other_role, "name": "Bob", "type": "negotiator", "model_id": "gemini-3.5-flash"},
             ],
             "negotiation_params": {"max_turns": 100},
         },
         turn_order=[role, other_role],
         turn_order_index=0,
         agent_states={
-            role: {"role": role, "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
-            other_role: {"role": other_role, "name": "Bob", "agent_type": "negotiator", "model_id": "gemini-3-flash-preview", "last_proposed_price": 0.0, "warning_count": 0},
+            role: {"role": role, "name": "Alice", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
+            other_role: {"role": other_role, "name": "Bob", "agent_type": "negotiator", "model_id": "gemini-3.5-flash", "last_proposed_price": 0.0, "warning_count": 0},
         },
         active_toggles=[],
         total_tokens_used=0,

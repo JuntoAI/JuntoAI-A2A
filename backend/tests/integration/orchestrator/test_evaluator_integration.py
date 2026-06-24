@@ -22,7 +22,7 @@ def _agent_def(
     role: str,
     name: str,
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
 ) -> dict[str, Any]:
     return {
         "role": role,
@@ -217,7 +217,7 @@ class TestEvaluationGracefulDegradation:
         """When evaluator_config.enabled is False, no events are emitted."""
         scenario = _make_scenario(num_negotiators=2)
         scenario["evaluator_config"] = {
-            "model_id": "gemini-3-flash-preview",
+            "model_id": "gemini-3.5-flash",
             "enabled": False,
         }
         terminal_state = _make_terminal_state()

@@ -36,7 +36,7 @@ def _make_agent_config(
     role: str = "Buyer",
     name: str = "Alice",
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
 ) -> dict[str, Any]:
     return {
         "role": role,

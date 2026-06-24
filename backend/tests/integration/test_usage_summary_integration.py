@@ -17,7 +17,7 @@ from app.routers.negotiation import _snapshot_to_events
 def _make_agent_call(
     agent_role: str,
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
     input_tokens: int = 80,
     output_tokens: int = 40,
     latency_ms: int = 200,

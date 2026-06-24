@@ -30,14 +30,14 @@ SCENARIO_CONFIG: dict[str, Any] = {
             "role": "Buyer",
             "name": "Alice",
             "type": "negotiator",
-            "model_id": "gemini-3-flash-preview",
+            "model_id": "gemini-3.5-flash",
             "persona_prompt": "You are a buyer.",
         },
         {
             "role": "Seller",
             "name": "Bob",
             "type": "negotiator",
-            "model_id": "gemini-3-flash-preview",
+            "model_id": "gemini-3.5-flash",
             "persona_prompt": "You are a seller.",
         },
     ],
@@ -88,7 +88,7 @@ async def test_agent_calls_accumulate_across_turns(mock_router):
     buyer_record = agent_calls[0]
     assert buyer_record["agent_role"] == "Buyer"
     assert buyer_record["agent_type"] == "negotiator"
-    assert buyer_record["model_id"] == "gemini-3-flash-preview"
+    assert buyer_record["model_id"] == "gemini-3.5-flash"
     assert buyer_record["input_tokens"] == 80
     assert buyer_record["output_tokens"] == 40
     assert buyer_record["error"] is False

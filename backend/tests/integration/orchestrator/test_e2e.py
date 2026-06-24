@@ -30,7 +30,7 @@ def _agent_def(
     role: str,
     name: str,
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
     **extra: Any,
 ) -> dict[str, Any]:
     base: dict[str, Any] = {
@@ -215,7 +215,7 @@ class TestFourAgentE2E:
                 _agent_def(
                     "Analyst", "WatchBot",
                     agent_type="observer",
-                    model_id="gemini-3.1-pro-preview",
+                    model_id="gemini-3.5-flash",
                 ),
             ],
             "negotiation_params": {

@@ -42,7 +42,7 @@ _threshold = st.floats(min_value=100.0, max_value=50_000.0, allow_nan=False, all
 def _make_agent_config(
     role: str,
     agent_type: str = "negotiator",
-    model_id: str = "gemini-3-flash-preview",
+    model_id: str = "gemini-3.5-flash",
 ) -> dict[str, Any]:
     return {
         "role": role,
@@ -153,7 +153,7 @@ def converged_negotiator_state(draw):
             "role": role,
             "name": role,
             "agent_type": "negotiator",
-            "model_id": "gemini-3-flash-preview",
+            "model_id": "gemini-3.5-flash",
             "last_proposed_price": price,
             "warning_count": 0,
         }
