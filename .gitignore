@@ -21,3 +21,8 @@ docs/kinetic-identity-api.md
 docs/sales-demo-storyline.md
 docs/gtm-strategy-sales-icp.md
 docs/gtm-strategy-sales-icp.pdf
+
+# Generated slides & transcripts
+docs/lectures/*.html
+docs/lectures/*.pdf
+last_transcript.json

@@ -847,7 +847,9 @@ A single Gemini call produces for each match:
 
 ## Get Started: Open Source A2A
 
-**Run the full negotiation engine locally:**
+**Try it now:** [a2a.juntoai.org](https://a2a.juntoai.org/) — no setup needed
+
+**Or run the full engine locally:**
 
 ```bash
 git clone https://github.com/JuntoAI/JuntoAI-A2A.git
