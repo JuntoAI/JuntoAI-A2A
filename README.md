@@ -278,7 +278,7 @@ Each entry in the `agents` array defines one AI agent:
       "budget": {"min": 80, "max": 160, "target": 120},
       "tone": "professional and confident",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "model_id": "gemini-3.5-flash"
     },
     {
       "role": "CTO",
@@ -289,7 +289,7 @@ Each entry in the `agents` array defines one AI agent:
       "budget": {"min": 60, "max": 120, "target": 90},
       "tone": "friendly but budget-conscious",
       "output_fields": ["offer", "reasoning", "counter_terms"],
-      "model_id": "gemini-3-flash-preview"
+      "model_id": "gemini-3.5-flash"
     },
     {
       "role": "Regulator",
@@ -300,8 +300,8 @@ Each entry in the `agents` array defines one AI agent:
       "budget": {"min": 0, "max": 0, "target": 0},
       "tone": "neutral and policy-driven",
       "output_fields": ["compliance_status", "warnings", "recommendation"],
-      "model_id": "gemini-3-flash-preview",
-      "fallback_model_id": "gemini-3-flash-preview"
+      "model_id": "gemini-3.5-flash",
+      "fallback_model_id": "gemini-3.5-flash"
     }
   ],
   "toggles": [
@@ -334,12 +334,12 @@ Save this as `backend/app/scenarios/data/freelance-rate.scenario.json`, restart 
 
 ### Model ID Mapping
 
-Scenario configs use generic `model_id` values like `gemini-3-flash-preview`. In local mode, LiteLLM translates these to your provider's models:
+Scenario configs use generic `model_id` values like `gemini-3.5-flash`. In local mode, LiteLLM translates these to your provider's models:
 
 1. If `LLM_MODEL_OVERRIDE` is set, **all** agents use that single model (ignores `model_id`).
 2. If `MODEL_MAP` is set, each `model_id` is looked up in the JSON mapping. Example:
    ```bash
-   MODEL_MAP='{"gemini-3-flash-preview": "gpt-4o", "gemini-3.1-pro-preview": "gpt-4o"}'
+   MODEL_MAP='{"gemini-3.5-flash": "gpt-4o"}'
    ```
 3. If neither is set, LiteLLM attempts to route the `model_id` string directly to the configured provider.
 
