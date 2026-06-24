@@ -393,7 +393,6 @@ class TestFilterModelsPromptBlock:
         result = filter_models_prompt_block(allowed)
         assert "`gemini-3.5-flash`" in result
         assert "`claude-sonnet-4`" in result
-        assert "`gemini-3.5-flash`" not in result
         assert "`claude-3-5-sonnet`" not in result
 
     def test_filter_empty_allowed_returns_empty(self):
