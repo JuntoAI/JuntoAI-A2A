@@ -54,6 +54,12 @@ export async function buildProxyHeaders(
   const cookie = incomingHeaders.get("cookie");
   if (cookie) headers["cookie"] = cookie;
 
+  // Forward the incoming Authorization header as X-Forwarded-Authorization
+  // so it doesn't conflict with the Cloud Run OIDC token.
+  // Used by internal API endpoints (transcript export).
+  const incomingAuth = incomingHeaders.get("authorization");
+  if (incomingAuth) headers["x-forwarded-authorization"] = incomingAuth;
+
   // Attach identity token for Cloud Run service-to-service auth
   const token = await fetchIdentityToken(BACKEND_ORIGIN);
   if (token) {

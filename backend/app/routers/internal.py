@@ -30,12 +30,15 @@ _bearer_scheme = HTTPBearer(auto_error=False)
 
 
 async def verify_internal_access(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
 ) -> None:
     """Verify internal API access.
 
     - Local mode: no auth required, always passes.
     - Cloud mode: requires a valid Bearer token matching INTERNAL_API_KEY.
+      Checks both the standard Authorization header and X-Forwarded-Authorization
+      (used when the frontend proxy replaces Authorization with an OIDC token).
       If INTERNAL_API_KEY is not configured, the endpoint is disabled (503).
     """
     if settings.RUN_MODE == "local":
@@ -48,13 +51,24 @@ async def verify_internal_access(
             detail="Internal API not configured (INTERNAL_API_KEY not set)",
         )
 
-    if credentials is None:
+    # Try standard Authorization header first
+    token: str | None = None
+    if credentials is not None:
+        token = credentials.credentials
+
+    # Fall back to X-Forwarded-Authorization (set by frontend proxy)
+    if token is None:
+        forwarded = request.headers.get("x-forwarded-authorization", "")
+        if forwarded.lower().startswith("bearer "):
+            token = forwarded[7:]
+
+    if not token:
         raise HTTPException(
             status_code=401,
             detail="Missing Authorization header",
         )
 
-    if not hmac.compare_digest(credentials.credentials, settings.INTERNAL_API_KEY):
+    if not hmac.compare_digest(token, settings.INTERNAL_API_KEY):
         raise HTTPException(
             status_code=403,
             detail="Invalid API key",
