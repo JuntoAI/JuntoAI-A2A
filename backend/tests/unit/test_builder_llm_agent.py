@@ -413,7 +413,7 @@ class TestFilterModelsPromptBlock:
         allowed = frozenset({"gemini-3.5-flash"})
         prompt = build_system_prompt(allowed)
         assert "`gemini-3.5-flash`" in prompt
-        assert "`gemini-3.5-flash`" not in prompt
+        assert "`claude-3-5-sonnet`" not in prompt
         assert "`claude-sonnet-4`" not in prompt
 
 
@@ -434,7 +434,6 @@ async def test_stream_response_with_allowed_model_ids_filters_prompt():
     assert "`gemini-3.5-flash`" in system_msg.content
     assert "`claude-sonnet-4`" in system_msg.content
     # These should be filtered out
-    assert "`gemini-3.5-flash`" not in system_msg.content
     assert "`claude-3-5-sonnet`" not in system_msg.content
 
 
