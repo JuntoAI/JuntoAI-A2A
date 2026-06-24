@@ -2,12 +2,46 @@
 inclusion: manual
 ---
 
-# JuntoAI A2A — Internal Transcript API
+# JuntoAI A2A — Internal Transcript API & Firestore Access
 
-## Purpose
-Programmatic access to full negotiation session documents for analysis, scenario optimization, and monitoring. Exposes inner thoughts, agent_calls, evaluations, toggle configs — everything the orchestrator produces.
+## Quick Access: Firestore REST API (Preferred for Analysis)
 
-## Endpoints
+Transcripts are stored in Firestore `negotiation_sessions` collection. Access directly via REST:
+
+### Get latest session
+```powershell
+$token = gcloud auth print-access-token
+$headers = @{ "Authorization" = "Bearer $token"; "Content-Type" = "application/json" }
+$body = '{"structuredQuery":{"from":[{"collectionId":"negotiation_sessions"}],"orderBy":[{"field":{"fieldPath":"created_at"},"direction":"DESCENDING"}],"limit":1}}'
+$uri = "https://firestore.googleapis.com/v1/projects/juntoai-a2a-mvp/databases/(default)/documents:runQuery"
+Invoke-RestMethod -Uri $uri -Headers $headers -Method POST -Body $body
+```
+
+### Get specific session by ID
+```
+GET https://firestore.googleapis.com/v1/projects/juntoai-a2a-mvp/databases/(default)/documents/negotiation_sessions/{session_id}
+Authorization: Bearer <gcloud-access-token>
+```
+
+### Filter by field (e.g. scenario_id)
+```json
+{
+  "structuredQuery": {
+    "from": [{"collectionId": "negotiation_sessions"}],
+    "where": {
+      "fieldFilter": {
+        "field": {"fieldPath": "scenario_id"},
+        "op": "EQUAL",
+        "value": {"stringValue": "ma_buyout"}
+      }
+    },
+    "orderBy": [{"field": {"fieldPath": "created_at"}, "direction": "DESCENDING"}],
+    "limit": 10
+  }
+}
+```
+
+## HTTP API Endpoint (for external/automated access)
 
 ### Bulk Export
 ```
