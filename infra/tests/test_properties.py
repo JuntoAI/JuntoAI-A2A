@@ -229,7 +229,11 @@ class TestFrontendLeastPrivilege:
         assume(backend_sa != frontend_sa)
         bindings = build_iam_bindings(backend_sa, frontend_sa, enable_run_invoker)
         frontend_bindings = [
-            b for b in bindings if frontend_sa in b.member
+            # Exact match, not substring: one generated SA email can be a
+            # substring of another (e.g. 'a00@x' inside 'aa00@x'), which
+            # misattributes backend bindings to the frontend SA and fails
+            # spuriously. Hypothesis reliably finds that case.
+            b for b in bindings if b.member == f"serviceAccount:{frontend_sa}"
         ]
         for binding in frontend_bindings:
             assert binding.role not in PRIVILEGED_ROLES, (
@@ -249,7 +253,11 @@ class TestFrontendLeastPrivilege:
         assume(backend_sa != frontend_sa)
         bindings = build_iam_bindings(backend_sa, frontend_sa, enable_run_invoker)
         frontend_bindings = [
-            b for b in bindings if frontend_sa in b.member
+            # Exact match, not substring: one generated SA email can be a
+            # substring of another (e.g. 'a00@x' inside 'aa00@x'), which
+            # misattributes backend bindings to the frontend SA and fails
+            # spuriously. Hypothesis reliably finds that case.
+            b for b in bindings if b.member == f"serviceAccount:{frontend_sa}"
         ]
         assert len(frontend_bindings) == 0, (
             f"Frontend_SA should have 0 bindings, got {len(frontend_bindings)}"

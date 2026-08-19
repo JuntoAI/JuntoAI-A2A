@@ -1,6 +1,29 @@
 # -----------------------------------------------------------------------------
 # Cloud Run Services
 # -----------------------------------------------------------------------------
+#
+# OWNERSHIP CONTRACT — read before editing `lifecycle.ignore_changes` below.
+#
+#   Terraform owns: scaling (min/max), CPU + memory limits, cpu_idle, timeout,
+#                   session affinity, concurrency, service account, IAM, domain.
+#   Cloud Build owns: container image, env vars, and the traffic block
+#                     (canary tag + traffic migration).
+#
+# Because `traffic` is ignored here, Terraform can NOT remove a revision tag.
+# Cloud Build MUST untag the canary after migrating traffic — see the
+# `remove-*-canary-tag` steps in cloudbuild-backend.yaml / cloudbuild-frontend.yaml.
+#
+# Why it matters: a tagged revision gets its own dedicated URL, so Cloud Run
+# honours that revision's min-instances indefinitely even at 0% traffic. In
+# Apr-Aug 2026 an untagged-but-never-cleaned canary with min-instances=1 and
+# CPU always allocated ran 24/7 and accounted for ~66% of the GCP bill while
+# serving zero requests. Terraform kept resetting the *serving* revision to the
+# correct config and could not touch the orphaned tagged one.
+#
+# Also note: `gcloud run deploy` inherits any unspecified flag from the previous
+# revision. The Cloud Build deploy steps therefore pin scaling and cpu_idle
+# explicitly, mirroring the defaults in variables.tf. Keep the two in sync.
+# -----------------------------------------------------------------------------
 
 resource "google_cloud_run_v2_service" "backend" {
   name     = var.backend_service_name

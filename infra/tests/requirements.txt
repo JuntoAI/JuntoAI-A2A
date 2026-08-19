@@ -1,0 +1,20 @@
+# Dependencies for the infrastructure static-analysis test suite.
+#
+# Test tooling is pinned rather than ranged: python-hcl2 8.x changed how block
+# labels and string literals are quoted, which silently broke ~97 of these tests.
+# An unpinned range let that land unnoticed. conftest.py now normalizes the
+# parser output either way, but the pin keeps the behaviour a deliberate choice.
+
+pytest==8.3.4
+python-hcl2==8.1.2
+PyYAML==6.0.2
+hypothesis==6.122.3
+
+# test_alerting_function.py imports the alerting Cloud Function's main.py
+# directly, so the function's own runtime dependencies must be importable.
+# Included by reference rather than copied, so the two cannot drift apart.
+#
+# NOTE: that file is unpinned, which means neither these tests nor the deployed
+# function have reproducible dependencies. Worth pinning separately — doing it
+# here would change what gets deployed.
+-r ../modules/alerting/function/requirements.txt

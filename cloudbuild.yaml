@@ -124,9 +124,24 @@ steps:
       - AWS_ACCESS_KEY_ID=aws-ses-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-ses-secret-access-key:latest,ADMIN_PASSWORD=admin-password:latest,ESPOCRM_API_KEY=espocrm-api-key:latest,INTERNAL_API_KEY=internal-api-key:latest
       - --timeout
       - "1200"
+      # Scaling and CPU allocation are pinned EXPLICITLY on every deploy.
+      # `gcloud run deploy` inherits any unspecified flag from the previous
+      # revision, so omitting a flag does NOT reset it. These values must stay
+      # in sync with infra/modules/cloud-run/variables.tf.
+      #
+      # HISTORY: this step previously set `--min-instances 1 --no-cpu-throttling`
+      # (commits e4ee813 / 0959fc0, 2026-04-02) to chase SSE stream stability.
+      # Combined with the never-removed `canary` tag below, that pinned an
+      # always-on instance at 0% traffic and became ~66% of the GCP bill.
+      # Stream drain is handled by --timeout and --session-affinity, not by CPU
+      # allocation. Do not reintroduce those flags.
       - --min-instances
-      - "1"
-      - --no-cpu-throttling
+      - "0"
+      - --max-instances
+      - "20"
+      - --cpu-throttling
+      - --concurrency
+      - "80"
       - --session-affinity
       - --no-traffic
       - --tag
@@ -149,6 +164,12 @@ steps:
       - ${_FRONTEND_SA_EMAIL}
       - --env-vars-file
       - /workspace/frontend-env.yaml
+      # See the backend deploy step above: these must be explicit, never inherited.
+      - --min-instances
+      - "0"
+      - --max-instances
+      - "20"
+      - --cpu-throttling
       - --no-traffic
       - --tag
       - canary
@@ -183,6 +204,42 @@ steps:
       - --to-latest
       - --quiet
     waitFor: ["deploy-frontend-no-traffic"]
+
+  # --- Remove canary tags once traffic has migrated ---
+  #
+  # `update-traffic --to-latest` moves traffic but LEAVES the tag pinned to the
+  # canary revision. A tagged revision keeps its own dedicated URL, so Cloud Run
+  # honours its min-instances forever even at 0% traffic. Without these steps an
+  # abandoned canary bills 24/7 for capacity nobody can reach.
+  - id: remove-backend-canary-tag
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update-traffic
+      - ${_BACKEND_SERVICE}
+      - --region
+      - ${_REGION}
+      - --remove-tags
+      - canary
+      - --quiet
+    waitFor: ["migrate-backend-traffic"]
+
+  - id: remove-frontend-canary-tag
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update-traffic
+      - ${_FRONTEND_SERVICE}
+      - --region
+      - ${_REGION}
+      - --remove-tags
+      - canary
+      - --quiet
+    waitFor: ["migrate-frontend-traffic"]
 
 options:
   logging: CLOUD_LOGGING_ONLY

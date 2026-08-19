@@ -34,6 +34,7 @@ class TestModuleDirectories:
         "vertex-ai",
         "iam",
         "cloud-run",
+        "billing",
     ]
 
     def test_modules_dir_exists(self, modules_root):

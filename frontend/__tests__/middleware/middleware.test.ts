@@ -100,8 +100,110 @@ describe("middleware (default mode — no env set)", () => {
 });
 
 describe("config.matcher", () => {
-  it("matches /arena/:path* and /admin/:path* routes", async () => {
+  it("includes arena, admin, and catch-all patterns", async () => {
     const { config } = await import("../../middleware");
-    expect(config.matcher).toEqual(["/arena/:path*", "/admin/:path*"]);
+    expect(config.matcher).toContain("/arena/:path*");
+    expect(config.matcher).toContain("/admin/:path*");
+    // Catch-all for probe interception (excludes Next.js internals)
+    expect(config.matcher).toContainEqual(
+      expect.stringContaining("(?!_next/static|_next/image|favicon.ico)")
+    );
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Probe / vulnerability scanner rejection
+// ---------------------------------------------------------------------------
+
+describe("middleware (probe rejection)", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_RUN_MODE", "cloud");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const phpProbes = [
+    "/wp-admin/install.php",
+    "/wp-content/plugins/admin.php",
+    "/wp-includes/ID3/index.php",
+    "/blog/byp.php",
+    "/first.php",
+    "/images/security.php",
+  ];
+
+  const otherProbes = [
+    "/.env",
+    "/.git/config",
+    "/backup.sql",
+    "/config.asp",
+    "/shell.aspx",
+    "/cgi-bin/test.cgi",
+    "/old-backup.bak",
+  ];
+
+  const wpPaths = [
+    "/wp-admin/some/page",
+    "/wp-content/uploads/file.jpg",
+    "/wp-includes/js/jquery.js",
+    "/wp-login.php",
+    "/wordpress/readme.html",
+  ];
+
+  it.each(phpProbes)("blocks PHP probe: %s", async (path) => {
+    const { middleware } = await import("../../middleware");
+    const req = createRequest(path);
+    const res = middleware(req);
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toBe("text/plain");
+  });
+
+  it.each(otherProbes)("blocks non-PHP probe: %s", async (path) => {
+    const { middleware } = await import("../../middleware");
+    const req = createRequest(path);
+    const res = middleware(req);
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toBe("text/plain");
+  });
+
+  it.each(wpPaths)("blocks WordPress path: %s", async (path) => {
+    const { middleware } = await import("../../middleware");
+    const req = createRequest(path);
+    const res = middleware(req);
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("content-type")).toBe("text/plain");
+  });
+
+  it("does not block legitimate paths", async () => {
+    const { middleware } = await import("../../middleware");
+    const legitimatePaths = ["/", "/arena", "/admin/login", "/api/health"];
+
+    for (const path of legitimatePaths) {
+      const req = createRequest(path);
+      const res = middleware(req);
+      expect(res.status).not.toBe(404);
+    }
+  });
+
+  it("blocks probes regardless of query parameters", async () => {
+    const { middleware } = await import("../../middleware");
+    const req = createRequest("/shell.php?cmd=ls");
+    const res = middleware(req);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("probe rejection takes priority over auth", async () => {
+    const { middleware } = await import("../../middleware");
+    // Even with a valid session, a probe path should 404
+    const req = createRequest("/wp-admin/install.php", { junto_session: "valid" });
+    const res = middleware(req);
+
+    expect(res.status).toBe(404);
   });
 });

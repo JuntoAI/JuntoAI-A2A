@@ -72,6 +72,20 @@ steps:
       - /workspace/backend-env.yaml
       - --set-secrets
       - AWS_ACCESS_KEY_ID=aws-ses-access-key-id:latest,AWS_SECRET_ACCESS_KEY=aws-ses-secret-access-key:latest,ADMIN_PASSWORD=admin-password:latest,ESPOCRM_API_KEY=espocrm-api-key:latest,INTERNAL_API_KEY=internal-api-key:latest
+      # Scaling and CPU allocation are pinned EXPLICITLY on every deploy.
+      # `gcloud run deploy` inherits any unspecified flag from the previous
+      # revision, so omitting a flag does NOT reset it. These values must stay
+      # in sync with infra/modules/cloud-run/variables.tf.
+      - --min-instances
+      - "0"
+      - --max-instances
+      - "20"
+      - --cpu-throttling
+      - --concurrency
+      - "80"
+      - --session-affinity
+      - --timeout
+      - "1200"
       - --no-traffic
       - --tag
       - canary
@@ -92,6 +106,27 @@ steps:
       - --to-latest
       - --quiet
     waitFor: ["deploy-backend-no-traffic"]
+
+  # Remove the canary tag once traffic has migrated.
+  #
+  # `update-traffic --to-latest` moves traffic but LEAVES the tag pinned to the
+  # canary revision. A tagged revision keeps its own dedicated URL, so Cloud Run
+  # honours its min-instances forever even at 0% traffic. Without this step an
+  # abandoned canary bills 24/7 for capacity nobody can reach.
+  - id: remove-backend-canary-tag
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update-traffic
+      - ${_BACKEND_SERVICE}
+      - --region
+      - ${_REGION}
+      - --remove-tags
+      - canary
+      - --quiet
+    waitFor: ["migrate-backend-traffic"]
 
 options:
   logging: CLOUD_LOGGING_ONLY

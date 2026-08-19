@@ -97,7 +97,15 @@ variable "backend_memory" {
 variable "backend_cpu_idle" {
   description = "Whether CPU is throttled when no requests are being processed. true = throttled (cheaper), false = always allocated."
   type        = bool
-  default     = true
+
+  # Keep this `true`. cpu_idle only governs CPU *outside* request processing;
+  # during an open SSE stream the request is still active, so CPU stays
+  # allocated either way. `false` bills the full instance lifetime and buys
+  # nothing for stream stability — graceful drain is handled by
+  # backend_instance_shutdown_timeout and session_affinity.
+  # Setting this to `false` in Apr 2026 was the origin of a long-running
+  # always-on billing leak. See the ownership contract in main.tf.
+  default = true
 }
 
 # -----------------------------------------------------------------------------
